@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { post, request } from './api';
 import { Icon } from './components';
 import { synchronizeCameras } from './cameraPlayback';
@@ -87,20 +87,29 @@ export function useCameraReplay(path: string, active: boolean): CameraReplayStat
   return { replay, requestError, retry };
 }
 
-export function ProjectCameraReplay({ runPath, children }: { runPath: string; children: ReactNode }) {
-  const path = runPath + '/camera-replay';
-  const container = useRef<HTMLElement>(null);
+/**
+ * True only while `ref`'s element is intersecting the viewport and the tab is visible. Used to
+ * gate camera-replay rendering/polling so it does not fire when the panel is off-screen or hidden.
+ */
+export function useViewportActive(ref: RefObject<HTMLElement | null>): boolean {
   const [visible, setVisible] = useState(false);
-  const [inspect, setInspect] = useState(false);
   useEffect(() => {
-    if (!container.current) return;
+    if (!ref.current) return;
     let intersecting = false;
     const update = () => setVisible(intersecting && !document.hidden);
     const observer = new IntersectionObserver(([entry]) => { intersecting = entry.isIntersecting; update(); });
-    observer.observe(container.current);
+    observer.observe(ref.current);
     document.addEventListener('visibilitychange', update);
     return () => { observer.disconnect(); document.removeEventListener('visibilitychange', update); };
-  }, []);
+  }, [ref]);
+  return visible;
+}
+
+export function ProjectCameraReplay({ runPath, children }: { runPath: string; children: ReactNode }) {
+  const path = runPath + '/camera-replay';
+  const container = useRef<HTMLElement>(null);
+  const visible = useViewportActive(container);
+  const [inspect, setInspect] = useState(false);
 
   const { replay, requestError, retry } = useCameraReplay(path, visible);
   const unavailable = replay?.status === 'unavailable';

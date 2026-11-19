@@ -54,3 +54,23 @@ function sameValue(a: unknown, b: unknown): boolean {
   if (typeof a === 'object' || typeof b === 'object') return JSON.stringify(a) === JSON.stringify(b);
   return false;
 }
+
+export type SplitCriteria = {
+  checks: Array<[string, boolean]>;
+  limits: Array<[string, number]>;
+  nested: Array<[string, Record<string, unknown>]>;
+};
+
+/**
+ * Split acceptance criteria into the three shapes the compare panel renders: boolean pass/fail
+ * checks, finite-number limits, and nested objects (e.g. robot_motion's servo_response). Keeping
+ * this pure lets the Node test runner confirm that nested-object criteria are never dropped.
+ */
+export function splitCriteria(criteria: Record<string, unknown> | undefined): SplitCriteria {
+  const entries = Object.entries(criteria ?? {});
+  return {
+    checks: entries.filter((e): e is [string, boolean] => typeof e[1] === 'boolean'),
+    limits: entries.filter((e): e is [string, number] => typeof e[1] === 'number' && Number.isFinite(e[1])),
+    nested: entries.filter((e): e is [string, Record<string, unknown>] => e[1] !== null && typeof e[1] === 'object'),
+  };
+}

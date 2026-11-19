@@ -4,9 +4,9 @@ import { Icon, Loading, Notice } from './components';
 import type { Inputs, RunDetail } from './analysisInputs';
 import { measuredNumber } from './recordedFields';
 import { synchronizeCameras } from './cameraPlayback';
-import { useCameraReplay } from './ProjectCameraReplay';
+import { useCameraReplay, useViewportActive } from './ProjectCameraReplay';
 import type { Replay, View } from './ProjectCameraReplay';
-import { changedInputs, defaultPair, resolvePair } from './campaignCompare';
+import { changedInputs, defaultPair, resolvePair, splitCriteria } from './campaignCompare';
 import type { Condition } from './campaignCompare';
 import { coordinateValue, verdict } from './campaignVerdict';
 import './compareWithReference.css';
@@ -46,15 +46,20 @@ function verdictClass(text: string) {
   return text === 'Passed' ? 'text-green' : text === 'Failed' ? 'text-red' : undefined;
 }
 
+/** Format one criterion/limit value: numbers via measuredNumber, everything else readable. */
+function limitValue(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return measuredNumber(value);
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return String(value);
+}
+
 /** Measured result + acceptance limit + verdict for one run, mirroring RunVisual's NumericalSummary. */
 function RunResult({ run, detail }: { run: Condition; detail: RunDetail | null }) {
   const outcome = runVerdict(run, detail);
   const result = (detail?.result ?? undefined) as Inputs | undefined;
   const metrics = (result?.summary ?? result?.metrics ?? result ?? run.metrics) as Inputs;
   const scalars = Object.entries(metrics).filter(([, value]) => typeof value === 'number' && Number.isFinite(value));
-  const criteria = (result?.criteria ?? {}) as Inputs;
-  const checks = Object.entries(criteria).filter(([, value]) => typeof value === 'boolean');
-  const limits = Object.entries(criteria).filter(([, value]) => typeof value === 'number' && Number.isFinite(value));
+  const { checks, limits, nested } = splitCriteria(result?.criteria as Record<string, unknown> | undefined);
   return <div className="compare-run-result">
     <h5>{run.label}</h5>
     <p className="compare-verdict">Verdict · <strong className={verdictClass(outcome)}>{outcome}</strong></p>
@@ -62,12 +67,16 @@ function RunResult({ run, detail }: { run: Condition; detail: RunDetail | null }
     {scalars.length > 0 && <><h6>Measured result</h6>
       <dl className="analysis-metrics">{scalars.map(([name, value]) => <div key={name}>
         <dt>{label(name)}</dt><dd>{measuredNumber(value as number)}</dd></div>)}</dl></>}
-    {(checks.length > 0 || limits.length > 0) && <><h6>Acceptance limit</h6>
+    {(checks.length > 0 || limits.length > 0 || nested.length > 0) && <><h6>Acceptance limit</h6>
       {checks.length > 0 && <ul className="matrix-checks">{checks.map(([name, passed]) => <li key={name}>{label(name)}
         <strong className={'matrix-tag ' + (passed ? 'passed' : 'failed')}>{passed ? 'Passed' : 'Failed'}</strong></li>)}</ul>}
       {limits.length > 0 && <dl className="analysis-metrics">{limits.map(([name, value]) => <div key={name}>
-        <dt>{label(name)}</dt><dd>{measuredNumber(value as number)}</dd></div>)}</dl>}</>}
-    {!scalars.length && !checks.length && !limits.length && !run.error &&
+        <dt>{label(name)}</dt><dd>{measuredNumber(value as number)}</dd></div>)}</dl>}
+      {nested.map(([name, value]) => <div key={name} className="compare-nested-criterion">
+        <h6>{label(name)}</h6>
+        <dl className="analysis-metrics">{Object.entries(value as Inputs).map(([key, inner]) => <div key={key}>
+          <dt>{label(key)}</dt><dd>{limitValue(inner)}</dd></div>)}</dl></div>)}</>}
+    {!scalars.length && !checks.length && !limits.length && !nested.length && !run.error &&
       <p className="small muted">No measured result recorded for this condition.</p>}
   </div>;
 }
@@ -82,8 +91,10 @@ function replayState(replay: Replay | null, requestError: string) {
 
 /** Side-by-side main views driven on one shared timeline when both runs have footage. */
 function ComparePlayers({ leftPath, rightPath }: { leftPath: string; rightPath: string }) {
-  const left = useCameraReplay(leftPath + '/camera-replay', true);
-  const right = useCameraReplay(rightPath + '/camera-replay', true);
+  const container = useRef<HTMLElement>(null);
+  const visible = useViewportActive(container);
+  const left = useCameraReplay(leftPath + '/camera-replay', visible);
+  const right = useCameraReplay(rightPath + '/camera-replay', visible);
   const leftVideo = useRef<HTMLVideoElement>(null), rightVideo = useRef<HTMLVideoElement>(null);
   const playback = useRef<ReturnType<typeof synchronizeCameras> | null>(null);
   const [playbackError, setPlaybackError] = useState('');
@@ -106,7 +117,7 @@ function ComparePlayers({ leftPath, rightPath }: { leftPath: string; rightPath: 
     { key: 'left', title: 'Reference run', state: leftState, ref: leftVideo, retry: left.retry },
     { key: 'right', title: 'Comparison run', state: rightState, ref: rightVideo, retry: right.retry },
   ];
-  return <section className="compare-players" aria-label="Side-by-side camera replay">
+  return <section ref={container} className="compare-players" aria-label="Side-by-side camera replay">
     <div className="compare-video-pair">{sides.map(side =>
       <figure key={side.key}><figcaption>{side.title}</figcaption>
         {side.state.hasFootage && side.state.main
@@ -137,9 +148,12 @@ export function CompareWithReference({ base, runs, field, reference }: {
   const leftDetail = useRunDetail(leftPath);
   const rightDetail = useRunDetail(rightPath);
 
-  // Diff prefers loaded inputs, falling back to coordinates so it renders before details arrive.
-  const leftInputs = leftDetail.detail?.inputs ?? left?.coordinates;
-  const rightInputs = rightDetail.detail?.inputs ?? right?.coordinates;
+  // Diff from one consistent source for both sides: use full inputs only once BOTH details have
+  // loaded, otherwise the campaign-table coordinates. Coordinates are a subset of inputs (only the
+  // varied dimensions), so this avoids a mixed-source diff that could flip rows as details arrive.
+  const bothLoaded = Boolean(leftDetail.detail && rightDetail.detail);
+  const leftInputs = bothLoaded ? leftDetail.detail?.inputs : left?.coordinates;
+  const rightInputs = bothLoaded ? rightDetail.detail?.inputs : right?.coordinates;
   const changes = left && right ? changedInputs(leftInputs, rightInputs) : [];
 
   if (completed.length < 2) return <p className="small muted">At least two completed conditions are needed to compare.</p>;
@@ -152,30 +166,33 @@ export function CompareWithReference({ base, runs, field, reference }: {
   }
 
   const error = leftDetail.error || rightDetail.error;
+  const distinct = Boolean(left && right && left.id !== right.id);
   return <div className="compare-panel">
     <div className="compare-pickers">{picker('left', pair.left)}{picker('right', pair.right)}</div>
     {pair.left && pair.left === pair.right && <Notice tone="warning">Pick two different conditions to compare.</Notice>}
     {error && <Notice tone="error">{error}</Notice>}
 
-    <div className="compare-diff">
-      <h5>Changed inputs</h5>
-      {changes.length === 0
-        ? <p className="small muted">No input differences between these conditions.</p>
-        : <div className="analysis-table-scroll"><table className="data-table">
-            <thead><tr><th>Input</th><th>Reference</th><th>Comparison</th></tr></thead>
-            <tbody>{changes.map(change => <tr key={change.key}>
-              <td>{label(change.key === 'value' ? field ?? 'input' : change.key)}</td>
-              <td>{coordinateValue(change.key, change.left, field)}</td>
-              <td>{coordinateValue(change.key, change.right, field)}</td>
-            </tr>)}</tbody>
-          </table></div>}
-    </div>
+    {distinct && <>
+      <div className="compare-diff">
+        <h5>Changed inputs</h5>
+        {changes.length === 0
+          ? <p className="small muted">No input differences between these conditions.</p>
+          : <div className="analysis-table-scroll"><table className="data-table">
+              <thead><tr><th>Input</th><th>Reference</th><th>Comparison</th></tr></thead>
+              <tbody>{changes.map(change => <tr key={change.key}>
+                <td>{label(change.key === 'value' ? field ?? 'input' : change.key)}</td>
+                <td>{coordinateValue(change.key, change.left, field)}</td>
+                <td>{coordinateValue(change.key, change.right, field)}</td>
+              </tr>)}</tbody>
+            </table></div>}
+      </div>
 
-    <div className="compare-results">
-      {left ? <RunResult run={left} detail={leftDetail.detail}/> : <Loading/>}
-      {right ? <RunResult run={right} detail={rightDetail.detail}/> : <Loading/>}
-    </div>
+      <div className="compare-results">
+        {left ? <RunResult run={left} detail={leftDetail.detail}/> : <Loading/>}
+        {right ? <RunResult run={right} detail={rightDetail.detail}/> : <Loading/>}
+      </div>
 
-    {left && right && left.id !== right.id && <ComparePlayers key={left.id + '|' + right.id} leftPath={leftPath} rightPath={rightPath}/>}
+      <ComparePlayers key={left!.id + '|' + right!.id} leftPath={leftPath} rightPath={rightPath}/>
+    </>}
   </div>;
 }
