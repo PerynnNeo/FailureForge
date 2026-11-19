@@ -177,7 +177,10 @@ class ProjectRuns:
                 CREATE INDEX IF NOT EXISTS project_run_history ON project_runs(project_id,created_at);
                 CREATE INDEX IF NOT EXISTS project_run_suite ON project_runs(project_id,suite_id,ordinal);
                 CREATE TABLE IF NOT EXISTS project_named_suites(
-                    suite_id TEXT PRIMARY KEY, label TEXT NOT NULL);""")
+                    suite_id TEXT PRIMARY KEY, label TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS project_crossed_designs(
+                    suite_id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id),
+                    definition TEXT NOT NULL, created_at TEXT NOT NULL);""")
         # Serialize schema upgrades across concurrent service startups. Existing completed
         # rows retain the evidence hash captured by their original worker.
         with self.store.connection(True) as db:
@@ -197,7 +200,7 @@ class ProjectRuns:
         if self.thread:
             self.thread.join(5)
 
-    def submit(self, project_id, revision, tests, key, *, sweep=None, environment_matrix=None,
+    def submit(self, project_id, revision, tests, key, *, sweep=None, environment_matrix=None, crossed_design=None,
                explicit_suite=False, suite_label=None):
         # Empty bindings retain the original literal-only request hash for retries.
         definitions = [t.model_dump(exclude_defaults=True) for t in tests]
@@ -206,6 +209,8 @@ class ProjectRuns:
             request["sweep"] = sweep
         if environment_matrix is not None:
             request["environment_matrix"] = environment_matrix
+        if crossed_design is not None:
+            request["crossed_design"] = crossed_design
         if suite_label is not None:
             request["label"] = suite_label
         scope = f"project-analysis:{project_id}"
@@ -229,6 +234,9 @@ class ProjectRuns:
             if explicit_suite:
                 db.execute("INSERT INTO project_named_suites VALUES(?,?)",
                            (receipt["suite_id"], suite_label or _suite_label(tests)))
+            if crossed_design is not None:
+                db.execute("INSERT INTO project_crossed_designs VALUES(?,?,?,?)",
+                           (receipt["suite_id"], project_id, canonical_json(crossed_design), utc_now()))
             if environment_matrix is not None:
                 db.execute(
                     "INSERT INTO project_environment_matrices(suite_id, project_id, definition, created_at) "
@@ -447,7 +455,15 @@ class ProjectRuns:
 
 
 def analysis_router(runs):
+    from .project_replay_pair import replay_pair
+
     router = APIRouter(prefix="/api/projects/{project}", tags=["project analyses"])
+
+    @router.get("/replay-pair")
+    def preferred_replay(project: str):
+        with runs.store.connection() as db:
+            runs.store._required(db, "projects", project)
+            return replay_pair(db, project)
 
     @router.get("/analysis")
     def history(project: str):

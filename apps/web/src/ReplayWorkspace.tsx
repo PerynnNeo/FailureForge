@@ -5,12 +5,16 @@ import type { RunDetail, RunSummary } from './analysisInputs';
 import type { Condition } from './campaignCompare';
 import { coordinateText, verdict } from './campaignVerdict';
 import { CompareWithReference } from './CompareWithReference';
+import { CampaignCoverage } from './CampaignCoverage';
+import type { CrossedDesign } from './campaignAxes';
+import { HardwareTrialCheck } from './HardwareTrialCheck';
 import { RunVisual } from './RunVisual';
 import './replayWorkspace.css';
 
 type Batch = {
   suite_id: string; kind: string; label: string; status: string; project_revision: number;
   runs: Condition[]; field?: string | null;
+  crossed_design?: CrossedDesign | null;
 };
 const active = (status: string) => status === 'running' || status === 'queued';
 
@@ -107,6 +111,7 @@ export default function ReplayWorkspace({ projectId, batchId, runId }: {
             <strong>{detail.assessment_error ? 'Inconclusive' : outcome === true ? 'Passed' : outcome === false ? 'Failed' : 'Measurement only'}</strong>}</div>
           {(detail.error || detail.assessment_error) && <Notice tone="warning">{detail.error || detail.assessment_error}</Notice>}
           <RunVisual run={detail} runPath={path}/>
+          <HardwareTrialCheck projectId={projectId} run={detail}/>
           <details><summary>Recorded inputs and acceptance checks</summary><pre>{JSON.stringify({inputs:detail.inputs, criteria:detail.result?.criteria, summary:detail.result?.summary ?? detail.result?.metrics}, null, 2)}</pre></details>
           {detail.evidence_hash && <a className="button secondary" href={'/api'+path+'/bundle'} download><Icon name="download" size={16}/>Download evidence bundle</a>}
         </> : !runError && <Loading/>}
@@ -124,6 +129,8 @@ export default function ReplayWorkspace({ projectId, batchId, runId }: {
           {compareOpen && <CompareWithReference key={selected} base={base} runs={batch.runs} field={batch.field}
             reference={reference} selectedId={selected}/>}
         </details>}
+        {batch.crossed_design && <a className="text-link" href={'#' + base + '?' + new URLSearchParams({setup: 'campaign', crossed: batchId})}>Reuse crossed setup</a>}
+        <CampaignCoverage projectId={projectId} batchId={batchId} status={batch.status}/>
         {key && <label className="project-field"><span>Compare measured quantity</span><select value={key} onChange={e => setMetric(e.target.value)}>
           {metrics.map(k => <option key={k} value={k}>{label(k)}</option>)}</select></label>}
         {failures.length > 0 && <label className="recorded-filter"><input type="checkbox" checked={onlyFailures} onChange={e => setOnlyFailures(e.target.checked)}/>Show failed conditions only</label>}

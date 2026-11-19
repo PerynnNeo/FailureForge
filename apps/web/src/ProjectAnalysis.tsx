@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { label, post, request } from './api';
 import { Loading, Notice } from './components';
-import { fieldCaption, fieldText, inputFields, motionModelChoice, referenceHandChoice, runInputs } from './analysisInputs';
+import { fieldCaption, fieldText, inputFields, motionModelChoice, referenceHandChoice, rodBoundaryFields, runInputs } from './analysisInputs';
 import type { Adapter, InputField, Inputs, RunDetail, RunInput, RunSummary } from './analysisInputs';
 import AnalysisResults from './AnalysisResults';
 import ProjectSweeps from './ProjectSweeps';
+import { CrossedCampaign } from './CrossedCampaign';
+import { axisChoices } from './campaignAxes';
+import type { CrossedDesign } from './campaignAxes';
 import type { SweepCatalog } from './ProjectSweeps';
 import EnvironmentMatrix, { MatrixForm } from './EnvironmentMatrix';
 import { HelpTutorial } from './HelpTutorial';
@@ -57,10 +60,11 @@ function InputControl({ field, draft, update, project }: {
   </label>;
 }
 
-export default function ProjectAnalysis({ project, dirty, reload, notify, matrixRequest, onTourCapabilities, campaignSetup = false }: {
+export default function ProjectAnalysis({ project, dirty, reload, notify, matrixRequest, onTourCapabilities, campaignSetup = false, crossedSuite }: {
   project: Project; dirty: boolean; reload: () => Promise<void>; notify: (message: string) => void; matrixRequest: number;
   onTourCapabilities: (capabilities: ProjectTourCapabilities | null) => void;
   campaignSetup?: boolean;
+  crossedSuite?: string | null;
 }) {
   const base = `/projects/${encodeURIComponent(project.id)}/analysis`;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -80,9 +84,12 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
   const [bindings, setBindings] = useState<Record<string, string>>({});
   const [suite, setSuite] = useState<RunInput[]>([]);
   const [suiteName, setSuiteName] = useState('');
-  const [batchKind, setBatchKind] = useState<'suite' | 'sweep' | 'matrix'>(project.robot_template === 'packaging_lift_v1' ? 'matrix' : 'suite');
+  const [batchKind, setBatchKind] = useState<'suite' | 'sweep' | 'crossed' | 'matrix'>(project.robot_template === 'packaging_lift_v1' ? 'matrix' : 'suite');
   const [sweepCatalog, setSweepCatalog] = useState<SweepCatalog | null>(null);
   const [sweepError, setSweepError] = useState('');
+  const [savedDesign, setSavedDesign] = useState<CrossedDesign>();
+  const [setupError, setSetupError] = useState('');
+  const loadedDesign = useRef(false);
   const [selected, setSelected] = useState('');
   const [busy, setBusy] = useState(false);
   const [promotion, setPromotion] = useState<{ revision: number; rechecks: Rechecks } | null>(null);
@@ -126,13 +133,33 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
   }, [activeRuns]);
   const adapter = catalog?.adapters.find(item => item.id === adapterId);
   const sweepModels = catalog?.adapters.filter(item => Boolean(sweepCatalog?.adapters[item.id]?.length)) ?? [];
-  const mode = (batchKind === 'matrix' && !canRunMatrix) || (batchKind === 'sweep' && !sweepModels.length) ? 'suite' : batchKind;
+  const lift = catalog?.adapters.find(item => item.id === 'packaging_lift');
+  const crossedModels = lift ? [...sweepModels, lift] : sweepModels;
+  const mode = ((batchKind === 'matrix' && !canRunMatrix) || (batchKind === 'sweep' && !sweepModels.length)
+    || (batchKind === 'crossed' && !crossedModels.length)) ? 'suite' : batchKind;
   const sweepSetup = campaignSetup && mode === 'sweep';
+  const crossedSetup = campaignSetup && mode === 'crossed';
+  const gridSetup = sweepSetup || crossedSetup;
   const matrixSetup = campaignSetup && mode === 'matrix';
   const modelMissing = adapterId === 'robot_motion' && !draft.model_asset_id;
-  const selectable = sweepSetup ? sweepModels : catalog?.adapters ?? [];
+  const selectable = crossedSetup ? crossedModels : sweepSetup ? sweepModels : catalog?.adapters ?? [];
   const modelSelected = Boolean(adapter && selectable.some(item => item.id === adapter.id));
   const openBatch = (id: string) => { window.location.hash = projectBatchHref(project.id, id); };
+  useEffect(() => {
+    if (!campaignSetup || !crossedSuite || !catalog || !sweepCatalog || loadedDesign.current) return;
+    let current = true;
+    void request<{crossed_design?: CrossedDesign}>(`/project-campaigns/${encodeURIComponent(project.id)}/${encodeURIComponent(crossedSuite)}`)
+      .then(result => {
+        if (!current) return;
+        const design = result.crossed_design;
+        const model = catalog.adapters.find(item => item.id === design?.adapter);
+        if (!design || !model) throw new Error('The saved crossed setup is unavailable for this revision.');
+        choose(model, design.inputs, design.label, design.bindings);
+        loadedDesign.current = true;
+        setSavedDesign(design); setBatchKind('crossed'); setSetupError('');
+      }).catch((failure: Error) => { if (current) setSetupError(failure.message); });
+    return () => { current = false; };
+  }, [campaignSetup, crossedSuite, catalog, sweepCatalog, project.id, choose]);
   function changeAdapter(next: Adapter) {
     if (adapter) draftsByModel.current.set(adapter.id, { values: draft, bound: bindings, title: runLabel });
     const saved = draftsByModel.current.get(next.id);
@@ -141,9 +168,14 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
   }
   const velocityServo = adapterId === 'robot_motion' && draft.mode === 'velocity_servo';
   const usesTimeConstant = velocityServo && Boolean(bindings.time_constant_s || draft.time_constant_s?.trim());
+  const rightEnd = adapterId === 'thermal_rod' && adapter?.schema.properties?.right_film_coefficient_w_m2k
+    ? rodBoundaryFields(draft, bindings) : null;
   const fields = adapter ? inputFields(adapter).filter(field =>
+    !rightEnd?.hidden.includes(field.name) &&
     !(adapterId === 'robot_motion' && field.name === 'time_constant_s' && !velocityServo) &&
-    !(usesTimeConstant && field.name === 'gain_per_s')) : [];
+    !(usesTimeConstant && field.name === 'gain_per_s')).map(field =>
+      rightEnd?.required.includes(field.name) ? { ...field, required: true } : field) : [];
+  const sweepDraft = rightEnd ? Object.fromEntries(Object.entries(draft).filter(([key]) => !rightEnd.hidden.includes(key))) : draft;
   function updateField(name: string, value: string) {
     setDraft(previous => {
       const next = { ...previous, [name]: value };
@@ -226,10 +258,16 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
           <select value={mode} onChange={event => setBatchKind(event.target.value as typeof batchKind)}>
             <option value="suite">Test suite</option>
             {sweepModels.length > 0 && <option value="sweep">Parameter sweep</option>}
+            {crossedModels.length > 0 && <option value="crossed">Cross two inputs</option>}
             {canRunMatrix && <option value="matrix">Environment matrix</option>}
-          </select><small>{mode === 'suite' ? 'Build up to 16 named tests. Each test keeps its own model and inputs.' : mode === 'sweep' ? 'Vary one model input and compare the results against a reference value.' : 'Cross parcel masses with packing-head forces and choose a reference condition.'}</small>
+          </select><small>{{suite: 'Build up to 16 named tests. Each test keeps its own model and inputs.',
+            sweep: 'Vary one model input and compare the results against a reference value.',
+            crossed: 'Test every combination of two inputs, up to 16 runs. Other inputs stay at the reference settings.',
+            matrix: 'Cross parcel masses with packing-head forces and choose a reference condition.'}[mode]}</small>
         </label>
         {sweepError && <Notice tone="warning">Sweep options could not load. {sweepError} <button type="button" className="project-inline-button" onClick={refresh}>Retry</button></Notice>}
+        {crossedSuite && !savedDesign && <Notice tone={setupError ? 'warning' : undefined}>{setupError || 'Loading saved crossed setup…'}</Notice>}
+        {savedDesign && <p>Loaded settings from revision {savedDesign.expected_revision}. New runs use revision {project.revision}.</p>}
         {dirty && <Notice>Save the project changes before starting a campaign.</Notice>}
         </div>
       </section>}
@@ -243,14 +281,19 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
           onSaved={record => openBatch(record.suite_id)} tour="campaign-matrix-values"/></div>
       </section>}
       <section className="project-panel" hidden={matrixSetup}><header className="project-panel-header"><div>
-        <h3>{campaignSetup ? sweepSetup ? 'Reference test' : 'Configure a test' : 'Run an analysis'}</h3><p>Each run records its inputs and saved project revision {project.revision}. The initial values are examples. For calibration, replace the example data with your own measurements.</p>
+        <h3>{campaignSetup ? gridSetup ? 'Reference test' : 'Configure a test' : 'Run an analysis'}</h3><p>Each run records its inputs and saved project revision {project.revision}. The initial values are examples. For calibration, replace the example data with your own measurements.</p>
       </div>{!campaignSetup && <a className="button secondary" href={`#/projects/${encodeURIComponent(project.id)}/analysis?setup=campaign`}>New campaign</a>}</header>
-      {adapter ? <form ref={formRef} className="analysis-form" onSubmit={event => { event.preventDefault(); if (!campaignSetup) void execute(false); else if (!sweepSetup) addTest(); }}>
+      {adapter ? <form ref={formRef} className="analysis-form" onSubmit={event => { event.preventDefault(); if (!campaignSetup) void execute(false); else if (!gridSetup) addTest(); }}>
         <fieldset disabled={busy}><div className="project-form-stack">
           <label className="project-field" data-tour="project-model"><span>Analysis model</span><select value={modelSelected ? adapterId : ''} onChange={event => {
             const next = selectable.find(item => item.id === event.target.value); if (next) changeAdapter(next);
           }}>{!modelSelected && <option value="">Choose a supported model</option>}{selectable.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select><small>{modelSelected && adapter.description}</small></label>
-          {modelSelected && <><label className="project-field"><span>{sweepSetup ? 'Sweep name' : 'Run label'}</span><input required maxLength={sweepSetup ? 100 : 120} value={runLabel} onChange={event => setRunLabel(event.target.value)}/></label>
+          {modelSelected && <><label className="project-field"><span>{crossedSetup ? 'Campaign name' : sweepSetup ? 'Sweep name' : 'Run label'}</span><input required maxLength={gridSetup ? 100 : 120} value={runLabel} onChange={event => setRunLabel(event.target.value)}/></label>
+          {rightEnd && <label className="project-field"><span>Right end boundary condition</span>
+            <select value={rightEnd.fluid ? 'fluid' : 'fixed'} onChange={event => updateField('rightBoundaryChoice', event.target.value)}>
+              <option value="fixed">Prescribed surface temperature</option>
+              <option value="fluid">Heat exchange with ambient fluid</option>
+            </select></label>}
           <div className="analysis-inputs">{fields.map(field => {
             const unit = adapter.binding_units?.[field.name];
             const bound = bindings[field.name];
@@ -271,7 +314,7 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
           {usesTimeConstant && <p className="small muted">The velocity-servo gain is the reciprocal of the supplied time constant. Use one commanded rotational joint matching the measurement.</p>}
           <details className="analysis-disclosure"><summary data-tour="project-qualification">Model input specification</summary><pre>{JSON.stringify(adapter.schema, null, 2)}</pre></details>
           {dirty && <Notice>Save project changes before starting an analysis.</Notice>}
-          {!sweepSetup && <div className="analysis-actions" data-tour="project-run">
+          {!gridSetup && <div className="analysis-actions" data-tour="project-run">
             {!campaignSetup && <button className="button primary" type="submit" disabled={dirty}>{busy ? 'Working…' : 'Run analysis'}</button>}
             <button className="button secondary" type="button" disabled={suite.length >= 16} onClick={addTest}>Add to suite</button>
           </div>}</>}
@@ -287,8 +330,12 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
           <button type="button" disabled={busy} className="project-inline-button" aria-label={`Remove ${test.label}`} onClick={() => setSuite(items => items.filter((_, i) => i !== index))}>Remove</button>
         </li>)}</ol><button type="button" className="button primary" disabled={dirty || busy || !suite.length || (campaignSetup && !suiteName.trim()) || suite.some(test => !catalog.adapters.some(item => item.id === test.adapter))} onClick={() => void execute(true)}>Run suite ({suite.length})</button></div>
       </section>}
+      {crossedSetup && modelSelected && <CrossedCampaign key={project.id + adapterId + (savedDesign?.adapter ?? '')} projectId={project.id} revision={project.revision}
+        choices={axisChoices(sweepCatalog?.adapters[adapterId] ?? Object.entries(lift?.binding_units ?? {}).map(([field, unit]) =>
+          ({field, unit, label: label(field)})), sweepDraft, bindings)} currentTest={currentTest}
+        design={adapterId === savedDesign?.adapter ? savedDesign : undefined} disabled={dirty || busy || modelMissing} onCreated={openBatch}/>}
       {(!campaignSetup ? adapterId !== 'packaging_lift' : sweepCatalog && sweepModels.some(item => item.id === adapterId)) && <div hidden={campaignSetup && !sweepSetup}>
-        <ProjectSweeps projectId={project.id} revision={project.revision} adapter={adapterId} draft={draft} bindings={bindings}
+        <ProjectSweeps projectId={project.id} revision={project.revision} adapter={adapterId} draft={sweepDraft} bindings={bindings}
         currentTest={currentTest} disabled={dirty || busy || modelMissing} setupCatalog={campaignSetup ? sweepCatalog ?? undefined : undefined}
         onCreated={campaignSetup ? openBatch : undefined} onQueue={refresh} onRun={id => {
           setSelected(id); refresh(); document.getElementById('analysis-history')?.scrollIntoView({ block: 'start' });

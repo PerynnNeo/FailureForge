@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from failureforge.api import create_app
+from failureforge.project_camera_fields import field_scene
 from failureforge.project_solver import BEAM
 from failureforge.project_sweeps import Sweep, _plan, _summarize
 
@@ -121,3 +122,34 @@ def test_request_bounds_and_finite_coordinates():
     for invalid in ([0], list(range(17)), [0, float("nan")], [0, float("inf")], [False, 1]):
         with pytest.raises(ValueError):
             Sweep.model_validate({**base, "values": invalid})
+
+
+@pytest.mark.parametrize("kind,adapter,field,params,inputs,bindings,values,verdicts", [
+    ("thermal", "thermal_rod", "right_ambient_temperature_k",
+     [{"name": "Air film", "value": "0.07", "unit": "kW/(m²·K)", "source": "estimated"}],
+     {"length_m": 1., "area_m2": .001, "conductivity_w_mk": 10., "left_temperature_k": 300.,
+      "right_ambient_temperature_k": 270., "heat_generation_w_m3": 1000., "max_temperature_k": 310.},
+     {"right_film_coefficient_w_m2k": "Air film"}, [270., 320.], [True, False]),
+    ("structural", "structural_beam", "face_pressure_pa", [],
+     {**BEAM, "tip_force_n": 0., "face_pressure_pa": 0., "max_displacement_m": 0.0001},
+     {}, [0., 10000.], [True, False]),
+])
+def test_environmental_inputs_run_through_the_sweep_worker(tmp_path, kind, adapter, field, params, inputs, bindings, values, verdicts):
+    with TestClient(create_app(tmp_path)) as client:
+        project, _ = _project(client, kind, parameters=params)
+        fields = client.get(project + "/sweeps/catalog").json()["adapters"][adapter]
+        assert any(row["field"] == field for row in fields)
+        started = client.post(project + "/sweeps", json={
+            "expected_revision": 1, "label": "Exposure", "adapter": adapter, "field": field,
+            "inputs": inputs, "bindings": bindings, "values": values})
+        assert started.status_code == 202, started.text
+        report = _wait(client, project + "/sweeps/" + started.json()["suite_id"])
+        assert [p["passed"] for p in report["points"]] == verdicts
+        run = client.get(project + "/analysis/" + report["points"][-1]["run_id"]).json()
+        assert run["result"]["numerical_diagnostics"]["passed"]
+        assert run["result"]["traces"]["node_position_m"]
+        assert run["result"]["inputs"][field] == values[-1]
+        scene = field_scene(run)
+        assert scene is not None and len(scene.frame(0.).cameras) == 2
+        if bindings:
+            assert run["binding_evidence"]["right_film_coefficient_w_m2k"]["resolved_value"] == pytest.approx(70.)

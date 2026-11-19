@@ -61,6 +61,61 @@ def test_heat_rod_known_boundary_gradient_and_energy_balance():
     assert fine["convergence"]["max_abs_change"] == pytest.approx(coarse["convergence"]["max_abs_change"]/4)
 
 
+def test_uniform_pressure_superposes_with_line_and_tip_loads():
+    pressure, line, tip = -600.0, 4.0, 2.0
+    result = run_engineering({**BEAM, "face_pressure_pa": pressure,
+                              "distributed_load_n_per_m": line, "tip_force_n": tip})
+    q = pressure * BEAM["width_m"] + line
+    length = BEAM["length_m"]
+    ei = BEAM["young_modulus_pa"] * BEAM["width_m"] * BEAM["height_m"]**3 / 12
+    summary = result["summary"]
+    assert summary["tip_displacement_m"] == pytest.approx((tip*length**3/3 + q*length**4/8) / ei)
+    assert summary["root_reaction_n"] == pytest.approx(-(tip + q*length))
+    assert summary["continuous_max_abs_displacement_m"] == pytest.approx(abs(summary["tip_displacement_m"]))
+    assert summary["total_distributed_load_n_per_m"] == pytest.approx(q)
+    assert result["numerical_diagnostics"]["passed"]
+    assert "face_pressure_pa" not in run_engineering(BEAM)["inputs"]
+
+
+def test_right_end_convection_matches_energy_and_continuous_peak_under_heating():
+    # A 1 m rod with k=10, T_left=300 and q=1000 has T(x)=300+30x-50x²
+    # for a 270 K fluid and h=70. The surface is 280 K and the peak is 304.5 K at x=0.3.
+    rod = {k: v for k, v in ROD.items() if k != "right_temperature_k"}
+    model = {**rod, "length_m": 1., "conductivity_w_mk": 10., "heat_generation_w_m3": 1000.,
+             "right_ambient_temperature_k": 270., "right_film_coefficient_w_m2k": 70.,
+             "max_temperature_k": 304.45, "elements": 2}
+    result = run_engineering(model)
+    x = np.array(result["traces"]["node_position_m"])
+    np.testing.assert_allclose(result["traces"]["temperature_k"], 300 + 30*x - 50*x**2)
+    s = result["summary"]
+    assert s["continuous_peak_position_m"] == pytest.approx(.3)
+    assert s["continuous_peak_temperature_k"] == pytest.approx(304.5)
+    assert s["max_nodal_temperature_k"] < 304.45
+    assert s["right_convective_heat_w"] == pytest.approx(.7)
+    assert s["right_outward_heat_w"] == pytest.approx(.7)
+    assert s["left_outward_heat_w"] == pytest.approx(.3)
+    assert result["numerical_diagnostics"]["passed"] and result["passed"] is False
+    assert "right_temperature_k" not in result["inputs"]
+    assert "right_ambient_temperature_k" not in run_engineering(ROD)["inputs"]
+    insulated = run_engineering({**model, "right_film_coefficient_w_m2k": 0.})
+    assert insulated["summary"]["continuous_peak_temperature_k"] == pytest.approx(350.)
+    assert insulated["summary"]["right_outward_heat_w"] == pytest.approx(0.)
+    hot_air = run_engineering({**model, "heat_generation_w_m3": 0., "right_ambient_temperature_k": 340.})
+    assert hot_air["summary"]["right_surface_temperature_k"] == pytest.approx(335.)
+    assert hot_air["summary"]["right_convective_heat_w"] == pytest.approx(-.35)
+
+
+@pytest.mark.parametrize("boundary", [
+    {}, {"right_ambient_temperature_k": 290}, {"right_film_coefficient_w_m2k": 10},
+    {"right_temperature_k": 300, "right_ambient_temperature_k": 300, "right_film_coefficient_w_m2k": 10},
+    {"right_ambient_temperature_k": 290, "right_film_coefficient_w_m2k": -1},
+])
+def test_right_end_rejects_ambiguous_or_unphysical_boundary_conditions(boundary):
+    fixed_left = {k: v for k, v in ROD.items() if k != "right_temperature_k"}
+    with pytest.raises(ValidationError):
+        run_engineering({**fixed_left, **boundary})
+
+
 def beam_calibration():
     def reading(run_id, force):
         inertia = BEAM["width_m"] * BEAM["height_m"]**3 / 12
@@ -96,6 +151,10 @@ def test_thermal_calibration_recovers_known_k_from_internal_temperatures():
     assert result["summary"]["fitted_value"] == pytest.approx(20)
     assert result["summary"]["validation_passed"]
     assert result["summary"]["residual_unit"] == "K"
+    model = {k: v for k, v in ROD.items() if k != "right_temperature_k"}
+    model.update(right_ambient_temperature_k=300., right_film_coefficient_w_m2k=10.)
+    with pytest.raises(ValidationError, match="two prescribed end temperatures"):
+        run_engineering({**study, "model": model})
 
 
 def test_acceptance_thresholds_and_independent_mesh_diagnostics():

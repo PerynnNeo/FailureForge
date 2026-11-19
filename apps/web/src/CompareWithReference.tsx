@@ -43,8 +43,8 @@ function recordingDuration(detail: RunDetail | null) {
   return times && times[times.length - 1] - times[0];
 }
 
-function ComparePlayers({ leftPath, rightPath, leftDuration, rightDuration }: {
-  leftPath: string; rightPath: string; leftDuration?: number; rightDuration?: number;
+function ComparePlayers({ leftPath, rightPath, leftDuration, rightDuration, fixedPair }: {
+  leftPath: string; rightPath: string; leftDuration?: number; rightDuration?: number; fixedPair: boolean;
 }) {
   const container = useRef<HTMLElement>(null);
   const visible = useViewportActive(container);
@@ -78,9 +78,9 @@ function ComparePlayers({ leftPath, rightPath, leftDuration, rightDuration }: {
 
   const sides: Array<{ key: Side; title: string; state: ReturnType<typeof replayState>;
     ref: typeof leftVideo; canRetry: boolean; retry: () => void }> = [
-    { key: 'left', title: 'Reference run', state: leftState, ref: leftVideo,
+    { key: 'left', title: fixedPair ? 'Passing run' : 'Reference run', state: leftState, ref: leftVideo,
       canRetry: Boolean(left.requestError) || left.replay?.status === 'failed', retry: left.retry },
-    { key: 'right', title: 'Comparison run', state: rightState, ref: rightVideo,
+    { key: 'right', title: fixedPair ? 'Failing run' : 'Comparison run', state: rightState, ref: rightVideo,
       canRetry: Boolean(right.requestError) || right.replay?.status === 'failed', retry: right.retry },
   ];
   const markMedia = (key: Side, status: MediaState) => setMedia(previous => ({ ...previous, [key]: status }));
@@ -108,8 +108,8 @@ function ComparePlayers({ leftPath, rightPath, leftDuration, rightDuration }: {
   </section>;
 }
 
-export function CompareWithReference({ base, runs, field, reference, selectedId }: {
-  base: string; runs: Condition[]; field?: string | null; reference?: Condition; selectedId?: string;
+export function CompareWithReference({ base, runs, field, reference, selectedId, fixedPair = false }: {
+  base: string; runs: Condition[]; field?: string | null; reference?: Condition; selectedId?: string; fixedPair?: boolean;
 }) {
   const completed = runs.filter(run => run.status === 'completed');
   const [pair, setPair] = useState(() => defaultPair(runs, reference?.id, selectedId));
@@ -124,8 +124,11 @@ export function CompareWithReference({ base, runs, field, reference, selectedId 
   // loaded, otherwise the campaign-table coordinates. Coordinates are a subset of inputs (only the
   // varied dimensions), so this avoids a mixed-source diff that could flip rows as details arrive.
   const bothLoaded = Boolean(leftDetail.detail && rightDetail.detail);
-  const leftInputs = bothLoaded ? leftDetail.detail?.inputs : left?.coordinates;
-  const rightInputs = bothLoaded ? rightDetail.detail?.inputs : right?.coordinates;
+  // A fixed project recommendation already carries the matched effective scalar input
+  // (including an individual joint target and resolved solver defaults).
+  const compareDefinitions = bothLoaded && !fixedPair;
+  const leftInputs = compareDefinitions ? leftDetail.detail?.inputs : left?.coordinates;
+  const rightInputs = compareDefinitions ? rightDetail.detail?.inputs : right?.coordinates;
   const changes = left && right ? changedInputs(leftInputs, rightInputs) : [];
 
   if (completed.length < 2) return <p className="small muted">At least two completed conditions are needed to compare.</p>;
@@ -142,7 +145,7 @@ export function CompareWithReference({ base, runs, field, reference, selectedId 
   const error = leftDetail.error || rightDetail.error;
   const distinct = Boolean(left && right && left.id !== right.id);
   return <div className="compare-panel">
-    <div className="compare-pickers">{picker('left', pair.left)}{picker('right', pair.right)}</div>
+    {!fixedPair && <div className="compare-pickers">{picker('left', pair.left)}{picker('right', pair.right)}</div>}
     {pair.left && pair.left === pair.right && <Notice tone="warning">Pick two different conditions to compare.</Notice>}
     {error && <Notice tone="error">{error} <button className="project-inline-button" onClick={() => {
       if (leftDetail.error) leftDetail.retry();
@@ -165,7 +168,7 @@ export function CompareWithReference({ base, runs, field, reference, selectedId 
             </table></div>}
       </div>
 
-      <ComparePlayers key={left!.id + '|' + right!.id} leftPath={leftPath} rightPath={rightPath}
+      <ComparePlayers key={left!.id + '|' + right!.id} leftPath={leftPath} rightPath={rightPath} fixedPair={fixedPair}
         leftDuration={recordingDuration(leftDetail.detail)} rightDuration={recordingDuration(rightDetail.detail)}/>
 
       <div className="compare-results">

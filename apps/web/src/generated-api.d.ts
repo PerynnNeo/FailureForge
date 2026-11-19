@@ -142,6 +142,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project}/replay-pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preferred Replay */
+        get: operations["preferred_replay_api_projects__project__replay_pair_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{project}/analysis": {
         parameters: {
             query?: never;
@@ -409,6 +426,108 @@ export interface paths {
         };
         /** Batch */
         get: operations["batch_api_project_campaigns__project___suite_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/project-campaigns/{project}/coverage/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Project Factors */
+        get: operations["project_factors_api_project_campaigns__project__coverage_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/project-campaigns/{project}/{suite_id}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Coverage */
+        get: operations["coverage_api_project_campaigns__project___suite_id__coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/project-campaigns/{project}/crossed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Crossed */
+        post: operations["submit_crossed_api_project_campaigns__project__crossed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project}/analysis/{run}/hardware-trials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Available */
+        get: operations["available_api_projects__project__analysis__run__hardware_trials_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project}/analysis/{run}/hardware-trials/template.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Template */
+        get: operations["template_api_projects__project__analysis__run__hardware_trials_template_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project}/analysis/{run}/hardware-trials/{asset}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compare */
+        get: operations["compare_api_projects__project__analysis__run__hardware_trials__asset__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -788,6 +907,35 @@ export interface components {
             /** Confirmation State Ids */
             confirmation_state_ids?: number[];
         };
+        /** CrossedAxis */
+        CrossedAxis: {
+            /** Field */
+            field: string;
+            /** Values */
+            values: number[];
+        };
+        /** CrossedCampaign */
+        CrossedCampaign: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Label */
+            label: string;
+            /** Adapter */
+            adapter: string;
+            /** Inputs */
+            inputs: {
+                [key: string]: unknown;
+            };
+            /** Bindings */
+            bindings?: {
+                [key: string]: string;
+            };
+            /** Axes */
+            axes: [
+                components["schemas"]["CrossedAxis"],
+                components["schemas"]["CrossedAxis"]
+            ];
+        };
         /** Domain */
         Domain: {
             /**
@@ -841,6 +989,28 @@ export interface components {
             payload_kg: number;
             /** Head Force N */
             head_force_n: number;
+        };
+        /** OperatingFactor */
+        OperatingFactor: {
+            /** Name */
+            name: string;
+            /**
+             * Field
+             * @default
+             */
+            field: string;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /**
+             * Conditions
+             * @default
+             */
+            conditions: string;
+            /** Required Values */
+            required_values?: number[];
         };
         /** Parameter */
         Parameter: {
@@ -903,6 +1073,8 @@ export interface components {
             parameters?: components["schemas"]["Parameter"][];
             /** Test Plans */
             test_plans?: components["schemas"]["TestPlan"][];
+            /** Operating Factors */
+            operating_factors?: components["schemas"]["OperatingFactor"][];
         };
         /** ProjectTest */
         ProjectTest: {
@@ -954,6 +1126,8 @@ export interface components {
             parameters?: components["schemas"]["Parameter"][];
             /** Test Plans */
             test_plans?: components["schemas"]["TestPlan"][];
+            /** Operating Factors */
+            operating_factors?: components["schemas"]["OperatingFactor"][];
             /** Expected Revision */
             expected_revision: number;
         };
@@ -1358,6 +1532,37 @@ export interface operations {
             path: {
                 identifier: string;
                 asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preferred_replay_api_projects__project__replay_pair_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
             };
             cookie?: never;
         };
@@ -1987,6 +2192,203 @@ export interface operations {
             path: {
                 project: string;
                 suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_factors_api_project_campaigns__project__coverage_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    coverage_api_project_campaigns__project___suite_id__coverage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_crossed_api_project_campaigns__project__crossed_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrossedCampaign"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    available_api_projects__project__analysis__run__hardware_trials_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                run: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    template_api_projects__project__analysis__run__hardware_trials_template_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                run: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_api_projects__project__analysis__run__hardware_trials__asset__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                run: string;
+                asset: string;
             };
             cookie?: never;
         };

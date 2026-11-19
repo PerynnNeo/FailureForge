@@ -17,10 +17,12 @@ from .projects import IntakeModel
 FIELDS = {
     "structural_beam": {"length_m": "Beam length", "width_m": "Beam width", "height_m": "Beam height",
                         "young_modulus_pa": "Young's modulus", "tip_force_n": "Tip force",
-                        "distributed_load_n_per_m": "Distributed load"},
+                        "distributed_load_n_per_m": "Distributed load", "face_pressure_pa": "Uniform face pressure"},
     "thermal_rod": {"length_m": "Rod length", "area_m2": "Cross-sectional area", "conductivity_w_mk": "Conductivity",
                     "left_temperature_k": "Left boundary temperature", "right_temperature_k": "Right boundary temperature",
-                    "heat_generation_w_m3": "Volumetric heat generation"},
+                    "heat_generation_w_m3": "Volumetric heat generation",
+                    "right_ambient_temperature_k": "Right ambient temperature",
+                    "right_film_coefficient_w_m2k": "Right end film coefficient"},
     "robot_motion": {"targets.*": "Joint target"},
 }
 ADAPTERS = {"structural": "structural_beam", "thermal": "thermal_rod", "robot_behavior": "robot_motion"}

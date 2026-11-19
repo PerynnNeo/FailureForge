@@ -39,7 +39,7 @@ export function projectCampaignGuide(hasProject: boolean): TutorialStep[] {
   return steps;
 }
 
-export function batchSetupGuide(mode: 'suite' | 'sweep' | 'matrix', modelSelected: boolean): TutorialStep[] {
+export function batchSetupGuide(mode: 'suite' | 'sweep' | 'matrix' | 'crossed', modelSelected: boolean): TutorialStep[] {
   const steps: TutorialStep[] = [{
     target: 'campaign-batch-kind', title: 'Choose a test method',
     body: 'A suite runs a list of tests you define. A sweep varies one input. An environment matrix tests combinations of conditions. The menu shows the methods supported for this project.',
@@ -55,6 +55,10 @@ export function batchSetupGuide(mode: 'suite' | 'sweep' | 'matrix', modelSelecte
   if (mode === 'sweep' && modelSelected) steps.push({
     target: 'campaign-sweep', title: 'Choose the input to vary',
     body: 'Select a numeric input. Enter between 2 and 16 increasing values, including the reference shown here. Run sweep queues one run per value.',
+  });
+  if (mode === 'crossed' && modelSelected) steps.push({
+    target: 'campaign-crossed', title: 'Test two inputs together',
+    body: 'Choose two different numeric inputs and enter increasing levels for each, including their reference values. Every combination becomes a run on the same revision. Review the number of runs before starting.',
   });
   if (mode === 'suite') {
     if (modelSelected) steps.push({

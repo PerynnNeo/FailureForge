@@ -23,6 +23,7 @@ from .project_bundle import bundle_router
 from .project_sweeps import sweep_router
 from .environment_matrices import environment_matrix_router
 from .project_campaigns import campaign_router
+from .hardware_trials import hardware_trial_router
 from .project_replay import replay_router
 from .project_camera import CameraReplays, camera_router
 from .qualification_preview import qualification_report, qualification_router
@@ -62,6 +63,7 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
     app.include_router(sweep_router(analyses))
     app.include_router(environment_matrix_router(analyses))
     app.include_router(campaign_router(analyses))
+    app.include_router(hardware_trial_router(analyses))
     app.include_router(replay_router(analyses))
     app.include_router(camera_router(cameras))
     app.include_router(qualification_router(root / "qualification"))

@@ -46,8 +46,8 @@ def adapters(analysis):
         beam = analysis == "structural"
         model = BEAM if beam else ROD
         add(model["kind"], "Cantilever bending" if beam else "Steady rod conduction",
-            "One rectangular slender cantilever in linear static bending." if beam else
-            "One uniform rod with fixed end temperatures and distributed heating.", model)
+            "Static bending of a rectangular cantilever under transverse tip force, line load and uniform face pressure." if beam else
+            "Steady heating of a uniform rod with a fixed left end and either a fixed or convective right end.", model)
         add("calibration", "Calibrate material property", "Enter measurements from distinct fit and validation runs. Values in the example are illustrative.",
             {"kind": "calibration", "model": model, "parameter_bounds": [1e9, 2e11] if beam else [0.1, 1000],
              "validation_tolerance": 0.0001 if beam else 1.0,

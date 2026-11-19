@@ -2,30 +2,16 @@ import { useEffect, useState } from 'react';
 import { formatTime, label, post, request } from './api';
 import { Notice, Status } from './components';
 import type { RunInput } from './analysisInputs';
+import { axisChoices, gridLevels } from './campaignAxes';
+import type { AxisField } from './campaignAxes';
 
-type Field = { field: string; unit: string; label: string };
-export type SweepCatalog = { adapters: Record<string, Field[]>; max_points: number };
+export type SweepCatalog = { adapters: Record<string, AxisField[]>; max_points: number };
 type Sweep = { suite_id: string; label: string; adapter: string; field: string; reference_value: number; project_revision: number; created_at: string };
 type Point = { value: number; reference: boolean; run_id: string; status: string; passed: boolean | null; error?: string; metrics: Record<string, unknown> };
 type SweepDetail = Sweep & {
   status: string; reference_passed: boolean | null; nearest_observed_failure: Point | null; points: Point[];
   counts: { total: number; measured: number; passed: number; failed: number; pending: number; blocked: number; measurement_only: number };
 };
-
-function choices(fields: Field[], draft: Record<string, string>, bindings: Record<string, string>) {
-  return fields.flatMap(item => {
-    if (item.field === 'targets.*') {
-      try {
-        const targets: Record<string, unknown> = JSON.parse(draft.targets);
-        return Object.entries(targets).flatMap(([name, value]) => typeof value === 'number' ?
-          [{ field: `targets.${name}`, unit: item.unit, label: `Target · ${name}`, value }] : []);
-      } catch { return []; }
-    }
-    if (bindings[item.field] || !draft[item.field]?.trim()) return [];
-    const value = Number(draft[item.field]);
-    return Number.isFinite(value) ? [{ ...item, value }] : [];
-  });
-}
 
 export default function ProjectSweeps({ projectId, revision, adapter, draft, bindings, currentTest, disabled, onRun, onQueue, setupCatalog, onCreated }: {
   projectId: string; revision: number; adapter: string; draft: Record<string, string>; bindings: Record<string, string>;
@@ -47,7 +33,7 @@ export default function ProjectSweeps({ projectId, revision, adapter, draft, bin
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
   const [submission, setSubmission] = useState<{ body: string; key: string } | null>(null);
-  const fields = choices(catalog?.adapters[adapter] ?? [], draft, bindings);
+  const fields = axisChoices(catalog?.adapters[adapter] ?? [], draft, bindings);
   const selected = fields.find(item => item.field === selectedField) ?? fields[0];
   const sweep = sweeps.find(item => item.suite_id === selectedId) ?? sweeps[0];
   const metrics = [...new Set((detail?.points ?? []).flatMap(point => Object.keys(point.metrics ?? {})
@@ -82,11 +68,7 @@ export default function ProjectSweeps({ projectId, revision, adapter, draft, bin
     if (!selected || !catalog || disabled || working) return;
     setWorking(true); setError('');
     try {
-      const tokens = values.trim().split(/[\s,]+/).filter(Boolean);
-      const points = tokens.map(Number);
-      if (points.length < 2 || points.length > catalog.max_points || points.some((point, index) =>
-        !Number.isFinite(point) || (index > 0 && point <= points[index - 1]))) throw new Error(`Enter 2–${catalog.max_points} distinct finite values in increasing order.`);
-      if (!points.includes(selected.value)) throw new Error(`Include the reference value ${selected.value}.`);
+      const points = gridLevels(values, selected, catalog.max_points);
       const body = { expected_revision: revision, ...currentTest(), field: selected.field, values: points };
       const encoded = JSON.stringify(body);
       const key = submission?.body === encoded ? submission.key : crypto.randomUUID();

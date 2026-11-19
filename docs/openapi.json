@@ -444,6 +444,46 @@
         }
       }
     },
+    "/api/projects/{project}/replay-pair": {
+      "get": {
+        "tags": [
+          "project analyses"
+        ],
+        "summary": "Preferred Replay",
+        "operationId": "preferred_replay_api_projects__project__replay_pair_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/projects/{project}/analysis": {
       "get": {
         "tags": [
@@ -1423,6 +1463,317 @@
         }
       }
     },
+    "/api/project-campaigns/{project}/coverage/catalog": {
+      "get": {
+        "tags": [
+          "project campaigns"
+        ],
+        "summary": "Project Factors",
+        "operationId": "project_factors_api_project_campaigns__project__coverage_catalog_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/project-campaigns/{project}/{suite_id}/coverage": {
+      "get": {
+        "tags": [
+          "project campaigns"
+        ],
+        "summary": "Coverage",
+        "operationId": "coverage_api_project_campaigns__project___suite_id__coverage_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "suite_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Suite Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/project-campaigns/{project}/crossed": {
+      "post": {
+        "tags": [
+          "project campaigns"
+        ],
+        "summary": "Submit Crossed",
+        "operationId": "submit_crossed_api_project_campaigns__project__crossed_post",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrossedCampaign"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project}/analysis/{run}/hardware-trials": {
+      "get": {
+        "tags": [
+          "hardware trials"
+        ],
+        "summary": "Available",
+        "operationId": "available_api_projects__project__analysis__run__hardware_trials_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project}/analysis/{run}/hardware-trials/template.csv": {
+      "get": {
+        "tags": [
+          "hardware trials"
+        ],
+        "summary": "Template",
+        "operationId": "template_api_projects__project__analysis__run__hardware_trials_template_csv_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project}/analysis/{run}/hardware-trials/{asset}": {
+      "get": {
+        "tags": [
+          "hardware trials"
+        ],
+        "summary": "Compare",
+        "operationId": "compare_api_projects__project__analysis__run__hardware_trials__asset__get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          },
+          {
+            "name": "asset",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/projects/{project}/analysis/{run}/replay-geometry": {
       "get": {
         "tags": [
@@ -2375,6 +2726,96 @@
         "type": "object",
         "title": "CampaignSpec"
       },
+      "CrossedAxis": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "maxLength": 108,
+            "minLength": 1,
+            "title": "Field"
+          },
+          "values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 2,
+            "title": "Values"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "field",
+          "values"
+        ],
+        "title": "CrossedAxis"
+      },
+      "CrossedCampaign": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "adapter": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Adapter"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Inputs"
+          },
+          "bindings": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 100,
+              "minLength": 1
+            },
+            "propertyNames": {
+              "maxLength": 80,
+              "minLength": 1
+            },
+            "type": "object",
+            "maxProperties": 32,
+            "title": "Bindings"
+          },
+          "axes": {
+            "prefixItems": [
+              {
+                "$ref": "#/components/schemas/CrossedAxis"
+              },
+              {
+                "$ref": "#/components/schemas/CrossedAxis"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Axes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "label",
+          "adapter",
+          "inputs",
+          "axes"
+        ],
+        "title": "CrossedCampaign"
+      },
       "Domain": {
         "properties": {
           "main_camera_dx_m": {
@@ -2505,6 +2946,48 @@
           "head_force_n"
         ],
         "title": "LiftCondition"
+      },
+      "OperatingFactor": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "field": {
+            "type": "string",
+            "maxLength": 108,
+            "title": "Field",
+            "default": ""
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Unit",
+            "default": ""
+          },
+          "conditions": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Conditions",
+            "default": ""
+          },
+          "required_values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Required Values"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "OperatingFactor"
       },
       "Parameter": {
         "properties": {
@@ -2662,6 +3145,14 @@
             "type": "array",
             "maxItems": 30,
             "title": "Test Plans"
+          },
+          "operating_factors": {
+            "items": {
+              "$ref": "#/components/schemas/OperatingFactor"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Operating Factors"
           }
         },
         "additionalProperties": false,
@@ -2805,6 +3296,14 @@
             "type": "array",
             "maxItems": 30,
             "title": "Test Plans"
+          },
+          "operating_factors": {
+            "items": {
+              "$ref": "#/components/schemas/OperatingFactor"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Operating Factors"
           },
           "expected_revision": {
             "type": "integer",

@@ -22,7 +22,7 @@ export type RunDetail = RunSummary & {
   recheck_of?: string | null; calibration_run_id?: string | null;
 };
 
-const units: Record<string, string> = { _w_mk: 'W/(m·K)', _w_m3: 'W/m³', _n_per_m: 'N/m', _per_s: '1/s', _m2: 'm²', _kg: 'kg', _pa: 'Pa', _k: 'K', _n: 'N', _m: 'm', _rad: 'rad', _s: 's' };
+const units: Record<string, string> = { _w_m2k: 'W/(m²·K)', _w_mk: 'W/(m·K)', _w_m3: 'W/m³', _n_per_m: 'N/m', _per_s: '1/s', _m2: 'm²', _kg: 'kg', _pa: 'Pa', _k: 'K', _n: 'N', _m: 'm', _rad: 'rad', _s: 's' };
 export function fieldCaption(field: InputField) {
   const suffix = Object.keys(units).find(key => field.name.endsWith(key));
   if (!suffix) return field.schema.title ?? field.name.replaceAll('_', ' ');
@@ -51,6 +51,17 @@ export function fieldText(value: unknown): string {
 }
 
 export const referenceHandChoice = 'builtin:two_finger_hand_v1';
+
+export function rodBoundaryFields(draft: Record<string, string>, bindings: Record<string, string>) {
+  const fluidFields = ['right_ambient_temperature_k', 'right_film_coefficient_w_m2k'];
+  const fluid = draft.rightBoundaryChoice !== undefined ? draft.rightBoundaryChoice === 'fluid'
+    : fluidFields.some(name => Boolean(draft[name]?.trim() || bindings[name]));
+  return {
+    fluid,
+    required: fluid ? fluidFields : ['right_temperature_k'],
+    hidden: fluid ? ['right_temperature_k'] : fluidFields,
+  };
+}
 
 /** A saved motion test with no asset ID was authored for the built-in hand. */
 export function motionModelChoice(inputs: Inputs | undefined, referenceProject: boolean) {

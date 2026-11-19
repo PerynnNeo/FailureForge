@@ -1,5 +1,20 @@
 # Testing a prototype across its operating environments
 
+## Using the workbench
+
+1. Open **Project → Parameters → Operating conditions to cover**. Record each site requirement, its source, unit and discrete levels to test. Choose the matching solver input if the model supports it. Leave the input blank for conditions such as humidity on a beam that has no moisture law. Save the project before queueing tests. Each campaign uses the factor declarations on its saved revision.
+2. In **Campaigns → New campaign**, select the project. Use **Cross two inputs** for a supported beam, thermal rod or robot motion model with two distinct numeric controls. Include the reference setting on each axis. The service validates every combination and queues at most 16 runs on one revision. The reference packaging lift also has a dedicated payload × head-force matrix. A suite can hold explicitly selected scenarios when a rectangular grid would include irrelevant combinations.
+3. Open the campaign and expand **Operating-condition coverage**. Observations count assessed results, including measurement-only runs. Failed execution or invalid numerical evidence leaves a gap. The grid counts combinations of discrete campaign levels. The site requirements table separately lists declared levels that still need evidence, unmapped factors and unit mismatches. Text requirements, continuous ranges and interactions outside the tested design still need engineering review.
+4. Choose **View replays** in a project. When compatible evidence exists, the workbench opens an adjacent passing and failing pair that differs in one supported numeric input. It matches the revision, solver runtime and remaining settings across the most recent 200 eligible completed runs. Use **Inspect failed run** for its limits, original evidence and hardware trial check. Individual run links retain their recorded targets.
+
+### Comparing an actual rig
+
+Open an individual replay and expand **Check against a physical trial**. Download its CSV template. Measure the same quantity in the same phase of the task. For example, the lift's maximum hold error is the maximum absolute height error during the pressing interval. A final height reading alone cannot establish that maximum. Keep only the rows you actually measured.
+
+For each row, enter the physical prototype identifier, trial identifier, setup or log reference, physical settings, measurement, unit and absolute uncertainty. The simulated settings JSON is supplied by the template. Fill the separate trial settings JSON from the hardware record, using the model's keys and native settings units. Compatible measurement units such as mm and m are converted. Upload the CSV in **Files → Physical measurements** and select it on the original replay. The report binds both the simulated evidence hash and the uploaded file hash. Raw or calibration logs can also be stored as project assets.
+
+Each row compares one recorded upper limit. An interval wholly at or below the limit passes, one wholly above it fails, and an interval crossing the limit is indeterminate. Differing or missing settings are reported separately. Agreement describes the verdict for the named trial and metric. The setup, instrument uncertainty and physical identity are supplied by the engineer. Repetition on independent trials and coverage of remaining field conditions establish how far the finding travels.
+
 ## Product decision
 
 The first question in a project should be **“What job must this version of your prototype do, where, and what counts as success?”** The result should be a map of tested conditions, observed failures and gaps in the evidence. A team should be able to change its design later and repeat the same tests.

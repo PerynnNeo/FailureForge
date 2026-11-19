@@ -16,6 +16,7 @@ UNIT_FACTORS = {
     "N/m": {"N/m": 1, "kN/m": 1e3, "N/mm": 1e3},
     "K": {"K": 1},
     "W/(m·K)": {"W/(m·K)": 1, "W/(m*K)": 1, "W/(m K)": 1, "W/m/K": 1, "mW/(m·K)": 1e-3},
+    "W/(m²·K)": {"W/(m²·K)": 1, "W/(m2*K)": 1, "W/m2/K": 1, "kW/(m²·K)": 1e3},
     "W/m³": {"W/m³": 1, "W/m3": 1, "W/m^3": 1, "kW/m³": 1e3, "kW/m3": 1e3, "W/cm³": 1e6},
     "1/s": {"1/s": 1, "s^-1": 1, "s⁻¹": 1},
     "s": {"s": 1, "ms": 1e-3},
@@ -24,11 +25,12 @@ UNIT_FACTORS = {
 }
 FIELD_UNITS = {
     "structural_beam": {"length_m": "m", "width_m": "m", "height_m": "m", "young_modulus_pa": "Pa",
-                        "tip_force_n": "N", "distributed_load_n_per_m": "N/m", "elements": "1",
+                        "tip_force_n": "N", "distributed_load_n_per_m": "N/m", "face_pressure_pa": "Pa", "elements": "1",
                         "max_surface_stress_pa": "Pa", "max_displacement_m": "m",
                         "convergence_tolerance_m": "m", "stress_convergence_tolerance_pa": "Pa"},
     "thermal_rod": {"length_m": "m", "area_m2": "m²", "conductivity_w_mk": "W/(m·K)",
                     "left_temperature_k": "K", "right_temperature_k": "K", "heat_generation_w_m3": "W/m³",
+                    "right_ambient_temperature_k": "K", "right_film_coefficient_w_m2k": "W/(m²·K)",
                     "max_temperature_k": "K", "elements": "1", "convergence_tolerance_k": "K"},
     "robot_motion": {"gain_per_s": "1/s", "time_constant_s": "s", "duration_s": "s", "samples": "1"},
     "packaging_lift": {"payload_kg": "kg", "head_force_n": "N"},

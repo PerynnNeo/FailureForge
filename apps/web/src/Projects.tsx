@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { OperatingFactors } from './OperatingFactors';
 import type { FormEvent, ReactNode } from 'react';
 import { ApiError, formatTime, label, post, request } from './api';
 import { Icon, Loading, Notice, SectionHeading } from './components';
@@ -6,6 +7,7 @@ import { analysisOptions, assetKinds, emptyProject, projectInput, stageOptions }
 import type { AssetKind, Project, ProjectCatalog, ProjectInput, ProjectParameter, ProjectTestPlan } from './projectTypes';
 import ProjectAnalysis from './ProjectAnalysis';
 import ReplayWorkspace from './ReplayWorkspace';
+import { ProjectReplayEntry } from './ProjectReplayEntry';
 import { HelpTutorial } from './HelpTutorial';
 import { getProjectGuide, projectGuide, projectListGuide, projectSetupGuide } from './projectTutorial';
 import type { ProjectTourCapabilities } from './projectTutorial';
@@ -112,7 +114,8 @@ function ProjectDetail({ id, analysisRoute, query, catalog, notify }: { id: stri
   const [project, setProject] = useState<Project | null>(null);
   const [draft, setDraft] = useState<ProjectInput | null>(null);
   const [chosenTab, setTab] = useState<DetailTab | null>(null);
-  const tab = analysisRoute ? 'analysis' : chosenTab ?? (project?.robot_template === 'packaging_lift_v1' ? 'analysis' : 'overview');
+  const requestedTab = new URLSearchParams(query).get('tab');
+  const tab = analysisRoute ? 'analysis' : requestedTab === 'files' ? 'files' : chosenTab ?? (project?.robot_template === 'packaging_lift_v1' ? 'analysis' : 'overview');
   const [analysisOpened, setAnalysisOpened] = useState(false);
   const [tourCapabilities, setTourCapabilities] = useState<ProjectTourCapabilities | null>(null);
   const guide = useMemo(() => getProjectGuide(tourCapabilities), [tourCapabilities]);
@@ -174,7 +177,7 @@ function ProjectDetail({ id, analysisRoute, query, catalog, notify }: { id: stri
       go(projectPath + '/analysis');
     } else {
       setTab(key);
-      if (analysisRoute) go(projectPath);
+      if (analysisRoute || requestedTab) go(projectPath);
     }
   }
   if (viewingResults || campaignSetup) return <>
@@ -183,7 +186,8 @@ function ProjectDetail({ id, analysisRoute, query, catalog, notify }: { id: stri
       title={project.name} description={campaignSetup ? 'Choose the conditions to test on this project revision.' : undefined}
       action={<a className="button secondary" href={'#' + projectPath + '/analysis'}>Analysis &amp; runs</a>}/>
     {campaignSetup ? <ProjectAnalysis project={project} dirty={dirty} reload={load} notify={notify} matrixRequest={0}
-      onTourCapabilities={setTourCapabilities} campaignSetup/> :
+      onTourCapabilities={setTourCapabilities} campaignSetup crossedSuite={params.get('crossed')} key={id + (params.get('crossed') ?? '')}/> :
+      !runId && !batchId && params.get('replay') === 'evidence' ? <ProjectReplayEntry key={id} projectId={id}/> :
       <ReplayWorkspace key={batchId ?? 'history'} projectId={id} batchId={batchId} runId={runId}/>}
   </>;
   return <>
@@ -196,7 +200,7 @@ function ProjectDetail({ id, analysisRoute, query, catalog, notify }: { id: stri
           const next = tourTab[step.target];
           if (next && next !== tab) openTab(next);
         }}/>
-      <a className="button primary" href={'#' + projectPath + '/analysis?replay=latest'}><Icon name="play" size={16}/>View replays</a>
+      <a className="button primary" href={'#' + projectPath + '/analysis?replay=evidence'}><Icon name="play" size={16}/>View replays</a>
       {isLift && <button type="button" className="button secondary" onClick={showSimulations}>View simulations<Icon name="chevron" size={16}/></button>}
       <a className="button secondary" href={`/api/projects/${encodeURIComponent(project.id)}/export`} download><Icon name="download" size={17}/>Export saved report</a>
     </div>}/>
@@ -213,6 +217,7 @@ function ProjectDetail({ id, analysisRoute, query, catalog, notify }: { id: stri
           {(tab === 'files' || file) && <section hidden={tab !== 'files'} className="project-panel"><PanelHeader title="The files behind the design" description="Store source files and inspect their preparation notes. Uploading a file does not convert it, qualify its physics, or run its code."/><div className="project-upload" data-tour="project-files"><div className="project-form-grid"><label className="project-field"><span>File purpose</span><select value={kind} onChange={event => setKind(event.target.value as AssetKind)}>{assetKinds.map(item => <option value={item.value} key={item.value}>{item.title}</option>)}</select><small>{assetKinds.find(item => item.value === kind)?.hint}</small></label><label className="project-field"><span>Choose a file</span><input ref={inputRef} type="file" accept={catalog?.allowed_extensions[kind]?.join(',')} onChange={event => setFile(event.target.files?.[0] ?? null)}/><small>Up to {bytes(catalog?.limits.asset_bytes ?? 10485760)} per file. Files stay in this local workspace. {catalog?.allowed_extensions[kind]?.join(', ')}</small></label></div><div className="project-upload-footer"><span>{dirty ? 'Save your draft before adding a file.' : file ? `${file.name} · ${bytes(file.size)}` : 'Source files are stored as supplied.'}</span><button type="button" className="button primary" disabled={!file || dirty || project.assets.length >= (catalog?.limits.max_assets ?? 40)} onClick={() => void upload()}><Icon name="plus" size={17}/>{saving ? 'Uploading…' : 'Upload file'}</button></div></div><div className="project-assets">{project.assets.length ? project.assets.map(asset => <article className="project-asset" key={asset.id}><div className="project-asset-heading"><Icon name="file" size={22}/><div><h4>{asset.filename}</h4><span>{assetKinds.find(item => item.value === asset.kind)?.title ?? label(asset.kind)} · {bytes(asset.size_bytes)}</span></div><a href={asset.download_url} className="icon-button" download aria-label={`Download ${asset.filename}`}><Icon name="download" size={18}/></a></div><p>{asset.inspection.summary}</p>{asset.inspection.warnings.length > 0 && <ul className="project-inspection-warnings">{asset.inspection.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}<details><summary>File identity and inspection details</summary><dl><dt>SHA-256</dt><dd className="mono">{asset.sha256}</dd><dt>Stored</dt><dd>{formatTime(asset.created_at)}</dd><dt>Inspection</dt><dd>{label(asset.inspection.status)} · {asset.inspection.format}</dd></dl>{Object.keys(asset.inspection.details).length > 0 && <pre>{JSON.stringify(asset.inspection.details, null, 2)}</pre>}</details></article>) : <div className="project-inline-empty"><Icon name="file" size={26}/><h4>No source files yet</h4><p>A concept can begin without files. Add the evidence that supports your next preparation step.</p></div>}</div></section>}
           {tab === 'overview' && <RevisionHistory project={project}/>}
           {tab === 'parameters' && <Parameters draft={draft} update={update} limit={catalog?.limits.max_parameters ?? 80}/>}
+          {tab === 'parameters' && <OperatingFactors projectId={id} factors={draft.operating_factors} onChange={operating_factors => update({operating_factors})}/>}
           {tab === 'tests' && <TestPlans draft={draft} update={update} limit={catalog?.limits.max_test_plans ?? 30}/>}
           <div className={`project-savebar ${dirty ? 'has-changes' : ''}`}><div><strong>{saving ? 'Saving your work…' : dirty ? 'You have unsaved changes' : `Saved · Revision ${project.revision}`}</strong><span>{dirty ? 'Save to update readiness. Export includes the saved version.' : `Last updated ${formatTime(project.updated_at)}`}</span></div><button type="submit" className="button primary" disabled={!dirty}>{saving ? 'Saving…' : 'Save changes'}</button></div>
         </fieldset></form>

@@ -7,7 +7,7 @@ import json
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import FileResponse, Response
@@ -53,6 +53,20 @@ class Parameter(IntakeModel):
         return self
 
 
+class OperatingFactor(IntakeModel):
+    name: str = Field(min_length=1, max_length=100)
+    field: str = Field(default="", max_length=108)
+    unit: str = Field(default="", max_length=50)
+    conditions: str = Field(default="", max_length=1000)
+    required_values: list[Annotated[FiniteFloat, Field(strict=True)]] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def unique_levels(self):
+        if len(self.required_values) != len(set(self.required_values)):
+            raise ValueError("Required levels must be distinct")
+        return self
+
+
 class TestPlan(IntakeModel):
     name: str = Field(min_length=1, max_length=120)
     objective: str = Field(min_length=1, max_length=1500)
@@ -72,6 +86,7 @@ class ProjectSpec(IntakeModel):
     notes: str = Field(default="", max_length=6000)
     parameters: list[Parameter] = Field(default_factory=list, max_length=80)
     test_plans: list[TestPlan] = Field(default_factory=list, max_length=30)
+    operating_factors: list[OperatingFactor] = Field(default_factory=list, max_length=40)
 
     @model_validator(mode="after")
     def consistent_intake(self):
@@ -79,7 +94,8 @@ class ProjectSpec(IntakeModel):
             raise ValueError("Select a reference robot when using supported-robot preparation")
         if self.robot_source == "custom" and self.robot_template is not None:
             raise ValueError("A custom robot must not claim a reference robot template")
-        for label, items in (("parameter", self.parameters), ("test plan", self.test_plans)):
+        for label, items in (("parameter", self.parameters), ("test plan", self.test_plans),
+                             ("operating factor", self.operating_factors)):
             names = [item.name.casefold() for item in items]
             if len(names) != len(set(names)):
                 raise ValueError(f"Each {label} must have a unique name")
@@ -102,7 +118,7 @@ def project_catalog():
         "analysis_types": [
             {"id": "robot_behavior", "label": "Robot task behavior", "description": "Test articulated motion or evaluate a reference packaging lift across operating conditions.", "execution_available": True},
             {"id": "structural", "label": "Structural analysis", "description": "Evaluate a rectangular cantilever with declared supports, dimensions and loads.", "execution_available": True},
-            {"id": "thermal", "label": "Thermal analysis", "description": "Evaluate a uniform rod with fixed end temperatures and internal heating.", "execution_available": True},
+            {"id": "thermal", "label": "Thermal analysis", "description": "Evaluate a heated rod with fixed end temperatures or right-end exchange with ambient fluid.", "execution_available": True},
         ],
         "robot_templates": [
             {"id": "two_finger_hand_v1", "label": "FailureForge two-finger hand", "description": "Bundled fixed-palm hand, version 1.0, MIT. The MuJoCo test measures contact-free joint tracking and fingertip separation.", "execution_available": True},
@@ -327,15 +343,16 @@ class ProjectStore:
 
     def create(self, spec: ProjectSpec, key=None):
         identifier, now = new_id("project"), utc_now()
+        request = spec.model_dump(exclude={"operating_factors"} if not spec.operating_factors else set())
         with self.store.connection(True) as db:
             if key:
-                previous = self.store._idempotent(db, "project-create", key, spec.model_dump())
+                previous = self.store._idempotent(db, "project-create", key, request)
                 if previous:
                     return previous
             db.execute("INSERT INTO projects VALUES(?,1,?,?,?)", (identifier, spec.model_dump_json(), now, now))
             project = self._remember(db, identifier, "Project created")
             if key:
-                self.store._remember(db, "project-create", key, spec.model_dump(), project)
+                self.store._remember(db, "project-create", key, request, project)
             return project
 
     def update(self, identifier: str, spec: ProjectUpdate):
@@ -344,6 +361,9 @@ class ProjectStore:
 
     def update_in_transaction(self, db, identifier, spec: ProjectUpdate, reason):
         data = spec.model_dump(exclude={"expected_revision"})
+        if "operating_factors" not in spec.model_fields_set:
+            current = Store._required(db, "projects", identifier)
+            data["operating_factors"] = json.loads(current["spec"]).get("operating_factors", [])
         changed = db.execute("UPDATE projects SET revision=revision+1,spec=?,updated_at=? WHERE id=? AND revision=?",
                              (json.dumps(data, allow_nan=False), utc_now(), identifier, spec.expected_revision))
         if not changed.rowcount:

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fieldText, inputFields, motionModelChoice, parseFields, referenceHandChoice, runInputs } from './analysisInputs.ts';
+import { fieldCaption, fieldText, inputFields, motionModelChoice, parseFields, referenceHandChoice, rodBoundaryFields, runInputs } from './analysisInputs.ts';
 import { workerFor, workerLabel } from './workerStatus.ts';
 
 test('analysis forms preserve nested data, numeric inputs and literal strings', () => {
@@ -29,6 +29,19 @@ test('live eligibility and status use each campaign backend heartbeat', () => {
   assert.match(workerLabel(both), /Robot and synthetic/);
   assert.equal(workerFor({ worker: synthetic }, 'libero'), undefined);
   assert.equal(workerFor({ worker: robot }, 'libero'), robot);
+});
+
+test('thermal boundary options restore literal or bound fluid conditions and keep the inactive fields out of the run', () => {
+  assert.deepEqual(rodBoundaryFields({right_temperature_k: '300'}, {}).required, ['right_temperature_k']);
+  assert.equal(rodBoundaryFields({right_film_coefficient_w_m2k: '0'}, {}).fluid, true);
+  assert.equal(rodBoundaryFields({}, {right_ambient_temperature_k: 'Measured air'}).fluid, true);
+  const draft = {rightBoundaryChoice: 'fixed', right_temperature_k: '280', right_ambient_temperature_k: '320', right_film_coefficient_w_m2k: '70'};
+  const schema = {type: 'number'};
+  const fields = Object.keys(draft).filter(k => k !== 'rightBoundaryChoice').map(name => ({name, type:'number', schema}));
+  const active = choice => fields.filter(field => !rodBoundaryFields({...draft, rightBoundaryChoice:choice}, {}).hidden.includes(field.name));
+  assert.deepEqual(runInputs('thermal_rod', active('fixed'), draft), {right_temperature_k:280});
+  assert.deepEqual(runInputs('thermal_rod', active('fluid'), draft), {right_ambient_temperature_k:320, right_film_coefficient_w_m2k:70});
+  assert.match(fieldCaption(fields[2]), /W\/\(m²·K\)/);
 });
 
 test('motion drafts require a deliberate robot and preserve authored reference and URDF choices', () => {

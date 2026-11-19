@@ -28,6 +28,7 @@ class BeamStudy(StudyInput):
     young_modulus_pa: float = Field(ge=1, le=1e13)
     tip_force_n: Force = 0
     distributed_load_n_per_m: Force = 0
+    face_pressure_pa: Force | None = Field(default=None, description="Uniform signed pressure normal to the full span × width face. Positive pressure bends in the positive tip-force direction.")
     elements: int = Field(default=16, ge=2, le=128)
     max_surface_stress_pa: Positive | None = None
     max_displacement_m: Positive | None = None
@@ -40,6 +41,13 @@ class BeamStudy(StudyInput):
             raise ValueError("Euler-Bernoulli bending requires length at least ten times the bending depth")
         return self
 
+    @property
+    def transverse_load_n_per_m(self):
+        return self.distributed_load_n_per_m + (self.face_pressure_pa or 0.0) * self.width_m
+
+    def recorded_inputs(self):
+        return self.model_dump(exclude={"face_pressure_pa"} if self.face_pressure_pa is None else set())
+
 
 class ThermalStudy(StudyInput):
     kind: Literal["thermal_rod"]
@@ -47,11 +55,26 @@ class ThermalStudy(StudyInput):
     area_m2: float = Field(ge=1e-12, le=1e6)
     conductivity_w_mk: float = Field(ge=1e-6, le=1e6)
     left_temperature_k: Temperature
-    right_temperature_k: Temperature
+    right_temperature_k: Temperature | None = Field(default=None, description="Prescribed right surface temperature. Leave blank when using the ambient and film coefficient instead.")
+    right_ambient_temperature_k: Temperature | None = Field(default=None, description="Fluid temperature outside the right end face. Use with the right film coefficient and leave the right surface temperature blank.")
+    right_film_coefficient_w_m2k: float | None = Field(default=None, ge=0, le=1e7, description="Uniform heat transfer coefficient on the right end face. Zero insulates this face; a positive value exchanges heat with the specified ambient.")
     heat_generation_w_m3: Generation = 0
     elements: int = Field(default=16, ge=2, le=128)
     max_temperature_k: Positive | None = None
     convergence_tolerance_k: Positive | None = None
+
+    @model_validator(mode="after")
+    def right_boundary(self):
+        ambient = self.right_ambient_temperature_k is not None
+        film = self.right_film_coefficient_w_m2k is not None
+        if ambient != film or (self.right_temperature_k is not None) == ambient:
+            raise ValueError("Specify either the right surface temperature or both the right ambient temperature and film coefficient")
+        return self
+
+    def recorded_inputs(self):
+        inactive = {"right_temperature_k"} if self.right_temperature_k is None else {
+            "right_ambient_temperature_k", "right_film_coefficient_w_m2k"}
+        return self.model_dump(exclude=inactive)
 
 
 EngineeringModel = Annotated[BeamStudy | ThermalStudy, Field(discriminator="kind")]
@@ -84,6 +107,8 @@ class CalibrationStudy(StudyInput):
     @model_validator(mode="after")
     def comparable_measurements(self):
         beam = isinstance(self.model, BeamStudy)
+        if not beam and self.model.right_temperature_k is None:
+            raise ValueError("Conductivity calibration currently requires two prescribed end temperatures")
         min_value, max_value = (1, 1e13) if beam else (1e-6, 1e6)
         low, high = self.parameter_bounds
         if not min_value <= low < high <= max_value:
@@ -127,7 +152,7 @@ def _beam_solution(model: BeamStudy, n: int):
     dofs = 2 * np.arange(n)[:, None] + np.arange(4)
     matrix = _assemble(dofs, stiffness)
     force = np.zeros(2 * (n + 1))
-    distributed = model.distributed_load_n_per_m * length**4 / rigidity
+    distributed = model.transverse_load_n_per_m * length**4 / rigidity
     element_load = distributed * np.array([h/2, h*h/12, h/2, -h*h/12])
     np.add.at(force, dofs, np.broadcast_to(element_load, dofs.shape))
     force[-2] += model.tip_force_n * length**3 / rigidity
@@ -173,7 +198,7 @@ def _beam_reference_peaks(model):
     """Exact continuous extrema for these two loads; a limit may lie between nodes."""
     length = model.length_m
     force = model.tip_force_n
-    uniform = model.distributed_load_n_per_m * length
+    uniform = model.transverse_load_n_per_m * length
     inertia = model.width_m * model.height_m**3 / 12
     # v'(x) / x is quadratic in normalized position x/L.
     slope_roots = np.roots([uniform, -3*(uniform+force), 3*uniform+6*force])
@@ -196,7 +221,7 @@ def _solve_beam(model: BeamStudy):
     max_displacement = float(max(np.max(np.abs(v)), np.max(np.abs(mid))))
     max_stress = float(stress_scale * max(np.max(np.abs(k_left)), np.max(np.abs(k_right))))
     continuous_displacement, continuous_stress = _beam_reference_peaks(model)
-    result = {"kind": model.kind, "solver": "euler_bernoulli_hermite_v1", "inputs": model.model_dump(),
+    result = {"kind": model.kind, "solver": "euler_bernoulli_hermite_v1", "inputs": model.recorded_inputs(),
             "summary": {"tip_displacement_m": float(v[-1]), "tip_rotation_rad": float(slope[-1]),
                         "max_sampled_abs_displacement_m": max_displacement,
                         "continuous_max_abs_displacement_m": continuous_displacement,
@@ -214,6 +239,10 @@ def _solve_beam(model: BeamStudy):
                             "Linear elasticity and small rotations. Deflection above 5% of span flags that approximation.",
                             "Limit checks use continuous closed-form extrema of this fixture; mesh values and their convergence are reported separately.",
                             "Computed surface bending stress requires a separate material allowable for a strength assessment."]}
+    if model.face_pressure_pa is not None:
+        result["summary"]["pressure_line_load_n_per_m"] = model.face_pressure_pa * model.width_m
+        result["summary"]["total_distributed_load_n_per_m"] = model.transverse_load_n_per_m
+        result["assumptions"].append("Static face pressure acts uniformly across span and width, adding pressure × width to the signed line load.")
     coarse_peak = stress_scale * max(np.max(np.abs(coarse[3])), np.max(np.abs(coarse[4])))
     stress_change = float(abs(max_stress - coarse_peak))
     stress_tolerance = model.stress_convergence_tolerance_pa
@@ -221,7 +250,7 @@ def _solve_beam(model: BeamStudy):
         "change_pa": stress_change, "absolute_tolerance_pa": stress_tolerance,
         "passed": None if stress_tolerance is None else stress_change <= stress_tolerance}
     force = model.tip_force_n
-    distributed = model.distributed_load_n_per_m * model.length_m
+    distributed = model.transverse_load_n_per_m * model.length_m
     force_residual = reactions[0] + force + distributed
     moment_residual = reactions[1] + model.length_m * (force + distributed / 2)
     checks = [_balance_check("net_force_n", force_residual, abs(force) + abs(distributed)),
@@ -233,11 +262,11 @@ def _solve_beam(model: BeamStudy):
                        result["summary"]["within_small_deflection_screen"])
 
 
-def _thermal_solution(model: ThermalStudy, n: int):
+def _thermal_solution(model: ThermalStudy, n: int, right_surface: float):
     dx = model.length_m / n
     matrix = _assemble(np.arange(n)[:, None] + np.arange(2), np.array([[1., -1.], [-1., 1.]]))
     # Equilibrate the interior equations around the exact imposed linear boundary field.
-    boundary_field = np.linspace(model.left_temperature_k, model.right_temperature_k, n+1)
+    boundary_field = np.linspace(model.left_temperature_k, right_surface, n+1)
     source = model.heat_generation_w_m3 * dx**2 / model.conductivity_w_mk
     rise = np.zeros(n+1)
     rise[1:-1] = spsolve(matrix[1:-1, 1:-1], np.full(n-1, source))
@@ -247,26 +276,32 @@ def _thermal_solution(model: ThermalStudy, n: int):
     half_source = model.heat_generation_w_m3 * model.area_m2 * dx / 2
     # Reactions include each boundary's share of the consistent element load.
     heat_out = (np.array([rise[1] - rise[0], rise[-2] - rise[-1]]) +
-                np.array([1, -1]) * (model.right_temperature_k - model.left_temperature_k) / n) * conductance + half_source
+                np.array([1, -1]) * (right_surface - model.left_temperature_k) / n) * conductance + half_source
     return temperature, flux, heat_out
 
 
 def _solve_thermal(model: ThermalStudy):
     n = model.elements
-    coarse, _, _ = _thermal_solution(model, n)
-    temp, flux, heat_out = _thermal_solution(model, 2*n)
+    heating = model.heat_generation_w_m3 * model.length_m**2 / (2*model.conductivity_w_mk)
+    right_surface = model.right_temperature_k
+    if right_surface is None:
+        # Condense the right-end Robin boundary using the exact rod end relation.
+        # Outward flux is k/L*(T_left - T_right) + generation*L/2 = h*(T_right - T_ambient).
+        bi = model.right_film_coefficient_w_m2k * model.length_m / model.conductivity_w_mk
+        right_surface = (model.left_temperature_k + heating + bi*model.right_ambient_temperature_k) / (1 + bi)
+    coarse, _, _ = _thermal_solution(model, n, right_surface)
+    temp, flux, heat_out = _thermal_solution(model, 2*n, right_surface)
     x = np.linspace(0, model.length_m, 2*n+1)
     generated = model.heat_generation_w_m3 * model.area_m2 * model.length_m
     peak = int(np.argmax(temp))
-    delta = model.right_temperature_k - model.left_temperature_k
-    heating = model.heat_generation_w_m3 * model.length_m**2 / (2*model.conductivity_w_mk)
+    delta = right_surface - model.left_temperature_k
     # An asymmetric temperature gradient can put the true maximum between FE nodes.
     if heating and -heating < delta < heating:
         peak_fraction = (1 + delta / heating) / 2
     else:
         peak_fraction = float(delta > 0)
     peak_temperature = model.left_temperature_k + delta*peak_fraction + heating*peak_fraction*(1-peak_fraction)
-    result = {"kind": model.kind, "solver": "steady_rod_linear_fem_v1", "inputs": model.model_dump(),
+    result = {"kind": model.kind, "solver": "steady_rod_linear_fem_v1", "inputs": model.recorded_inputs(),
             "summary": {"max_nodal_temperature_k": float(temp[peak]), "peak_node_position_m": float(x[peak]),
                         "continuous_peak_temperature_k": peak_temperature, "continuous_peak_position_m": model.length_m*peak_fraction,
                         "left_outward_heat_w": float(heat_out[0]), "right_outward_heat_w": float(heat_out[1]),
@@ -281,6 +316,16 @@ def _solve_thermal(model: ThermalStudy):
     checks = [_balance_check("heat_balance_w", result["summary"]["heat_balance_residual_w"],
                              max(abs(generated), max(abs(heat_out)))),
               {"quantity": "mesh_temperature", "passed": result["convergence"]["passed"]}]
+    if model.right_temperature_k is None:
+        film = model.right_film_coefficient_w_m2k
+        # Compute the film temperature difference before adding it to the large absolute temperature.
+        surface_above_ambient = (model.left_temperature_k - model.right_ambient_temperature_k + heating) / (1 + bi)
+        convective_heat = film * model.area_m2 * surface_above_ambient
+        result["summary"].update(right_surface_temperature_k=right_surface, right_convective_heat_w=convective_heat)
+        result["assumptions"][1] = ("The left temperature is fixed. The right end exchanges heat with a uniform ambient "
+                                    "through the specified film coefficient. The lateral surface is insulated; generation is uniform.")
+        checks.append(_balance_check("right_boundary_heat_w", heat_out[1] - convective_heat,
+                                     max(abs(generated), max(abs(heat_out)), abs(convective_heat))))
     return _acceptance(result, [("continuous_peak_temperature_k", model.max_temperature_k)], checks)
 
 
@@ -289,7 +334,7 @@ def _response_terms(model, observation):
     if isinstance(model, BeamStudy):
         length = model.length_m
         inertia = model.width_m * model.height_m**3 / 12
-        sensitivity = (observation.tip_force_n * length**3 / 3 + model.distributed_load_n_per_m * length**4 / 8) / inertia
+        sensitivity = (observation.tip_force_n * length**3 / 3 + model.transverse_load_n_per_m * length**4 / 8) / inertia
         return 0.0, sensitivity, observation.tip_displacement_m
     x = observation.position_m
     offset = model.left_temperature_k + (model.right_temperature_k - model.left_temperature_k) * x / model.length_m
@@ -323,7 +368,8 @@ def _calibrate(study: CalibrationStudy):
     fit, validation = residuals(study.fit), residuals(study.validation)
     validation_errors = np.array([r["residual"] for r in validation])
     validated = bool(np.max(np.abs(validation_errors)) <= study.validation_tolerance)
-    return {"kind": study.kind, "solver": "bounded_inverse_property_least_squares_v1", "inputs": study.model_dump(), "passed": validated,
+    return {"kind": study.kind, "solver": "bounded_inverse_property_least_squares_v1",
+            "inputs": {**study.model_dump(), "model": model.recorded_inputs()}, "passed": validated,
             "summary": {"parameter": parameter, "prior_value": getattr(model, parameter), "fitted_value": 1/inverse,
                         "at_parameter_bound": inverse == 1/high or inverse == 1/low,
                         "residual_unit": "m" if beam else "K", "validation_tolerance": study.validation_tolerance,
