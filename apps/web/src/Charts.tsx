@@ -9,7 +9,7 @@ export function ScatterPlot({ candidates, domain, selected, onSelect }: { candid
   const dx = domain.main_camera_dx_m, light = domain.light_scale;
   const sx = (v: number) => pad.left + (v - dx[0]) / (dx[1] - dx[0]) * innerW;
   const sy = (v: number) => pad.top + innerH - (v - light[0]) / (light[1] - light[0]) * innerH;
-  return <div className="scatter-wrap">
+  return <div className="scatter-wrap" data-tour="campaign-plot">
     <svg viewBox={`0 0 ${width} ${height}`} className="scatter" role="img" aria-label={`Measured camera and lighting changes. ${candidates.length} proposed candidates. Colored points have completed paired evaluations; gray points are unscored. No interpolation is shown.`}>
       <defs><pattern id="plot-dots" width="15" height="15" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".7" fill="#c7d1d9"/></pattern></defs>
       <rect x={pad.left} y={pad.top} width={innerW} height={innerH} fill="#f8fafb"/>

@@ -348,6 +348,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project}/environment-matrices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history_api_projects__project__environment_matrices_get"];
+        put?: never;
+        /** Submit */
+        post: operations["submit_api_projects__project__environment_matrices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project}/environment-matrices/{suite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_projects__project__environment_matrices__suite_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/qualification/references": {
         parameters: {
             query?: never;
@@ -692,10 +727,34 @@ export interface components {
                 number
             ];
         };
+        /** EnvironmentMatrix */
+        EnvironmentMatrix: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Label */
+            label: string;
+            /**
+             * Adapter
+             * @constant
+             */
+            adapter: "packaging_lift";
+            /** Payload Kg */
+            payload_kg: number[];
+            /** Head Force N */
+            head_force_n: number[];
+            reference: components["schemas"]["LiftCondition"];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** LiftCondition */
+        LiftCondition: {
+            /** Payload Kg */
+            payload_kg: number;
+            /** Head Force N */
+            head_force_n: number;
         };
         /** Parameter */
         Parameter: {
@@ -748,7 +807,7 @@ export interface components {
              */
             robot_source: "custom" | "supported";
             /** Robot Template */
-            robot_template?: ("two_finger_hand_v1" | "leap_hand_v1" | "franka_panda") | null;
+            robot_template?: ("two_finger_hand_v1" | "packaging_lift_v1" | "leap_hand_v1" | "franka_panda") | null;
             /**
              * Notes
              * @default
@@ -799,7 +858,7 @@ export interface components {
              */
             robot_source: "custom" | "supported";
             /** Robot Template */
-            robot_template?: ("two_finger_hand_v1" | "leap_hand_v1" | "franka_panda") | null;
+            robot_template?: ("two_finger_hand_v1" | "packaging_lift_v1" | "leap_hand_v1" | "franka_panda") | null;
             /**
              * Notes
              * @default
@@ -948,7 +1007,9 @@ export interface operations {
     create_project_api_projects_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1642,6 +1703,106 @@ export interface operations {
         };
     };
     detail_api_projects__project__sweeps__suite_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                suite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_api_projects__project__environment_matrices_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_api_projects__project__environment_matrices_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path: {
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvironmentMatrix"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_projects__project__environment_matrices__suite_id__get: {
         parameters: {
             query?: never;
             header?: never;

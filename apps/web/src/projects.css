@@ -1,5 +1,33 @@
 .projects-workspace{--project-muted:#5c7180;font-size:16px;line-height:1.6}
 .analysis-workspace,.analysis-comparison{display:grid;gap:20px;min-width:0}
+.environment-matrix .project-form-stack{min-width:0}
+.environment-matrix h4{margin:0;font-size:1.08rem;color:#20394b}
+.environment-matrix h4+p,.matrix-form p{margin:0}
+.matrix-counts,.matrix-checks li{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
+.matrix-counts{font-size:.88rem}
+.matrix-counts>strong:first-child{margin-right:4px}
+.matrix-tag{display:inline-block;background:#edf1f3;color:#405260;padding:2px 8px;border-radius:4px;font-size:.82rem;line-height:1.6}
+.matrix-tag.passed,.matrix-cell.passed{background:#e8f4ed;color:#23593e}
+.matrix-tag.failed,.matrix-cell.failed{background:#fcebe7;color:#822c26}
+.matrix-table-scroll{max-width:100%;overflow-x:auto}
+.matrix-table{width:100%;border-spacing:3px;table-layout:auto;font-size:.9rem}
+.matrix-table caption{text-align:left;color:var(--project-muted);font-size:.86rem;margin-bottom:9px}
+.matrix-table th{color:#385164;padding:5px;text-align:center;font-weight:600}
+.matrix-table tr>th:first-child[scope=row],.matrix-table th[scope=col][rowspan]{text-align:left}
+.matrix-table td{padding:0}
+.matrix-cell{display:flex;flex-flow:column;align-items:center;justify-content:center;gap:1px;background:#eff2f4;color:#455763;border:1px solid transparent;border-radius:5px;font:inherit;min-height:76px;min-width:80px;width:100%;padding:7px;cursor:pointer;font-variant-numeric:tabular-nums}
+.matrix-cell:hover:enabled{border-color:currentColor}
+.matrix-cell:focus-visible{outline:2px solid #365b86;outline-offset:-2px}
+.matrix-cell:disabled{cursor:default}
+.matrix-cell span{font-size:.83rem}
+.matrix-cell small{font-size:.73rem;font-weight:600}
+.matrix-checks{display:grid;gap:5px;margin:0;padding:0;list-style:none}
+.matrix-checks li{justify-content:space-between;border-bottom:1px solid #dae2e6;padding:5px 0}
+.matrix-form fieldset,.matrix-condition{display:grid;gap:15px;min-width:0}
+.matrix-form fieldset{margin:0;border:0;padding:0}
+.matrix-form button,.matrix-condition>button{justify-self:start}
+.matrix-condition h4:focus{outline:none}
+.matrix-trace{min-width:0}
 .project-revisions{margin-top:16px;padding:16px 20px;background:white;border:1px solid #dce5eb;border-radius:8px;font-size:14px}
 .project-revisions summary{cursor:pointer;font-weight:550}
 .project-revisions ul{padding:0;list-style:none}

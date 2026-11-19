@@ -53,6 +53,13 @@ class Suite(Revision):
     tests: list[ProjectTest] = Field(min_length=1, max_length=MAX_SUITE_TESTS)
 
 
+def project_adapters(project):
+    available = adapters(project["analysis_type"])
+    if project.get("robot_source") == "supported" and project.get("robot_template") == "packaging_lift_v1":
+        return available
+    return [adapter for adapter in available if adapter["id"] != "packaging_lift"]
+
+
 def outcome(record):
     if record["status"] != "completed" or assessment_error(record.get("result")):
         return None
@@ -182,12 +189,14 @@ class ProjectRuns:
         if self.thread:
             self.thread.join(5)
 
-    def submit(self, project_id, revision, tests, key, *, sweep=None):
+    def submit(self, project_id, revision, tests, key, *, sweep=None, environment_matrix=None):
         # Empty bindings retain the original literal-only request hash for retries.
         definitions = [t.model_dump(exclude_defaults=True) for t in tests]
         request = {"revision": revision, "tests": definitions}
         if sweep is not None:
             request["sweep"] = sweep
+        if environment_matrix is not None:
+            request["environment_matrix"] = environment_matrix
         scope = f"project-analysis:{project_id}"
         if key is not None and not 8 <= len(key) <= 200:
             raise HTTPException(422, "Idempotency-Key must contain 8 to 200 characters")
@@ -203,15 +212,21 @@ class ProjectRuns:
             if project["revision"] != revision:
                 raise Conflict("Project changed. Reload before starting this analysis.")
             receipt = self._enqueue(db, project, tests, sweep=sweep)
+            if environment_matrix is not None:
+                db.execute(
+                    "INSERT INTO project_environment_matrices(suite_id, project_id, definition, created_at) "
+                    "VALUES(?, ?, ?, ?)",
+                    (receipt["suite_id"], project_id, canonical_json(environment_matrix), utc_now()),
+                )
             if key:
                 self.store._remember(db, scope, key, request, receipt)
         self.wake.set()
         return receipt
 
     def _enqueue(self, db, project, tests, *, sweep=None, previous_ids=(), calibration_id=None):
-        allowed = {a["id"] for a in adapters(project["analysis_type"])}
+        allowed = {a["id"] for a in project_adapters(project)}
         if any(test.adapter not in allowed for test in tests):
-            raise HTTPException(422, "Adapter is unavailable for this project's analysis type")
+            raise HTTPException(422, "Adapter is unavailable for the selected prototype and analysis type")
         suite_id, ids, now = new_id("suite"), [], utc_now()
         snapshot = canonical_json({k: v for k, v in project.items() if k != "readiness"})
         for ordinal, test in enumerate(tests):
@@ -420,7 +435,7 @@ def analysis_router(runs):
     @router.get("/analysis")
     def history(project: str):
         record = runs.projects.get(project)
-        catalog = [{**a, **binding_catalog(a["id"], record["analysis_type"])} for a in adapters(record["analysis_type"])]
+        catalog = [{**a, **binding_catalog(a["id"], record["analysis_type"])} for a in project_adapters(record)]
         with runs.store.connection() as db:
             rows = db.execute(f"SELECT {SUMMARY} FROM project_runs WHERE project_id=? ORDER BY created_at DESC,ordinal LIMIT 200", (project,))
             return {"adapters": catalog, "runs": [dict(r) for r in rows]}

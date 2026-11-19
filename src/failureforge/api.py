@@ -21,6 +21,7 @@ from .projects import ASSET_LIMIT, project_router
 from .project_runs import ProjectRuns, analysis_router
 from .project_bundle import bundle_router
 from .project_sweeps import sweep_router
+from .environment_matrices import environment_matrix_router
 from .qualification_preview import qualification_report, qualification_router
 
 
@@ -54,6 +55,7 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
     app.include_router(analysis_router(analyses))
     app.include_router(bundle_router(analyses))
     app.include_router(sweep_router(analyses))
+    app.include_router(environment_matrix_router(analyses))
     app.include_router(qualification_router(root / "qualification"))
     token = os.environ.get("FAILUREFORGE_API_TOKEN")
     origins = os.environ.get("FAILUREFORGE_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000").split(",")

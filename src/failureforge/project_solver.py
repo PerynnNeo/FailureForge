@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from .engineering import BeamStudy, CalibrationStudy, ThermalStudy, run_engineering
+from .packaging_lift import PackagingLift, run_packaging_lift
 from .project_inputs import CadInventory, JointResponse, fit_joint_response, inspect_cad
 from .project_robot import RobotRunRequest, robot_reference, run_robot
 
@@ -22,7 +23,8 @@ ASSET_FIELDS = {"cad_asset_id": ("cad", ".stl"), "bom_asset_id": ("bom", ".csv")
                 "training_asset_id": ("measurements", ".csv"), "validation_asset_id": ("measurements", ".csv"),
                 "model_asset_id": ("robot_model", ".urdf"), "controller_asset_id": ("controller", ".json")}
 MODELS = {"structural_beam": BeamStudy, "thermal_rod": ThermalStudy, "calibration": CalibrationStudy,
-          "joint_response": JointResponse, "cad_inventory": CadInventory, "robot_motion": RobotRunRequest}
+          "joint_response": JointResponse, "cad_inventory": CadInventory, "robot_motion": RobotRunRequest,
+          "packaging_lift": PackagingLift}
 PLACEHOLDER = "asset_" + "0" * 32
 
 
@@ -35,6 +37,8 @@ def adapters(analysis):
         add("robot_motion", "Articulated motion", "Track named joint targets on the reference hand or a supported robot description.",
             robot_reference()["example"])
         entries[-1]["reference"] = robot_reference()
+        add("packaging_lift", "Packaging lift", "Test the fixed vertical lift under a secured parcel and a downward packing-head force.",
+            {"payload_kg": 0.0, "head_force_n": 0.0})
         add("joint_response", "Calibrate joint response", "Fit one time constant against a training log and test it on another. Supply CSV columns time_s,command_rad,position_rad.",
             {"joint_name": "left_knuckle", "hardware_revision": "enter measured revision",
              "training_asset_id": PLACEHOLDER, "validation_asset_id": "asset_" + "1"*32, "max_validation_rmse_rad": 0.02})
@@ -82,30 +86,37 @@ def run_job(job):
         result = fit_joint_response(model, blobs["training_asset_id"], blobs["validation_asset_id"])
     elif adapter == "robot_motion":
         result = run_robot(model, blobs.get("model_asset_id"), blobs.get("controller_asset_id"))
+    elif adapter == "packaging_lift":
+        if job["analysis_type"] != "robot_behavior":
+            raise ValueError("The packaging lift requires a robot behavior project")
+        result = run_packaging_lift(model)
     else:
         result = run_engineering(model.model_dump())
     return result
 
 
-def runtime_identity():
-    from . import engineering, project_inputs, project_robot, robot_dynamics, urdf_mjcf
+def runtime_identity(adapter=None):
+    from . import engineering, packaging_lift, project_inputs, project_robot, robot_dynamics, urdf_mjcf
     versions = {}
     for name in ("numpy", "scipy", "mujoco", "pydantic"):
         try:
             versions[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
             versions[name] = None
+    sources = [__file__, engineering.__file__, project_inputs.__file__, project_robot.__file__,
+               robot_dynamics.__file__, urdf_mjcf.__file__]
+    if adapter == "packaging_lift":
+        sources.append(packaging_lift.__file__)
     return {"python": platform.python_version(), "packages": versions, "source_sha256": {
         Path(file).name: hashlib.sha256(Path(file).read_bytes()).hexdigest()
-        for file in (__file__, engineering.__file__, project_inputs.__file__, project_robot.__file__,
-                     robot_dynamics.__file__, urdf_mjcf.__file__)}}
+        for file in sources}}
 
 
 def main():
     try:
         job = json.load(sys.stdin)
         result = run_job(job)
-        response = {"status": "completed", "result": result, "runtime": runtime_identity()}
+        response = {"status": "completed", "result": result, "runtime": runtime_identity(job["adapter"])}
     except (ValueError, UnicodeError) as exc:
         response = {"status": "invalid", "error": str(exc)[:2000]}
     except Exception as exc:

@@ -48,15 +48,35 @@
         ],
         "summary": "Create Project",
         "operationId": "create_project_api_projects_post",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 8,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ProjectSpec"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -1147,6 +1167,159 @@
         }
       }
     },
+    "/api/projects/{project}/environment-matrices": {
+      "get": {
+        "tags": [
+          "operating environments"
+        ],
+        "summary": "History",
+        "operationId": "history_api_projects__project__environment_matrices_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "operating environments"
+        ],
+        "summary": "Submit",
+        "operationId": "submit_api_projects__project__environment_matrices_post",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvironmentMatrix"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project}/environment-matrices/{suite_id}": {
+      "get": {
+        "tags": [
+          "operating environments"
+        ],
+        "summary": "Detail",
+        "operationId": "detail_api_projects__project__environment_matrices__suite_id__get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "suite_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Suite Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/qualification/references": {
       "get": {
         "tags": [
@@ -1933,6 +2106,60 @@
         "type": "object",
         "title": "Domain"
       },
+      "EnvironmentMatrix": {
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "adapter": {
+            "type": "string",
+            "const": "packaging_lift",
+            "title": "Adapter"
+          },
+          "payload_kg": {
+            "items": {
+              "type": "number",
+              "minimum": 0.0
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 2,
+            "title": "Payload Kg"
+          },
+          "head_force_n": {
+            "items": {
+              "type": "number",
+              "minimum": 0.0
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 2,
+            "title": "Head Force N"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/LiftCondition"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_revision",
+          "label",
+          "adapter",
+          "payload_kg",
+          "head_force_n",
+          "reference"
+        ],
+        "title": "EnvironmentMatrix"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1945,6 +2172,27 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "LiftCondition": {
+        "properties": {
+          "payload_kg": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Payload Kg"
+          },
+          "head_force_n": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Head Force N"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "payload_kg",
+          "head_force_n"
+        ],
+        "title": "LiftCondition"
       },
       "Parameter": {
         "properties": {
@@ -2070,6 +2318,7 @@
                 "type": "string",
                 "enum": [
                   "two_finger_hand_v1",
+                  "packaging_lift_v1",
                   "leap_hand_v1",
                   "franka_panda"
                 ]
@@ -2212,6 +2461,7 @@
                 "type": "string",
                 "enum": [
                   "two_finger_hand_v1",
+                  "packaging_lift_v1",
                   "leap_hand_v1",
                   "franka_panda"
                 ]

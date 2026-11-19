@@ -1,0 +1,69 @@
+.help-tutorial-trigger { white-space: nowrap; flex-shrink: 0; }
+.help-tutorial-trigger svg { color: #416174; }
+.help-tutorial-trigger[aria-expanded="true"] { border-color: #a64822; }
+
+/* The page scrolls above the guide so even the last control can sit fully in view. */
+body.has-help-tour { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+body.has-help-tour > #root { flex: 1 1 0%; min-height: 0; overflow: auto; }
+body.has-help-tour .sidebar { bottom: var(--help-tour-height, 0px); overflow-y: auto; }
+.campaign-dialog.has-help-tour[open] { display: flex; flex-direction: column; overflow: hidden; }
+.campaign-dialog.has-help-tour > form { min-height: 0; overflow: auto; }
+.campaign-dialog.has-help-tour .dialog-footer { position: static; }
+.campaign-dialog.has-help-tour .dialog-heading { flex-shrink: 0; padding-block: 10px; }
+.campaign-dialog.has-help-tour .dialog-heading p { display: none; }
+
+[data-tour-current] {
+  outline: 3px solid #b14b1f !important;
+  outline-offset: -2px;
+  box-shadow: 0 0 0 4px #d76b3526;
+  scroll-margin: 8px;
+}
+.help-tour {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 31;
+  width: 100%;
+  color: #243848;
+  background: #fffcf8;
+  border-top: 3px solid #b14b1f;
+  box-shadow: 0 -4px 16px #172c3d0c;
+  container-type: inline-size;
+}
+.help-tour-inner {
+  display: flex; flex-direction: column;
+  width: 100%; max-width: 1260px; max-height: 43dvh;
+  padding: 10px 24px; margin-inline: auto; gap: 8px;
+}
+.help-tour-header, .help-tour-footer { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; }
+.help-tour-header > span:first-child { display: inline-flex; align-items: center; gap: 7px; font-weight: 650; }
+.help-tour-header svg, .help-tour-show { color: #88401f; }
+.help-tour-count { color: #566a78; font-size: .8rem; }
+.help-tour-header > button { margin-left: auto; width: 30px; height: 30px; }
+.help-tour-main {
+  flex: 1 1 auto; min-height: 0; overflow: auto;
+  display: grid; grid-template-columns: minmax(160px, 23%) 1fr;
+  align-content: start; align-items: start; gap: 18px;
+}
+.help-tour-main > select { width: 100%; font-weight: 600; }
+.help-tour-copy { min-width: 0; overflow-wrap: anywhere; }
+.help-tour-copy p { font-size: .91rem; line-height: 1.45; margin: 0; }
+.help-tour-copy p + p { margin-top: .28em; }
+.help-tour-copy strong { color: #88401f; margin-right: .2em; }
+.help-tour-show {
+  margin-right: auto; padding: 4px 0; border: 0; background: none;
+  text-decoration: underline; text-underline-offset: 3px; font-size: .84rem; font-weight: 600;
+}
+.help-tour-footer .button { padding: 6px 12px; min-height: 32px; }
+@container (max-width: 700px) {
+  .help-tour-inner { padding: 8px 14px; gap: 6px; }
+  .help-tour-main { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+  .help-tour-main > select { padding-block: 6px; }
+  .help-tour-copy p { font-size: .87rem; }
+}
+@media (max-height: 500px) {
+  .help-tour-inner { gap: 3px; padding-block: 3px; max-height: 44dvh; }
+  .campaign-dialog.has-help-tour .dialog-heading .eyebrow { display: none; }
+}
+@media (forced-colors: active) {
+  [data-tour-current] { outline-color: Highlight !important; }
+}

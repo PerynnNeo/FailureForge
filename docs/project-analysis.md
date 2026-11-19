@@ -95,6 +95,7 @@ The adapter catalog lists bindable top-level fields in `binding_units` and accep
 
 | Project and adapter | Inputs and interpretation |
 | --- | --- |
+| Robot behavior · `packaging_lift` | The catalog packaging lift tests two external factors on a fixed one-axis reference. Cross secured payload mass with downward packing-head force to check arrival and maximum error throughout the hold. [Worked environment matrix and replay](../examples/packaging-lift/README.md). |
 | Structural · `structural_beam` | Rectangular cantilever dimensions in m, Young’s modulus in Pa, end force in N and uniform load in N/m. The static model returns deflection, reaction, rotation, and bending stress. Continuous peaks govern optional limits. Inspect the small-deflection screen and the user-selected displacement and stress convergence tolerances. |
 | Thermal · `thermal_rod` | Length in m, section area in m², conductivity in W/(m·K), both end temperatures in K, and uniform generation in W/m³. The steady solution gives temperature, heat flux and end heat flows. Use `max_temperature_k` to enforce a physical limit and `convergence_tolerance_k` for numerical refinement. |
 | Structural or thermal · `calibration` | Fit one material property using separate fit and validation readings. Each reading has its own run ID. A beam reading supplies tip force and measured displacement. A rod reading supplies generation, interior sensor position, and measured temperature. Specify property bounds and a validation tolerance in m or K. Review residuals before promoting a passing fit. |

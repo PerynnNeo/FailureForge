@@ -59,6 +59,7 @@ The final application suite passed 291 Python tests in 60.14 seconds. Its two op
 
 ### Local examples
 
+- [Packaging lift across tray payloads and packing-head forces](http://127.0.0.1:8000/#/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis) · [Nine-condition results and independent replay](../examples/packaging-lift/README.md)
 - [Two-finger hand tracking](http://127.0.0.1:8000/#/projects/project_015cd4cd52994b5eb4420606d4320f34)
 - [Measured OpenManipulator-X calibration and model sweep](http://127.0.0.1:8000/#/projects/project_b91d43c26de543c5ac188d2918650e3e)
 - [Cantilever revision comparison](http://127.0.0.1:8000/#/projects/project_29373a1fcf5f49f481c142674befc999)

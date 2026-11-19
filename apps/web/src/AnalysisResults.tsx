@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { formatTime, label, request } from './api';
 import { Loading, Notice, Status } from './components';
 import { TraceChart } from './Charts';
+import { liftHoldTrace } from './environmentConditions';
 import MeshPreview from './MeshPreview';
 import type { Adapter, Inputs, RunDetail, RunSummary } from './analysisInputs';
 
@@ -44,9 +45,29 @@ function Values({ values, inconclusive = false }: { values: Inputs; inconclusive
   </>;
 }
 
+export function LiftTrace({ result }: { result: Inputs }) {
+  const [chosenQuantity, setQuantity] = useState<string | null>(null);
+  const hold = liftHoldTrace(result);
+  const quantity = chosenQuantity ?? (hold?.showFirst ? 'hold' : 'height');
+  const series = result.series as Record<string, number[]> | undefined;
+  const fixture = result.fixture as Inputs | undefined;
+  if (!series || !Array.isArray(series.time_s) || !Array.isArray(series.position_m)) return null;
+  const samples = quantity === 'hold' && hold ? hold.samples : series.time_s.map((time, i) => quantity === 'height'
+    ? { step: time, 'lift height (mm)': 1000 * series.position_m[i],
+        'target height (mm)': typeof fixture?.target_m === 'number' ? 1000 * fixture.target_m : undefined }
+    : { step: time, 'motor force (N)': series.actuator_force_n?.[i], 'head force, downward (N)': series.applied_head_force_n?.[i] });
+  return <section className="matrix-trace"><label className="project-field"><span>Simulated trace</span>
+    <select value={quantity} onChange={event => setQuantity(event.target.value)}>
+      {hold && <option value="hold">Hold error and tolerance</option>}
+      <option value="height">Lift height</option><option value="force">Motor and packing head forces</option>
+    </select>
+  </label><TraceChart samples={samples} xLabel={quantity === 'hold' ? 'Time since hold began (s)' : 'Elapsed time (s)'}/></section>;
+}
+
 function FieldPlot({ result }: { result: Inputs }) {
   const [selectedJoint, setSelectedJoint] = useState('');
   const traces = result.traces as Inputs | undefined;
+  if (result.series && result.fixture) return <LiftTrace result={result}/>;
   if (Array.isArray(result.preview_triangles_m)) {
     const summary = result.summary as Inputs | undefined;
     return <MeshPreview triangles={result.preview_triangles_m} total={Number(summary?.triangles ?? result.preview_triangles_m.length)}/>;
@@ -140,7 +161,7 @@ export default function AnalysisResults({ base, adapters, runs, selected, select
     </header>
     <div className="project-form-stack">
       {active ? <>
-        <label className="project-field"><span>Inspect run</span>
+        <label className="project-field" data-tour="project-history"><span>Inspect run</span>
           <select value={active.id} onChange={event => { select(event.target.value); setBaseline(''); }}>
             {runs.map(run => <option key={run.id} value={run.id}>{runTitle(run)}</option>)}
           </select>
@@ -158,7 +179,7 @@ export default function AnalysisResults({ base, adapters, runs, selected, select
               <a className="text-link" href={`/api${base}/${encodeURIComponent(detail.recheck_of)}`} download>Pre-calibration record</a>}
           </div>}
           {detail.assessment_error && <Notice tone="warning"><strong>Inconclusive result.</strong> {detail.assessment_error}</Notice>}
-          {detail.result && <><Qualification result={detail.result}/><FieldPlot result={detail.result}/><Values values={detail.result} inconclusive={Boolean(detail.assessment_error)}/></>}
+          {detail.result && <><Qualification result={detail.result}/><FieldPlot key={detail.id} result={detail.result}/><Values values={detail.result} inconclusive={Boolean(detail.assessment_error)}/></>}
           <details className="analysis-disclosure"><summary>Recorded inputs</summary><pre>{JSON.stringify(detail.inputs, null, 2)}</pre></details>
           {detail.binding_evidence && Object.keys(detail.binding_evidence).length > 0 &&
             <details className="analysis-disclosure"><summary>Project parameter sources</summary><Values values={detail.binding_evidence}/></details>}
@@ -181,7 +202,7 @@ export default function AnalysisResults({ base, adapters, runs, selected, select
           </details>}
         </>}
         {runs.length > 1 && <div className="analysis-comparison">
-          <label className="project-field"><span>Compare this run against a baseline</span>
+          <label className="project-field" data-tour="project-compare"><span>Compare this run against a baseline</span>
             <select value={baselineId ?? ''} onChange={event => setBaseline(event.target.value)}>
               <option value="">Choose baseline run</option>
               {runs.filter(run => run.id !== active.id).map(run => <option key={run.id} value={run.id}>{runTitle(run)}</option>)}
@@ -192,7 +213,7 @@ export default function AnalysisResults({ base, adapters, runs, selected, select
             <a className="button secondary" href={`/api${comparePath}`} download={`comparison-${baselineId}-${active.id}.json`}>Export comparison JSON</a>
           </> : <Loading/>)}
         </div>}
-      </> : <p className="small muted">Completed and failed runs will appear here with their saved project revision.</p>}
+      </> : <p className="small muted" data-tour="project-history">Completed and failed runs will appear here with their saved project revision.</p>}
     </div>
   </section>;
 }

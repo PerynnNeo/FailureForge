@@ -12,6 +12,7 @@ UNIT_FACTORS = {
     "m²": {"m²": 1, "m2": 1, "m^2": 1, "cm²": 1e-4, "cm2": 1e-4, "mm²": 1e-6, "mm2": 1e-6},
     "Pa": {"Pa": 1, "kPa": 1e3, "MPa": 1e6, "GPa": 1e9},
     "N": {"N": 1, "kN": 1e3, "mN": 1e-3},
+    "kg": {"kg": 1, "g": 1e-3},
     "N/m": {"N/m": 1, "kN/m": 1e3, "N/mm": 1e3},
     "K": {"K": 1},
     "W/(m·K)": {"W/(m·K)": 1, "W/(m*K)": 1, "W/(m K)": 1, "W/m/K": 1, "mW/(m·K)": 1e-3},
@@ -30,6 +31,7 @@ FIELD_UNITS = {
                     "left_temperature_k": "K", "right_temperature_k": "K", "heat_generation_w_m3": "W/m³",
                     "max_temperature_k": "K", "elements": "1", "convergence_tolerance_k": "K"},
     "robot_motion": {"gain_per_s": "1/s", "time_constant_s": "s", "duration_s": "s", "samples": "1"},
+    "packaging_lift": {"payload_kg": "kg", "head_force_n": "N"},
     "joint_response": {"min_time_constant_s": "s", "max_time_constant_s": "s", "max_validation_rmse_rad": "rad"},
 }
 

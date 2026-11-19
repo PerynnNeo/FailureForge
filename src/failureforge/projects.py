@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, model_validator
 
@@ -68,7 +68,7 @@ class ProjectSpec(IntakeModel):
     goal: str = Field(min_length=1, max_length=3000)
     success_criteria: str = Field(min_length=1, max_length=3000)
     robot_source: Literal["custom", "supported"] = "custom"
-    robot_template: Literal["two_finger_hand_v1", "leap_hand_v1", "franka_panda"] | None = None
+    robot_template: Literal["two_finger_hand_v1", "packaging_lift_v1", "leap_hand_v1", "franka_panda"] | None = None
     notes: str = Field(default="", max_length=6000)
     parameters: list[Parameter] = Field(default_factory=list, max_length=80)
     test_plans: list[TestPlan] = Field(default_factory=list, max_length=30)
@@ -100,12 +100,13 @@ def project_catalog():
             {"id": "prototype", "label": "Physical prototype", "description": "Attach measurements and record calibration evidence for comparison."},
         ],
         "analysis_types": [
-            {"id": "robot_behavior", "label": "Robot task behavior", "description": "Test joint tracking on the reference hand or a supported articulated model.", "execution_available": True},
+            {"id": "robot_behavior", "label": "Robot task behavior", "description": "Test articulated motion or evaluate a reference packaging lift across operating conditions.", "execution_available": True},
             {"id": "structural", "label": "Structural analysis", "description": "Evaluate a rectangular cantilever with declared supports, dimensions and loads.", "execution_available": True},
             {"id": "thermal", "label": "Thermal analysis", "description": "Evaluate a uniform rod with fixed end temperatures and internal heating.", "execution_available": True},
         ],
         "robot_templates": [
             {"id": "two_finger_hand_v1", "label": "FailureForge two-finger hand", "description": "Bundled fixed-palm hand, version 1.0, MIT. The MuJoCo test measures contact-free joint tracking and fingertip separation.", "execution_available": True},
+            {"id": "packaging_lift_v1", "label": "Packaging lift", "description": "A fixed vertical carriage and controller raise a secured tray and hold it under a downward packing-head load. Vary tray payload and applied force.", "execution_available": True},
             {"id": "leap_hand_v1", "label": "LEAP Hand v1", "description": "Reference for hand-manipulation preparation; upload your model and controller. No hand execution adapter is installed.", "execution_available": False},
             {"id": "franka_panda", "label": "Franka Panda", "description": "Reference for manipulation preparation; this does not connect a project to the separate fixed LIBERO benchmark.", "execution_available": False},
         ],
@@ -161,7 +162,25 @@ def derive_readiness(project):
         ("regression", "Compare revisions", "Rerun saved cases against a versioned design or controller change."),
     ]
     statuses = {"concept": "complete", "preparation": "complete" if model_present and parameters and controller_present else "current", "validation": "current" if phase == "validation" else "future", "test_design": "complete" if plans else "current" if phase == "test_design" else "future", "qualification": "blocked", "execution": "blocked", "investigation": "future", "regression": "future"}
-    return {"phase": phase, "execution_allowed": False, "analysis_url": f"/api/projects/{project['id']}/analysis", "checks": checks,
+    reference_lift = behavior and project.get("robot_template") == "packaging_lift_v1"
+    if reference_lift:
+        fixture_checks = {
+            "model": "The bundled single-axis reference carriage defines its mass, travel and actuator limit.",
+            "controller": "The reference controller is fixed across all matrix conditions.",
+            "properties": "The packaging-lift adapter supplies the reference design constants and task tolerances.",
+            "test_plans": "The adapter defines the lift deadline and hold requirement. Choose the operating points in Analysis & runs.",
+            "execution_adapter": "The packaging-lift simulation accepts payload mass and packing-head force.",
+        }
+        for check in checks:
+            if check["id"] in fixture_checks:
+                check.update(status="complete", detail=fixture_checks[check["id"]])
+                if check["id"] == "execution_adapter":
+                    check["label"] = "Reference simulation"
+        phase, action = "execution", "Open Analysis & runs to test the payload and packing-head force or inspect a saved matrix."
+        statuses.update(preparation="complete", test_design="complete", qualification="future", execution="current")
+        phase_details = [(key, "Check numerical accuracy", "Inspect the integration check recorded for each simulated condition.")
+                         if key == "qualification" else (key, title, detail) for key, title, detail in phase_details]
+    return {"phase": phase, "execution_allowed": reference_lift, "analysis_url": f"/api/projects/{project['id']}/analysis", "checks": checks,
             "phases": [{"id": key, "label": label, "status": statuses[key], "detail": detail} for key, label, detail in phase_details],
             "next_action": action,
             "limitations": ["Readiness describes intake metadata, not a validated physical model or a simulation result.", "Measured and calibrated source labels are user-provided claims; attached evidence is not independently verified.", "Files are never executed, archives are never extracted, and model dependencies are not resolved by this intake service.", "Reference robot choices do not download models or install execution adapters."]}
@@ -306,11 +325,18 @@ class ProjectStore:
             identifiers = [row["id"] for row in db.execute("SELECT id FROM projects ORDER BY updated_at DESC,id DESC LIMIT 200")]
             return [self._get(db, identifier) for identifier in identifiers]
 
-    def create(self, spec: ProjectSpec):
+    def create(self, spec: ProjectSpec, key=None):
         identifier, now = new_id("project"), utc_now()
         with self.store.connection(True) as db:
+            if key:
+                previous = self.store._idempotent(db, "project-create", key, spec.model_dump())
+                if previous:
+                    return previous
             db.execute("INSERT INTO projects VALUES(?,1,?,?,?)", (identifier, spec.model_dump_json(), now, now))
-            return self._remember(db, identifier, "Project created")
+            project = self._remember(db, identifier, "Project created")
+            if key:
+                self.store._remember(db, "project-create", key, spec.model_dump(), project)
+            return project
 
     def update(self, identifier: str, spec: ProjectUpdate):
         with self.store.connection(True) as db:
@@ -366,8 +392,8 @@ def project_router(store: Store, root: Path):
         return {"items": projects.list()}
 
     @router.post("", status_code=201)
-    def create_project(spec: ProjectSpec):
-        return projects.create(spec)
+    def create_project(spec: ProjectSpec, idempotency_key: str | None = Header(default=None, min_length=8, max_length=200)):
+        return projects.create(spec, idempotency_key)
 
     @router.get("/{identifier}")
     def get_project(identifier: str):

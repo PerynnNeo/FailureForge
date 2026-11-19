@@ -168,7 +168,22 @@ def test_complete_intake_remains_blocked_and_export_preserves_evidence(tmp_path)
         assert client.get("/api/campaigns").json() == {"items": []}
         catalog = client.get("/api/projects/catalog").json()
         assert catalog["limits"]["asset_bytes"] == ASSET_LIMIT
-        assert [t["id"] for t in catalog["robot_templates"] if t["execution_available"]] == ["two_finger_hand_v1"]
+        assert [t["id"] for t in catalog["robot_templates"] if t["execution_available"]] == ["two_finger_hand_v1", "packaging_lift_v1"]
+
+
+def test_bundled_packaging_lift_is_ready_for_its_environment_test(tmp_path):
+    with TestClient(create_app(tmp_path)) as client:
+        spec = specification(robot_source="supported", robot_template="packaging_lift_v1")
+        key = {"Idempotency-Key": "launch-lift-example"}
+        response = client.post("/api/projects", json=spec, headers=key)
+        assert response.status_code == 201
+        project = response.json()
+        assert client.post("/api/projects", json=spec, headers=key).json()["id"] == project["id"]
+        assert client.post("/api/projects", json={**spec, "name": "Changed"}, headers=key).status_code == 409
+        readiness = project["readiness"]
+        assert readiness["execution_allowed"] and readiness["phase"] == "execution"
+        assert all(check["status"] == "complete" for check in readiness["checks"]
+                   if check["id"] in {"model", "controller", "properties", "execution_adapter"})
 
 
 def test_measured_claim_without_evidence_does_not_complete_evidence_check(tmp_path):

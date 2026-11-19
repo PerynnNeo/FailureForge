@@ -1,0 +1,255 @@
+{
+  "project_id": "project_3b75e02105b0465c9aedaa56294c5b6e",
+  "project_url": "http://127.0.0.1:8000/#/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis",
+  "adapter": "packaging_lift",
+  "head_force_n": [
+    0.0,
+    1.0,
+    2.0
+  ],
+  "label": "Tray positioning under load",
+  "payload_kg": [
+    0.0,
+    0.25,
+    0.5
+  ],
+  "project_revision": 1,
+  "reference": {
+    "head_force_n": 0.0,
+    "payload_kg": 0.0
+  },
+  "created_at": "2026-11-19T13:16:05.416553+00:00",
+  "suite_id": "suite_6af40d967b5f4198ab144a4d7e3f92ee",
+  "cells": [
+    {
+      "payload_kg": 0.0,
+      "head_force_n": 0.0,
+      "reference": true,
+      "run_id": "run_640daa7f280041a2b2634fedb356409f",
+      "status": "completed",
+      "passed": true,
+      "error": null,
+      "metrics": {
+        "arrival_error_m": 7.596503148743494e-10,
+        "end_error_m": 2.7755575615628914e-17,
+        "error_limit_m": 0.01,
+        "head_force_n": 0.0,
+        "max_hold_error_m": 7.596503148743494e-10,
+        "payload_kg": 0.0,
+        "peak_actuator_force_n": 30.0,
+        "peak_speed_m_s": 1.227292143964673
+      },
+      "evidence_hash": "269f33b00cf0717f842c8f7942eb60e3bb8c11b3116053aadc43d6d92a67afc7",
+      "bundle_url": "/api/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis/run_640daa7f280041a2b2634fedb356409f/bundle"
+    },
+    {
+      "payload_kg": 0.0,
+      "head_force_n": 1.0,
+      "reference": false,
+      "run_id": "run_cd0534a6bf314576b4de290f1ab243db",
+      "status": "completed",
+      "passed": true,
+      "error": null,
+      "metrics": {
+        "arrival_error_m": 7.596503148743494e-10,
+        "end_error_m": 0.002000000007944175,
+        "error_limit_m": 0.01,
+        "head_force_n": 1.0,
+        "max_hold_error_m": 0.0020037348868827687,
+        "payload_kg": 0.0,
+        "peak_actuator_force_n": 30.0,
+        "peak_speed_m_s": 1.227292143964673
+      },
+      "evidence_hash": "9e57d6ffda23e7c03447a171527e99b7c4f7125171779032e179b039d1c6745b",
+      "bundle_url": "/api/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis/run_cd0534a6bf314576b4de290f1ab243db/bundle"
+    },
+    {
+      "payload_kg": 0.0,
+      "head_force_n": 2.0,
+      "reference": false,
+      "run_id": "run_1adddbd76a234bcc9630bed74f45ee8a",
+      "status": "completed",
+      "passed": true,
+      "error": null,
+      "metrics": {
+        "arrival_error_m": 7.596503148743494e-10,
+        "end_error_m": 0.0040000000158882665,
+        "error_limit_m": 0.01,
+        "head_force_n": 2.0,
+        "max_hold_error_m": 0.00400746977234645,
+        "payload_kg": 0.0,
+        "peak_actuator_force_n": 30.0,
+        "peak_speed_m_s": 1.227292143964673
+      },
+      "evidence_hash": "c8e8cf33e7073a4854d3bfd5ca510fb0c8d7d9f6eb7d2519e888c5909b1ea0ec",
+      "bundle_url": "/api/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis/run_1adddbd76a234bcc9630bed74f45ee8a/bundle"
+    },
+    {
+      "payload_kg": 0.25,
+      "head_force_n": 0.0,
+      "reference": false,
+      "run_id": "run_373a085c5841462bac860159e22bb483",
+      "status": "completed",
+      "passed": true,
+      "error": null,
+      "metrics": {
+        "arrival_error_m": 0.004904984283851166,
+        "end_error_m": 0.004904999999996079,
+        "error_limit_m": 0.01,
+        "head_force_n": 0.0,
+        "max_hold_error_m": 0.004905006896745834,
+        "payload_kg": 0.25,
+        "peak_actuator_force_n": 30.0,
+        "peak_speed_m_s": 1.1059176707110399
+      },
+      "evidence_hash": "7c3c0460f921090f4e8701e18419287870064b04c5cc1ff6831c0dd4f9c52a76",
+      "bundle_url": "/api/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis/run_373a085c5841462bac860159e22bb483/bundle"
+    },
+    {
+      "payload_kg": 0.25,
+      "head_force_n": 1.0,
+      "reference": false,
+      "run_id": "run_0d438da5f5e14c76b9813062eff2ca72",
+      "status": "completed",
+      "passed": true,
+      "error": null,
+      "metrics": {
+        "arrival_error_m": 0.004904984283851166,
+        "end_error_m": 0.00690499997109173,
+        "error_limit_m": 0.01,
+        "head_force_n": 1.0,
+        "max_hold_error_m": 0.006935329478065216,
+        "payload_kg": 0.25,
+        "peak_actuator_force_n": 30.0,
+        "peak_speed_m_s": 1.1059176707110399
+      },
+      "evidence_hash": "f1ed5105bf455545a532ed7442b3a23da77106ff7c343594eabf5d554256a9e8",
+      "bundle_url": "/api/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis/run_0d438da5f5e14c76b9813062eff2ca72/bundle"
+    },
+    {
+      "payload_kg": 0.25,
+      "head_force_n": 2.0,
+      "reference": false,
+      "run_id": "run_6d3c92eb09c64b3db75a19dcabbaf067",
+      "status": "completed",
+      "passed": true,
+      "error": null,
+      "metrics": {
+        "arrival_error_m": 0.004904984283851166,
+        "end_error_m": 0.008904999942187464,
+        "error_limit_m": 0.01,
+        "head_force_n": 2.0,
+        "max_hold_error_m": 0.008965658717798586,
+        "payload_kg": 0.25,
+        "peak_actuator_force_n": 30.0,
+        "peak_speed_m_s": 1.1059176707110399
+      },
+      "evidence_hash": "a126476ed2a0ebc57f022b94a7bb8b2bbce9b457d677c26de2dec767fe5dd898",
+      "bundle_url": "/api/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis/run_6d3c92eb09c64b3db75a19dcabbaf067/bundle"
+    },
+    {
+      "payload_kg": 0.5,
+      "head_force_n": 0.0,
+      "reference": false,
+      "run_id": "run_85d7f05cdc2b4fd69ad09e54d8dc2cfe",
+      "status": "completed",
+      "passed": true,
+      "error": null,
+      "metrics": {
+        "arrival_error_m": 0.009810020984027473,
+        "end_error_m": 0.009809999999948665,
+        "error_limit_m": 0.01,
+        "head_force_n": 0.0,
+        "max_hold_error_m": 0.009810178137144243,
+        "payload_kg": 0.5,
+        "peak_actuator_force_n": 30.0,
+        "peak_speed_m_s": 0.993928485639423
+      },
+      "evidence_hash": "18641a58629894602278c0aad4623b3b86fb753cd76fc151573d9d091e58b840",
+      "bundle_url": "/api/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis/run_85d7f05cdc2b4fd69ad09e54d8dc2cfe/bundle"
+    },
+    {
+      "payload_kg": 0.5,
+      "head_force_n": 1.0,
+      "reference": false,
+      "run_id": "run_2da0701a124f4e7889eb834cacd7baab",
+      "status": "completed",
+      "passed": false,
+      "error": null,
+      "metrics": {
+        "arrival_error_m": 0.009810020984027473,
+        "end_error_m": 0.011809997100756225,
+        "error_limit_m": 0.01,
+        "head_force_n": 1.0,
+        "max_hold_error_m": 0.011879573807505872,
+        "payload_kg": 0.5,
+        "peak_actuator_force_n": 30.0,
+        "peak_speed_m_s": 0.993928485639423
+      },
+      "evidence_hash": "6d34713ca6341a309c9bbb7053a65a751e69034bb4920e96f3d6b9fbfabc2797",
+      "bundle_url": "/api/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis/run_2da0701a124f4e7889eb834cacd7baab/bundle"
+    },
+    {
+      "payload_kg": 0.5,
+      "head_force_n": 2.0,
+      "reference": false,
+      "run_id": "run_ff8d397ad08d4d02b4a5705b5d5cb5aa",
+      "status": "completed",
+      "passed": false,
+      "error": null,
+      "metrics": {
+        "arrival_error_m": 0.009810020984027473,
+        "end_error_m": 0.013809994201563841,
+        "error_limit_m": 0.01,
+        "head_force_n": 2.0,
+        "max_hold_error_m": 0.013949148343231577,
+        "payload_kg": 0.5,
+        "peak_actuator_force_n": 30.0,
+        "peak_speed_m_s": 0.993928485639423
+      },
+      "evidence_hash": "54a766bb6c23fc7144a874691bf27a668066ab0fe3efa464741e23dbd8be3c5a",
+      "bundle_url": "/api/projects/project_3b75e02105b0465c9aedaa56294c5b6e/analysis/run_ff8d397ad08d4d02b4a5705b5d5cb5aa/bundle"
+    }
+  ],
+  "status": "completed",
+  "reference_passed": true,
+  "counts": {
+    "total": 9,
+    "passed": 7,
+    "failed": 2,
+    "pending": 0,
+    "blocked": 0
+  },
+  "verification": {
+    "shared_fixture_sha256": "d864c87b145e0e889c9ed7c9cf05c7c83cafcb0b0287d34c1807610903553cc5",
+    "arrived_within_tolerance": 9,
+    "full_load_peak_absolute_actuator_force_during_hold_n": 17.11557844404953,
+    "local_bundle": "packaging-lift-500g-2n.zip",
+    "bundle_sha256": "ca98a3bfbee8b83d13d17fa71ab292d521a81573893f2f157a4651e4f630c716",
+    "offline_replay": {
+      "verified": true,
+      "format": "failureforge.project-analysis.v1",
+      "id": "run_ff8d397ad08d4d02b4a5705b5d5cb5aa",
+      "evidence_hash": "54a766bb6c23fc7144a874691bf27a668066ab0fe3efa464741e23dbd8be3c5a",
+      "project_revision": 1,
+      "adapter": "packaging_lift",
+      "files": 2,
+      "resources": [],
+      "rerun": {
+        "same_runtime_identity": true,
+        "exact_result_match": true,
+        "passed": false,
+        "summary": {
+          "payload_kg": 0.5,
+          "head_force_n": 2.0,
+          "arrival_error_m": 0.009810020984027473,
+          "max_hold_error_m": 0.013949148343231577,
+          "end_error_m": 0.013809994201563841,
+          "error_limit_m": 0.01,
+          "peak_actuator_force_n": 30.0,
+          "peak_speed_m_s": 0.993928485639423
+        }
+      }
+    }
+  }
+}

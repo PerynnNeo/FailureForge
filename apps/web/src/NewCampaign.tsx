@@ -5,6 +5,8 @@ import { Icon, Notice } from './components';
 import type { Backend, CampaignSpec, Catalog, Health, Method } from './types';
 import { workerFor } from './workerStatus';
 import ReferencePreview from './ReferencePreview';
+import { HelpTutorial } from './HelpTutorial';
+import { campaignSetupGuide } from './campaignTutorial';
 
 export default function NewCampaign({ catalog, health, onClose, onCreated }: { catalog: Catalog | null; health: Health | null; onClose: () => void; onCreated: (id: string) => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -29,25 +31,31 @@ export default function NewCampaign({ catalog, health, onClose, onCreated }: { c
     try { const result = await post<{ campaign_id: string }>('/campaigns', spec, submission.current.key); onCreated(result.campaign_id); }
     catch (e) { setError((e as Error).message); setBusy(false); }
   }
-  return <dialog ref={dialog} className="campaign-dialog" onCancel={onClose} onClick={e => { if (e.target === dialog.current && !busy) onClose(); }} aria-labelledby="new-campaign-title">
+  return <dialog ref={dialog} className="campaign-dialog" onCancel={e => { if (e.target === dialog.current) onClose(); }} onClick={e => { if (e.target === dialog.current && !busy) onClose(); }} aria-labelledby="new-campaign-title">
+    <div className="dialog-heading">
+      <div><span className="eyebrow">CONTROLLED EXPERIMENT</span><h2 id="new-campaign-title">New campaign</h2><p>A bounded search for a reproducible change in behavior.</p></div>
+      <div className="analysis-actions">
+        <HelpTutorial title="Campaign tutorial" steps={campaignSetupGuide}/>
+        <button type="button" className="icon-button" aria-label="Close new campaign" onClick={onClose} disabled={busy}><Icon name="close"/></button>
+      </div>
+    </div>
     <form onSubmit={submit}>
-      <div className="dialog-heading"><div><span className="eyebrow">CONTROLLED EXPERIMENT</span><h2 id="new-campaign-title">New campaign</h2><p>A bounded search for a reproducible change in behavior.</p></div><button type="button" className="icon-button" aria-label="Close new campaign" onClick={onClose} disabled={busy}><Icon name="close"/></button></div>
       <div className="dialog-content">
         {error && <Notice tone="error">{error}</Notice>}
-        <label className="field">Campaign name<input autoFocus value={name} onChange={e => setName(e.target.value)} required maxLength={100}/></label>
-        <fieldset className="backend-options"><legend>Execution mode</legend>
+        <label className="field" data-tour="campaign-name">Campaign name<input autoFocus value={name} onChange={e => setName(e.target.value)} required maxLength={100}/></label>
+        <fieldset className="backend-options" data-tour="campaign-mode"><legend>Execution mode</legend>
           <label className={`radio-card ${backend === 'synthetic' ? 'chosen' : ''}`}><input type="radio" name="backend" checked={backend === 'synthetic'} onChange={() => setBackend('synthetic')}/><div><strong>Synthetic validation</strong><span>{syntheticOnline ? 'Synthetic worker connected.' : 'Queues until a synthetic worker connects.'}</span></div><span className="mini-tag">CPU</span></label>
           <label className={`radio-card ${backend === 'libero' ? 'chosen' : ''} ${!canUseRobot ? 'disabled' : ''}`}><input type="radio" name="backend" checked={backend === 'libero'} onChange={() => setBackend('libero')} disabled={!canUseRobot}/><div><strong>LIBERO robot experiment</strong><span>{canUseRobot ? 'Qualified robot worker connected.' : 'Requires a qualified LIBERO worker on your execution PC.'}</span></div><span className="mini-tag">GPU</span></label>
         </fieldset>
         <ReferencePreview/>
         {backend === 'synthetic' && <Notice>Synthetic runs validate the software workflow. Their outcomes and traces are generated test data and provide no evidence about robot performance.</Notice>}
-        <div className="form-grid"><label className="field">Search method<select value={method} onChange={e => setMethod(e.target.value as Method)}><option value="sobol_local_mix">Sobol + local search</option><option value="sobol">Scrambled Sobol</option><option value="random">Uniform random</option></select></label><label className="field">Candidate budget<select value={count} onChange={e => setCount(Number(e.target.value) as CampaignSpec['candidate_count'])}><option value={8}>8 candidates · 16 search episodes</option><option value={16}>16 candidates · 32 search episodes</option><option value={32}>32 candidates · 64 search episodes</option></select></label></div>
+        <div className="form-grid"><label className="field" data-tour="campaign-method">Search method<select value={method} onChange={e => setMethod(e.target.value as Method)}><option value="sobol_local_mix">Sobol + local search</option><option value="sobol">Scrambled Sobol</option><option value="random">Uniform random</option></select></label><label className="field" data-tour="campaign-budget">Candidate budget<select value={count} onChange={e => setCount(Number(e.target.value) as CampaignSpec['candidate_count'])}><option value={8}>8 candidates · 16 search episodes</option><option value={16}>16 candidates · 32 search episodes</option><option value={32}>32 candidates · 64 search episodes</option></select></label></div>
         <p className="field-help">{method === 'sobol_local_mix' ? count <= 16 ? 'This budget uses only the Sobol warm-up. Local adaptation starts at candidate 17; choose 32 candidates to exercise it.' : 'Use 16 Sobol warm-up candidates, then mix global proposals with local changes around observed failures.' : method === 'sobol' ? 'Explore the domain with a seeded, scrambled Sobol sequence.' : 'Draw independent seeded samples uniformly across the declared domain.'}</p>
-        <div className="domain-fields"><div className="form-section-heading"><h3>Scene-change domain</h3><span>Reference: 0 cm · 1.00×</span></div><label className="range-field"><span>Camera displacement <strong>±{camera.toFixed(1)} cm</strong></span><input type="range" min="0.5" max={Math.min(4, (catalog?.domain.main_camera_dx_m[1] ?? .04) * 100)} step="0.5" value={camera} onChange={e => setCamera(Number(e.target.value))}/><small>Main camera translation; wrist camera pose stays fixed.</small></label><label className="range-field"><span>Lighting intensity <strong>{(1 - lighting / 100).toFixed(2)}–{(1 + lighting / 100).toFixed(2)}×</strong></span><input type="range" min="5" max="30" step="5" value={lighting} onChange={e => setLighting(Number(e.target.value))}/><small>Scale scene lighting from its reference values.</small></label></div>
-        <label className="field seed-field">Random seed<input type="number" min="0" max="2147483647" step="1" value={seed} onChange={e => setSeed(Number(e.target.value))} required/><span className="field-help">Saved with the campaign for reproducible proposals.</span></label>
+        <div className="domain-fields"><div className="form-section-heading"><h3>Scene-change domain</h3><span>Reference: 0 cm · 1.00×</span></div><label className="range-field" data-tour="campaign-camera"><span>Camera displacement <strong>±{camera.toFixed(1)} cm</strong></span><input type="range" min="0.5" max={Math.min(4, (catalog?.domain.main_camera_dx_m[1] ?? .04) * 100)} step="0.5" value={camera} onChange={e => setCamera(Number(e.target.value))}/><small>Main camera translation; wrist camera pose stays fixed.</small></label><label className="range-field" data-tour="campaign-light"><span>Lighting intensity <strong>{(1 - lighting / 100).toFixed(2)}–{(1 + lighting / 100).toFixed(2)}×</strong></span><input type="range" min="5" max="30" step="5" value={lighting} onChange={e => setLighting(Number(e.target.value))}/><small>Scale scene lighting from its reference values.</small></label></div>
+        <label className="field seed-field" data-tour="campaign-seed">Random seed<input type="number" min="0" max="2147483647" step="1" value={seed} onChange={e => setSeed(Number(e.target.value))} required/><span className="field-help">Saved with the campaign for reproducible proposals.</span></label>
         <div className="budget-preview"><Icon name="layers"/><div><strong>{count * 2} search episodes</strong><span>Plus 2 reference checks, up to 32 reduction + 20 confirmation episodes, and 2 shared infrastructure retries.</span></div><b>{count * 2 + 56}<small>attempt ceiling</small></b></div>
       </div>
-      <div className="dialog-footer"><button className="button secondary" type="button" onClick={onClose} disabled={busy}>Cancel</button><button className="button primary" type="submit" disabled={busy || !name.trim() || (backend === 'libero' && !canUseRobot)}>{busy ? <span className="spinner"/> : <Icon name="play" size={16}/>} {busy ? 'Creating campaign…' : backend === 'synthetic' ? 'Start synthetic validation' : 'Start robot campaign'}</button></div>
+      <div className="dialog-footer"><button className="button secondary" type="button" onClick={onClose} disabled={busy}>Cancel</button><button className="button primary" type="submit" data-tour="campaign-start" disabled={busy || !name.trim() || (backend === 'libero' && !canUseRobot)}>{busy ? <span className="spinner"/> : <Icon name="play" size={16}/>} {busy ? 'Creating campaign…' : backend === 'synthetic' ? 'Start synthetic validation' : 'Start robot campaign'}</button></div>
     </form>
   </dialog>;
 }

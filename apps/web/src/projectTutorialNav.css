@@ -1,0 +1,26 @@
+.projects-workspace .section-heading:has(> .project-heading-actions) {
+  flex-wrap: wrap;
+}
+
+.projects-workspace .section-heading:has(> .project-heading-actions) > div:first-child {
+  flex: 1 1 24rem;
+}
+
+.project-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.lift-matrix-heading {
+  scroll-margin-top: 88px;
+}
+
+@media (max-width: 760px) {
+  .project-heading-actions {
+    justify-content: flex-start;
+  }
+}

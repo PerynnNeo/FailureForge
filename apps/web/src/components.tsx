@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { label } from './api';
 
-type IconName = 'overview' | 'campaign' | 'runtime' | 'plus' | 'search' | 'close' | 'check' | 'download' | 'play' | 'pause' | 'refresh' | 'sliders' | 'info' | 'terminal' | 'external' | 'chevron' | 'alert' | 'layers' | 'file' | 'camera' | 'menu' | 'stop' | 'copy';
+type IconName = 'overview' | 'campaign' | 'runtime' | 'plus' | 'search' | 'close' | 'check' | 'download' | 'play' | 'pause' | 'refresh' | 'sliders' | 'info' | 'help' | 'terminal' | 'external' | 'chevron' | 'alert' | 'layers' | 'file' | 'camera' | 'menu' | 'stop' | 'copy';
 const paths: Record<IconName, ReactNode> = {
   overview: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
   campaign: <><path d="M4 20V4m0 16h16M8 15l4-5 4 3 4-7"/><circle cx="8" cy="15" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="16" cy="13" r="1"/></>,
@@ -12,6 +12,7 @@ const paths: Record<IconName, ReactNode> = {
   refresh: <><path d="M20 10a8 8 0 0 0-14-5L3 8m0-5v5h5M4 14a8 8 0 0 0 14 5l3-3m0 5v-5h-5"/></>,
   sliders: <><path d="M5 3v4m0 6v8M12 3v10m0 6v2M19 3v2m0 6v10"/><circle cx="5" cy="10" r="3"/><circle cx="12" cy="16" r="3"/><circle cx="19" cy="8" r="3"/></>,
   info: <><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></>,
+  help: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.55 2.55 0 0 1 5 .6c0 1.4-.9 2.1-1.7 2.7-.6.5-.8.9-.8 1.6"/><circle cx="12" cy="17" r=".85" fill="currentColor" stroke="none"/></>,
   terminal: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></>,
   external: <><path d="M14 3h7v7m0-7L10 14M11 3H4v17h17v-7"/></>,
   chevron: <path d="m9 5 7 7-7 7"/>, alert: <><path d="m12 3 10 18H2zM12 9v5m0 3v.1"/></>,

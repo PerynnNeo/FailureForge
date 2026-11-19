@@ -5,7 +5,9 @@ import { fieldCaption, fieldText, inputFields, parseFields } from './analysisInp
 import type { Adapter, InputField, Inputs, RunDetail, RunInput, RunSummary } from './analysisInputs';
 import AnalysisResults from './AnalysisResults';
 import ProjectSweeps from './ProjectSweeps';
+import EnvironmentMatrix from './EnvironmentMatrix';
 import type { Project } from './projectTypes';
+import type { ProjectTourCapabilities } from './projectTutorial';
 
 type Catalog = { adapters: Adapter[]; runs: RunSummary[] };
 type Rechecks = { suite_id: string | null; run_ids: string[]; previous_run_ids: string[]; more_available: boolean };
@@ -49,11 +51,20 @@ function InputControl({ field, draft, update, project }: {
   </label>;
 }
 
-export default function ProjectAnalysis({ project, dirty, reload, notify }: {
-  project: Project; dirty: boolean; reload: () => Promise<void>; notify: (message: string) => void;
+export default function ProjectAnalysis({ project, dirty, reload, notify, matrixRequest, onTourCapabilities }: {
+  project: Project; dirty: boolean; reload: () => Promise<void>; notify: (message: string) => void; matrixRequest: number;
+  onTourCapabilities: (capabilities: ProjectTourCapabilities | null) => void;
 }) {
   const base = `/projects/${encodeURIComponent(project.id)}/analysis`;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [matrixVisible, setMatrixVisible] = useState(false);
+  const hasModels = Boolean(catalog?.adapters.length);
+  const canRunMatrix = Boolean(catalog?.adapters.some(item => item.id === 'packaging_lift'));
+  const hasMatrix = canRunMatrix || matrixVisible;
+  const runCount = catalog?.runs.length;
+  useEffect(() => {
+    onTourCapabilities(runCount === undefined ? null : { hasModels, hasMatrix, runCount });
+  }, [onTourCapabilities, hasModels, hasMatrix, runCount]);
   const [catalogError, setCatalogError] = useState('');
   const [error, setError] = useState('');
   const [adapterId, setAdapterId] = useState('');
@@ -78,10 +89,13 @@ export default function ProjectAnalysis({ project, dirty, reload, notify }: {
     void request<Catalog>(base).then(data => {
       if (!current) return;
       setCatalog(data); setCatalogError('');
-      if (data.adapters.length && !data.adapters.some(item => item.id === adapterId)) choose(data.adapters[0]);
+      if (data.adapters.length && !data.adapters.some(item => item.id === adapterId)) {
+        const preferred = project.robot_template === 'packaging_lift_v1' && data.adapters.find(item => item.id === 'packaging_lift');
+        choose(preferred || data.adapters[0]);
+      }
     }).catch((failure: Error) => { if (current) setCatalogError(failure.message); });
     return () => { current = false; };
-  }, [base, project.revision, refreshIndex, adapterId, choose]);
+  }, [base, project.revision, project.robot_template, refreshIndex, adapterId, choose]);
   const activeRuns = catalog?.runs.some(run => run.status === 'queued' || run.status === 'running');
   useEffect(() => {
     if (!activeRuns) return;
@@ -168,12 +182,15 @@ export default function ProjectAnalysis({ project, dirty, reload, notify }: {
     {error && <Notice tone="error">{error}</Notice>}
     {catalogError && <Notice tone="error">{catalogError} <button type="button" className="project-inline-button" onClick={refresh}>Refresh analysis</button></Notice>}
     {!catalog ? !catalogError && <Loading/> : <>
+      <EnvironmentMatrix key={project.id} projectId={project.id} revision={project.revision}
+        available={canRunMatrix} onVisibilityChange={setMatrixVisible}
+        disabled={dirty || busy} onQueue={refresh} revealRequest={matrixRequest}/>
       <section className="project-panel"><header className="project-panel-header"><div>
         <h3>Run an analysis</h3><p>Each run records its inputs and saved project revision {project.revision}. The initial values are examples. For calibration, replace the example data with your own measurements.</p>
       </div></header>
       {adapter ? <form ref={formRef} className="analysis-form" onSubmit={event => { event.preventDefault(); void execute(false); }}>
         <fieldset disabled={busy}><div className="project-form-stack">
-          <label className="project-field"><span>Analysis model</span><select value={adapterId} onChange={event => {
+          <label className="project-field" data-tour="project-model"><span>Analysis model</span><select value={adapterId} onChange={event => {
             const next = catalog.adapters.find(item => item.id === event.target.value); if (next) choose(next);
           }}>{catalog.adapters.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select><small>{adapter.description}</small></label>
           <label className="project-field"><span>Run label</span><input required maxLength={120} value={runLabel} onChange={event => setRunLabel(event.target.value)}/></label>
@@ -195,14 +212,14 @@ export default function ProjectAnalysis({ project, dirty, reload, notify }: {
             </div>;
           })}</div>
           {usesTimeConstant && <p className="small muted">The velocity-servo gain is the reciprocal of the supplied time constant. Use one commanded rotational joint matching the measurement.</p>}
-          <details className="analysis-disclosure"><summary>Model input specification</summary><pre>{JSON.stringify(adapter.schema, null, 2)}</pre></details>
+          <details className="analysis-disclosure"><summary data-tour="project-qualification">Model input specification</summary><pre>{JSON.stringify(adapter.schema, null, 2)}</pre></details>
           {dirty && <Notice>Save project changes before starting an analysis.</Notice>}
-          <div className="analysis-actions">
+          <div className="analysis-actions" data-tour="project-run">
             <button className="button primary" type="submit" disabled={dirty}>{busy ? 'Working…' : 'Run analysis'}</button>
             <button className="button secondary" type="button" disabled={suite.length >= 16} onClick={addTest}>Add to suite</button>
           </div>
         </div></fieldset>
-      </form> : <p className="card-pad">No analysis models are available for this project type.</p>}
+      </form> : <p className="card-pad" data-tour="project-model">No analysis models are available for this project type.</p>}
       </section>
       {suite.length > 0 && <section className="project-panel"><header className="project-panel-header"><div><h3>Test suite</h3><p>Run the saved inputs below on project revision {project.revision}.</p></div></header>
         <div className="project-form-stack"><ol className="analysis-suite">{suite.map((test, index) => <li key={index}>
@@ -210,10 +227,10 @@ export default function ProjectAnalysis({ project, dirty, reload, notify }: {
           <button type="button" disabled={busy} className="project-inline-button" aria-label={`Remove ${test.label}`} onClick={() => setSuite(items => items.filter((_, i) => i !== index))}>Remove</button>
         </li>)}</ol><button type="button" className="button primary" disabled={dirty || busy || suite.some(test => !catalog.adapters.some(item => item.id === test.adapter))} onClick={() => void execute(true)}>Run suite ({suite.length})</button></div>
       </section>}
-      <ProjectSweeps projectId={project.id} revision={project.revision} adapter={adapterId} draft={draft} bindings={bindings}
+      {adapterId !== 'packaging_lift' && <ProjectSweeps projectId={project.id} revision={project.revision} adapter={adapterId} draft={draft} bindings={bindings}
         currentTest={currentTest} disabled={dirty || busy} onQueue={refresh} onRun={id => {
           setSelected(id); refresh(); document.getElementById('analysis-history')?.scrollIntoView({ block: 'start' });
-        }}/>
+        }}/>}
       {promotion && <section className="project-panel">
         <header className="project-panel-header"><div><h3>Calibration rechecks · revision {promotion.revision}</h3>
           <p>{promotion.rechecks.run_ids.length ? 'Inspect each check with the newly calibrated parameter.' : 'No checks on the previous revision referenced this parameter.'}</p>

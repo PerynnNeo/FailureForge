@@ -2,6 +2,8 @@
 
 A local workspace for preparing hardware tests and investigating failures of a supported robot policy in simulation.
 
+The [packaging lift example](examples/packaging-lift/README.md) tests one fixed prototype across nine external operating conditions. Choose a tray payload and packing-head force in the workbench to see whether the lift reaches its target and holds position through the pressing cycle.
+
 Projects accept concepts, CAD designs, robot models, existing simulations, and physical prototypes. **Analysis & runs** executes bounded studies, stores immutable evidence, groups studies into suites and compares project revisions. The built-in hand and compatible primitive URDF models support articulated motion. Structural projects support rectangular cantilever bending, and thermal projects support steady one-dimensional conduction. Separate calibration workflows estimate a material property or fit a joint response against held-out physical measurements.
 
 The fixed LIBERO/SmolVLA benchmark runs separately. It supports three search strategies, matched reference comparisons, bounded reduction, held-out confirmation, fresh paired reruns, recorded cameras and verified case exports. Its live worker checks the target host's qualification record before starting a campaign. [Watch the 42-second demo](output/demo/failureforge-demo.mp4) · [See measured results from the RTX 5090](docs/execution-host-results.md) · [Set up an execution host](docs/robotics-setup.md).

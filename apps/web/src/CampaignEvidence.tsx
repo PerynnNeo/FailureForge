@@ -18,7 +18,7 @@ export default function CampaignEvidence({ campaign }: { campaign: Campaign }) {
   return <section className="card episode-evidence">
     <div className="card-heading">
       <h3>Episode evidence</h3>
-      {episode && <select aria-label="Recorded episode" value={episode.id} onChange={event => setSelectedId(event.target.value)}>
+      {episode && <select data-tour="campaign-episode" aria-label="Recorded episode" value={episode.id} onChange={event => setSelectedId(event.target.value)}>
         {episodes.map((item, index) => {
           const number = item.candidate_id ? candidateNumbers.get(item.candidate_id) : undefined;
           const stage = number === undefined ? label(item.phase) : `Candidate ${number}`;
