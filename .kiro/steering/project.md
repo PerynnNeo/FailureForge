@@ -1,6 +1,6 @@
 # FailureForge project constraints
 
-These specifications were prepared during implementation with Codex. They are inputs for future Kiro work, not evidence that Kiro already performed development.
+The initial specifications were prepared with Codex. Kiro Agent subsequently implemented the campaign condition comparison and wrote tests for changing conditions and synchronized replay. Local review corrected the interpretation of solver thresholds and playback of unequal recordings. [Implementation and review history](https://github.com/PerynnNeo/FailureForge/pull/1)
 
 Keep contracts, queue logic and artifact inspection importable without CUDA or model weights. The real execution target is a separate RTX 5090 PC under the pinned Linux runtime. Laptop diagnostics must remain visibly synthetic.
 
