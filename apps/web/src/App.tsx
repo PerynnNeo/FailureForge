@@ -3,11 +3,14 @@ import { formatTime, label, methodName, post, request, shortId } from './api';
 import { BackendBadge, Empty, Icon, Loading, Notice, SectionHeading, Status } from './components';
 import { ScatterPlot } from './Charts';
 import { candidateFailureCount } from './candidateOutcomes';
-import NewCampaign from './NewCampaign';
+import NewBenchmarkCampaign, { NewProjectCampaign } from './NewCampaign';
+import { CampaignList, CampaignTable, NewCampaignLink, useProjectBatches } from './CampaignWorkspace';
+import { activeCampaignStatus, campaignHistory } from './campaignHistory';
+import type { CampaignRow, ProjectBatch } from './campaignHistory';
 import CaseInspector from './CaseInspector';
 import CampaignEvidence from './CampaignEvidence';
 import { HelpTutorial } from './HelpTutorial';
-import { campaignListGuide, campaignDetailGuide } from './campaignTutorial';
+import { campaignDetailGuide } from './campaignTutorial';
 import Projects from './Projects';
 import type { Campaign, Catalog, Health } from './types';
 import { workerFor, workerLabel } from './workerStatus';
@@ -16,14 +19,16 @@ import './styles.css';
 const defaultDomain = { main_camera_dx_m: [-.04, .04] as [number, number], light_scale: [.7, 1.3] as [number, number] };
 const navigate = (path: string) => { window.location.hash = path; };
 const decodeSegment = (value: string) => { try { return decodeURIComponent(value); } catch { return value; } };
-const activeStatus = (status: string) => ['queued', 'running', 'searching', 'reducing', 'confirming', 'pending', 'cancelling'].includes(status);
+
 
 export default function App({ route }: { route: string }) {
   const [health, setHealth] = useState<Health | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [newCampaign, setNewCampaign] = useState(false);
+  const [benchmarkOpen, setBenchmarkOpen] = useState(false);
+  const [benchmarkError, setBenchmarkError] = useState('');
+  const [benchmarksLoaded, setBenchmarksLoaded] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [toast, setToast] = useState('');
   const refresh = useCallback(async () => {
@@ -31,7 +36,8 @@ export default function App({ route }: { route: string }) {
     setConnected(h.status === 'fulfilled');
     if (h.status === 'fulfilled') setHealth(h.value);
     if (c.status === 'fulfilled') setCatalog(c.value);
-    if (list.status === 'fulfilled') setCampaigns(list.value.items);
+    if (list.status === 'fulfilled') { setCampaigns(list.value.items); setBenchmarksLoaded(true); setBenchmarkError(''); }
+    else setBenchmarkError(`Bowl benchmarks could not load. ${list.reason instanceof Error ? list.reason.message : ''}`);
   }, []);
   useEffect(() => { void refresh(); const timer = window.setInterval(() => { if (!document.hidden) void refresh(); }, 4000); return () => clearInterval(timer); }, [refresh]);
   useEffect(() => { setMobileMenu(false); }, [route]);
@@ -39,67 +45,66 @@ export default function App({ route }: { route: string }) {
   const section = route.startsWith('/projects') ? 'projects' : route.startsWith('/campaign') || route.startsWith('/case') ? 'campaigns' : route === '/runtime' ? 'runtime' : 'overview';
   const campaignId = route.startsWith('/campaigns/') ? decodeSegment(route.split('/')[2]) : null;
   const caseId = route.startsWith('/cases/') ? decodeSegment(route.split('/')[2]) : null;
-  const createButton = <button data-tour="campaign-create" className="button primary" onClick={() => setNewCampaign(true)}><Icon name="plus" size={18}/>New campaign</button>;
+  const projectQuery = section === 'projects' ? new URLSearchParams(route.split('?')[1]) : null;
+  const setupBatch = projectQuery?.get('setup') === 'campaign';
+  const savedBatch = Boolean(projectQuery?.get('batch'));
+  const navSection = setupBatch || savedBatch ? 'campaigns' : section;
+  const batches = useProjectBatches(section === 'overview' || (section === 'campaigns' && !campaignId && !caseId));
+  const history = campaignHistory(batches.items ?? [], campaigns);
+  const historyLoading = (!batches.items && !batches.error) || (!benchmarksLoaded && !benchmarkError);
+  const historyError = [batches.error && `Project campaigns could not load. ${batches.error}`, benchmarkError].filter(Boolean).join(' ');
+  const retryHistory = () => { batches.retry(); void refresh(); };
   return <div className="app-shell">
     {mobileMenu && <button className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setMobileMenu(false)}/>}
     <aside className={`sidebar ${mobileMenu ? 'open' : ''}`}>
       <a className="brand" href="#/" aria-label="FailureForge home"><span className="brand-mark"><span/><span/><span/></span><span>Failure<span className="brand-light">Forge</span><small>ROBOTICS INVESTIGATION</small></span></a>
       <div className="workspace-label">WORKSPACE <span>LOCAL</span></div>
       <nav aria-label="Main navigation">
-        <a className={section === 'overview' ? 'active' : ''} href="#/workspace" aria-current={section === 'overview' ? 'page' : undefined}><Icon name="overview"/>Overview</a>
-        <a className={section === 'projects' ? 'active' : ''} href="#/projects" aria-current={section === 'projects' ? 'page' : undefined}><Icon name="layers"/>Projects</a>
-        <a className={section === 'campaigns' ? 'active' : ''} href="#/campaigns" aria-current={section === 'campaigns' ? 'page' : undefined}><Icon name="campaign"/>Campaigns<span className="nav-count">{campaigns.length}</span></a>
-        <a className={section === 'runtime' ? 'active' : ''} href="#/runtime" aria-current={section === 'runtime' ? 'page' : undefined}><Icon name="runtime"/>Runtime & setup</a>
+        <a className={navSection === 'overview' ? 'active' : ''} href="#/workspace" aria-current={navSection === 'overview' ? 'page' : undefined}><Icon name="overview"/>Overview</a>
+        <a className={navSection === 'projects' ? 'active' : ''} href="#/projects" aria-current={navSection === 'projects' ? 'page' : undefined}><Icon name="layers"/>Projects</a>
+        <a className={navSection === 'campaigns' ? 'active' : ''} href="#/campaigns" aria-current={navSection === 'campaigns' ? 'page' : undefined}><Icon name="campaign"/>Campaigns{batches.items && benchmarksLoaded && !historyError && <span className="nav-count">{history.length}</span>}</a>
+        <a className={navSection === 'runtime' ? 'active' : ''} href="#/runtime" aria-current={navSection === 'runtime' ? 'page' : undefined}><Icon name="runtime"/>Runtime & setup</a>
       </nav>
-      <div className="sidebar-context"><span className="eyebrow">FROM DESIGN TO EVIDENCE</span><strong>Start at your stage.<br/>Prepare a meaningful test.</strong><p>Projects run supported models.<br/>Campaigns run the pinned benchmark.</p><div className="sidebar-coordinate"><span>PLAN</span><i/><span>TEST</span></div></div>
+      <div className="sidebar-context"><span className="eyebrow">FROM DESIGN TO EVIDENCE</span><strong>Start at your stage.<br/>Prepare a meaningful test.</strong><p>Projects hold your prototype and models.<br/>Campaigns test them across conditions.</p><div className="sidebar-coordinate"><span>PLAN</span><i/><span>TEST</span></div></div>
       <div className="sidebar-bottom"><div className={`connection-dot ${connected && health?.worker.online ? 'online' : ''}`}/><div><strong>{connected === null ? 'Connecting to service' : !connected ? 'API disconnected' : workerLabel(health)}</strong><span>{connected ? 'Local execution workspace' : 'Start your local API to connect'}</span></div></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileMenu(true)}><Icon name="menu"/></button><span>Workspace</span><Icon name="chevron" size={13}/><strong>{section === 'projects' ? route === '/projects/new' ? 'New project' : route.startsWith('/projects/') ? 'Project detail' : 'Projects' : section === 'overview' ? 'Overview' : section === 'runtime' ? 'Runtime & setup' : caseId ? 'Case investigation' : campaignId ? 'Campaign detail' : 'Campaigns'}</strong></div><div className="topbar-right"><span className="development-label">DEVELOPMENT WORKSPACE</span><div className="avatar" aria-label="Local workspace">FF</div></div></header>
+      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileMenu(true)}><Icon name="menu"/></button><span>Workspace</span><Icon name="chevron" size={13}/><strong>{setupBatch ? 'Campaign setup' : savedBatch ? 'Campaign results' : section === 'projects' ? route === '/projects/new' ? 'New project' : route.startsWith('/projects/') ? 'Project detail' : 'Projects' : section === 'overview' ? 'Overview' : section === 'runtime' ? 'Runtime & setup' : caseId ? 'Case investigation' : campaignId === 'new' ? 'New campaign' : campaignId ? 'Bowl benchmark' : 'Campaigns'}</strong></div><div className="topbar-right"><span className="development-label">DEVELOPMENT WORKSPACE</span><div className="avatar" aria-label="Local workspace">FF</div></div></header>
       <main id="main-content">
         {connected === false && <div className="connection-banner" role="status"><Icon name="info" size={18}/><span>API disconnected. Saved investigations will appear when the local service is running.</span><button onClick={() => void refresh()}>Retry connection</button></div>}
-        {section === 'projects' ? <Projects route={route} notify={setToast}/> : caseId ? <CaseInspector key={caseId} id={caseId} notify={setToast}/> : campaignId ? <CampaignDetail key={campaignId} id={campaignId} notify={setToast}/> : section === 'runtime' ? <Runtime health={connected ? health : null} catalog={catalog} connected={connected} refresh={refresh}/> : section === 'campaigns' ? <CampaignList campaigns={campaigns} createButton={createButton} setupOpen={newCampaign}/> : <Overview campaigns={campaigns} health={connected ? health : null} catalog={catalog} createButton={createButton} onCreate={() => setNewCampaign(true)}/>}
+        {section === 'projects' ? <Projects route={route} notify={setToast}/> : caseId ? <CaseInspector key={caseId} id={caseId} notify={setToast}/> : campaignId === 'new' ? <NewProjectCampaign/> : campaignId ? <CampaignDetail key={campaignId} id={campaignId} notify={setToast}/> : section === 'runtime' ? <Runtime health={connected ? health : null} catalog={catalog} connected={connected} refresh={refresh}/> : section === 'campaigns' ? <CampaignList rows={history} loading={historyLoading} error={historyError} retry={retryHistory} benchmarkOpen={benchmarkOpen} onBenchmark={() => setBenchmarkOpen(true)}/> : <Overview rows={history} batches={batches.items} benchmarks={campaigns} benchmarksLoaded={benchmarksLoaded} loading={historyLoading} error={historyError} retry={retryHistory}/>}
       </main>
       <footer className="page-footer"><span>FailureForge <b>·</b> Controlled changes. Reproducible evidence.</span><span>Local-first research workspace</span></footer>
     </div>
-    {newCampaign && <NewCampaign catalog={catalog} health={connected ? health : null} onClose={() => setNewCampaign(false)} onCreated={id => { setNewCampaign(false); navigate(`/campaigns/${encodeURIComponent(id)}`); void refresh(); setToast('Campaign created. Follow its progress in this workspace.'); }}/>} 
+    {benchmarkOpen && <NewBenchmarkCampaign catalog={catalog} health={connected ? health : null} onClose={() => setBenchmarkOpen(false)} onCreated={id => { setBenchmarkOpen(false); navigate(`/campaigns/${encodeURIComponent(id)}`); void refresh(); setToast('Bowl benchmark created. Follow its progress in this workspace.'); }}/>}
     {toast && <div className="toast" role="status"><Icon name="check" size={18}/><span>{toast}</span><button aria-label="Dismiss notification" onClick={() => setToast('')}><Icon name="close" size={16}/></button></div>}
   </div>;
 }
 
-function Overview({ campaigns, health, catalog, createButton, onCreate }: { campaigns: Campaign[]; health: Health | null; catalog: Catalog | null; createButton: React.ReactNode; onCreate: () => void }) {
-  const completed = campaigns.reduce((n, c) => n + (c.budget?.completed ?? 0), 0);
-  const cases = campaigns.reduce((n, c) => n + (c.cases?.length ?? 0), 0);
-  const active = campaigns.filter(c => activeStatus(c.status)).length;
+function Overview({ rows, batches, benchmarks, benchmarksLoaded, loading, error, retry }: {
+  rows: CampaignRow[]; batches: ProjectBatch[] | null; benchmarks: Campaign[]; benchmarksLoaded: boolean;
+  loading: boolean; error: string; retry: () => void;
+}) {
   return <>
-    <SectionHeading eyebrow="INVESTIGATION WORKSPACE" title="From a design to a testable question." description="Prepare your hardware projects and inspect evidence from the pinned benchmark." action={<a className="button primary" href="#/projects/new"><Icon name="plus" size={18}/>New project</a>}/>
-    <section className="project-entry-banner"><div><span className="eyebrow">YOUR HARDWARE. YOUR STARTING POINT.</span><h3>Build the information your test needs.</h3><p>Start from an idea, CAD, a robot model, a simulation, or a physical prototype. Save the brief, source files, parameter evidence, and several test plans in one project.</p></div><a className="button secondary" href="#/projects">Open projects<Icon name="chevron" size={16}/></a></section>
-    <div className="card-heading" style={{ padding: '0 0 19px', border: 0 }}><div><h3>Existing benchmark workspace</h3><p>One pinned robot task with camera and lighting variations. Custom project preparation is separate from these campaigns.</p></div>{createButton}</div>
-    <div className="overview-grid">
-      <section className="welcome-panel"><div><span className="eyebrow">A CONTROLLED CHANGE. A CLEARER ANSWER.</span><h2>From an observed failure<br/>to a case you can reproduce.</h2><p>Search camera and lighting changes, compare matched executions, then reduce the change and run fresh inference.</p><div className="welcome-tags"><span><Icon name="camera" size={16}/>2 camera views</span><span><Icon name="sliders" size={16}/>2 scene variables</span><span><Icon name="file" size={16}/>Verifiable export</span></div></div><div className="experiment-illustration" aria-hidden="true"><div className="illustration-grid"/><div className="iso-plane plane-top"/><div className="iso-plane plane-base"/><div className="robot-base"/><div className="robot-arm arm-one"/><div className="robot-arm arm-two"/><div className="robot-joint joint-one"/><div className="robot-joint joint-two"/><div className="robot-gripper"/><div className="target-cube"/><div className="light-line"/><span className="scene-label label-camera">Δx CAMERA</span><span className="scene-label label-light">L LIGHTING</span><div className="axis-origin"/></div></section>
-      <section className="runtime-summary"><div className="card-title"><Icon name="runtime"/><span>Execution status</span><Status value={health?.worker.online ? 'ready' : 'offline'}/></div><h3>{workerLabel(health)}</h3><p>{workerFor(health, 'libero')?.online ? health?.readiness.reason : workerFor(health, 'synthetic')?.online ? 'Synthetic validation uses generated test data.' : 'Connect a campaign worker to execute the benchmark.'}</p><div className="runtime-summary-rows"><span>Library <b>LIBERO Spatial</b></span><span>Robot execution target <b>RTX 5090 PC</b></span><span>Robot qualification <b className={health?.readiness.qualified ? 'text-green' : ''}>{health?.readiness.qualified ? 'Qualified' : 'Not yet verified'}</b></span></div><a className="text-link" href="#/runtime">View runtime & setup <Icon name="external" size={14}/></a></section>
+    <SectionHeading title="Investigation workspace" description="Manage your prototype, run tests and inspect the results." action={<a className="button primary" href="#/projects/new"><Icon name="plus" size={18}/>New project</a>}/>
+    <section className="project-entry-banner"><div><h3>Projects</h3><p>Keep each prototype’s models, inputs, success criteria and individual run evidence together.</p></div><a className="button secondary" href="#/projects">Open projects<Icon name="chevron" size={16}/></a></section>
+    <div className="metrics-grid">
+      <Metric icon="campaign" title="Project campaigns" value={batches?.length ?? '—'} detail="Suites, sweeps and environment matrices"/>
+      <Metric icon="layers" title="Project runs completed" value={batches?.reduce((sum, item) => sum + item.completed, 0) ?? '—'} detail="Across saved project campaigns"/>
+      <Metric icon="search" title="Bowl benchmarks" value={benchmarksLoaded ? benchmarks.length : '—'} detail="LIBERO and synthetic campaigns"/>
+      <Metric icon="runtime" title="Benchmark episodes" value={benchmarksLoaded ? benchmarks.reduce((sum, item) => sum + (item.budget?.completed ?? 0), 0) : '—'} detail="Completed benchmark attempts"/>
     </div>
-    <div className="metrics-grid"><Metric icon="campaign" title="Campaigns" value={campaigns.length} detail={active ? `${active} currently active` : 'Bounded investigations'}/><Metric icon="layers" title="Completed episodes" value={completed} detail="All recorded execution modes"/><Metric icon="search" title="Selected cases" value={cases} detail="Observed witnesses to investigate"/><Metric icon="runtime" title="Robot readiness" value={health?.readiness.qualified ? 'Qualified' : 'Pending'} detail="Requires target-PC validation"/></div>
-    <section className="card"><div className="card-heading"><div><h3>Recent campaigns</h3><p>Your experiment history, with unsuccessful runs preserved.</p></div><a className="text-link" href="#/campaigns">View all campaigns</a></div>{campaigns.length ? <CampaignTable campaigns={campaigns.slice(0, 5)}/> : <div className="first-campaign-empty"><div className="empty-plot" aria-hidden="true"><span/><span/><span/><i/><b>+</b></div><div><h3>Your first investigation starts with a question.</h3><p>Choose a search method and a bounded scene-change domain.<br/>Every measured configuration will have a place here.</p><button className="button secondary" onClick={onCreate}><Icon name="plus" size={17}/>Create your first campaign</button></div></div>}</section>
-    <div className="bottom-grid"><section className="card protocol-card"><span className="eyebrow">THE INVESTIGATION LOOP</span><div className="protocol-steps">{[['Search', 'Explore a declared domain.'], ['Compare', 'Inspect matched evidence.'], ['Reduce', 'Find a smaller witness.'], ['Reproduce', 'Run fresh policy inference.']].map(([title, description]) => <div key={title}><span className="step-line"/><h4>{title}</h4><p>{description}</p></div>)}</div></section><section className="supported-card"><span className="eyebrow">SUPPORTED EXPERIMENT</span><strong>{catalog?.policy.repo_id ?? 'SmolVLA · LIBERO'}</strong><p>{catalog?.task.name ? label(catalog.task.name) : 'One pinned policy and task, with fixed initial states and matched reference conditions.'}</p><span>Camera & lighting perturbations</span></section></div>
+    <section className="card"><div className="card-heading"><div><h3>Recent campaigns</h3><p>Compare a project's test conditions or revisit a bowl benchmark.</p></div>
+      <div className="campaign-overview-actions"><a className="text-link" href="#/campaigns">View all campaigns</a><NewCampaignLink/></div></div>
+      {error && <div className="card-pad"><Notice tone="warning">{error} <button className="project-inline-button" onClick={retry}>Retry</button></Notice></div>}
+      {loading && <Loading/>}
+      {rows.length ? <CampaignTable rows={rows.slice(0, 5)}/> : !error && !loading && <Empty title="No campaigns yet">Choose New campaign to test a project across several conditions.</Empty>}
+    </section>
   </>;
 }
 
 function Metric({ icon, title, value, detail }: { icon: 'campaign' | 'layers' | 'search' | 'runtime'; title: string; value: number | string; detail: string }) {
   return <section className="metric"><div><span>{title}</span><Icon name={icon} size={18}/></div><strong>{value}</strong><p>{detail}</p></section>;
-}
-
-function CampaignList({ campaigns, createButton, setupOpen }: { campaigns: Campaign[]; createButton: React.ReactNode; setupOpen: boolean }) {
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('all');
-  const filtered = campaigns.filter(c => `${c.name} ${c.id}`.toLowerCase().includes(query.toLowerCase()) && (filter === 'all' || (filter === 'active' ? activeStatus(c.status) : c.backend === filter)));
-  return <><SectionHeading eyebrow="EXPERIMENT HISTORY" title="Campaigns" description="Every proposal, outcome, and unsuccessful search stays in the record." action={<div className="analysis-actions">
-    {!setupOpen && <HelpTutorial title="Campaign tutorial" steps={campaignListGuide(filtered.length > 0)}/>}{createButton}
-  </div>}/><div className="list-toolbar"><div className="search-input"><Icon name="search" size={19}/><input data-tour="campaign-search" aria-label="Search campaigns" placeholder="Search campaigns by name or ID" value={query} onChange={e => setQuery(e.target.value)}/></div><select data-tour="campaign-filter" aria-label="Filter campaigns" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">All campaigns</option><option value="active">Active campaigns</option><option value="libero">Robot experiments</option><option value="synthetic">Synthetic validations</option></select></div><section className="card">{filtered.length ? <CampaignTable campaigns={filtered}/> : <Empty title={campaigns.length ? 'No matching campaigns' : 'No campaigns yet'}>{campaigns.length ? 'Try a different name or filter.' : 'Create a campaign to explore camera and lighting changes. Synthetic validation works without a robot GPU.'}</Empty>}</section></>;
-}
-
-function CampaignTable({ campaigns }: { campaigns: Campaign[] }) {
-  return <div className="table-scroll"><table className="data-table campaign-table"><thead><tr><th>Campaign</th><th>Search method</th><th>Status</th><th>Episodes</th><th>Created</th><th><span className="sr-only">Open</span></th></tr></thead><tbody>{campaigns.map((c, index) => <tr key={c.id}><td><a data-tour={index === 0 ? 'campaign-open' : undefined} className="row-title" href={`#/campaigns/${encodeURIComponent(c.id)}`}>{c.name}</a><BackendBadge backend={c.backend}/></td><td>{methodName(c.spec?.method)}</td><td><Status value={c.status}/></td><td><span className="mono">{c.budget?.completed ?? 0}</span><small>completed</small></td><td className="muted">{formatTime(c.created_at)}</td><td><a className="icon-button" href={`#/campaigns/${encodeURIComponent(c.id)}`} aria-label={`Open ${c.name}`}><Icon name="chevron" size={18}/></a></td></tr>)}</tbody></table></div>;
 }
 
 function CampaignDetail({ id, notify }: { id: string; notify: (message: string) => void }) {
@@ -112,7 +117,7 @@ function CampaignDetail({ id, notify }: { id: string; notify: (message: string) 
   if (!campaign) return error ? <Notice tone="error">{error}</Notice> : <Loading/>;
   const candidates = campaign.candidates ?? [], budget = campaign.budget;
   const selectedCandidate = candidates.find(c => c.id === selected);
-  const activeJob = campaign.jobs?.find(j => activeStatus(j.status));
+  const activeJob = campaign.jobs?.find(j => activeCampaignStatus(j.status));
   async function cancel() { if (!activeJob) return; setCancelling(true); try { await post(`/jobs/${encodeURIComponent(activeJob.id)}/cancel`); notify('Cancellation requested. The worker will stop at a safe execution boundary.'); void refresh(); } catch (e) { setError((e as Error).message); } finally { setCancelling(false); } }
   async function resume(jobId: string) { setCancelling(true); try { await post(`/jobs/${encodeURIComponent(jobId)}/resume`); notify('Interrupted job queued to resume within its existing allowance.'); void refresh(); } catch (e) { setError((e as Error).message); } finally { setCancelling(false); } }
   return <><a className="back-link" href="#/campaigns">All campaigns</a><SectionHeading eyebrow="CAMPAIGN INVESTIGATION" title={campaign.name} description={`${methodName(campaign.spec.method)} · Seed ${campaign.spec.seed} · Created ${formatTime(campaign.created_at)}`} action={<div className="analysis-actions">

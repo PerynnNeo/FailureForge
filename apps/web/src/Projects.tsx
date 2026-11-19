@@ -5,6 +5,7 @@ import { Icon, Loading, Notice, SectionHeading } from './components';
 import { analysisOptions, assetKinds, emptyProject, projectInput, stageOptions } from './projectTypes';
 import type { AssetKind, Project, ProjectCatalog, ProjectInput, ProjectParameter, ProjectTestPlan } from './projectTypes';
 import ProjectAnalysis from './ProjectAnalysis';
+import ReplayWorkspace from './ReplayWorkspace';
 import { HelpTutorial } from './HelpTutorial';
 import { getProjectGuide, projectGuide, projectListGuide, projectSetupGuide } from './projectTutorial';
 import type { ProjectTourCapabilities } from './projectTutorial';
@@ -24,10 +25,11 @@ export default function Projects({ route, notify }: { route: string; notify: (va
   const [catalogError, setCatalogError] = useState('');
   const loadCatalog = useCallback(async () => { try { setCatalog(await request<ProjectCatalog>('/projects/catalog')); setCatalogError(''); } catch (error) { setCatalogError(message(error)); } }, []);
   useEffect(() => { void loadCatalog(); }, [loadCatalog]);
-  const id = route.startsWith('/projects/') ? decodeSegment(route.split('/')[2]) : undefined;
+  const [path, query = ''] = route.split('?');
+  const id = path.startsWith('/projects/') ? decodeSegment(path.split('/')[2]) : undefined;
   return <div className="projects-workspace">
     {catalogError && <Notice tone="warning">Project guidance could not load. {catalogError} <button className="project-inline-button" onClick={() => void loadCatalog()}>Retry</button></Notice>}
-    {id === 'new' ? <ProjectCreate catalog={catalog} notify={notify}/> : id ? <ProjectDetail key={id} id={id} analysisRoute={route.split('/')[3] === 'analysis'} catalog={catalog} notify={notify}/> : <ProjectList/>}
+    {id === 'new' ? <ProjectCreate catalog={catalog} notify={notify}/> : id ? <ProjectDetail key={id} id={id} analysisRoute={path.split('/')[3] === 'analysis'} query={query} catalog={catalog} notify={notify}/> : <ProjectList/>}
   </div>;
 }
 
@@ -45,7 +47,7 @@ function ProjectList() {
       <a href="#/projects/new" className="button primary" data-tour="project-list-new"><Icon name="plus" size={18}/>New project</a>
     </div>}/>
     <section className="project-intro"><div><span className="eyebrow">START AT YOUR STAGE</span><h3>A place for the design,<br/>the assumptions, and the test.</h3><p>Start with a concept, CAD design, robot model, existing simulation, or physical prototype. Keep requirements, files, and test plans together as your project develops.</p></div><div className="project-stage-map" aria-label="Supported entry stages">{stageOptions.map((stage, index) => <span key={stage.value}><b>{String(index + 1).padStart(2, '0')}</b>{stage.short}</span>)}</div></section>
-    <div className="project-capability-note"><Icon name="info" size={19}/><p><strong>Project analyses</strong> use explicit model inputs for motion, calibration, structural, and thermal studies. Open Analysis &amp; runs in a project to run a study. The robot policy benchmark is in <a href="#/campaigns">Campaigns</a>.</p></div>
+    <div className="project-capability-note"><Icon name="info" size={19}/><p>Open a project and choose <strong>View replays</strong> to explore its recorded results. Use <a href="#/campaigns">Campaigns</a> to test a prototype across several operating conditions and compare their outcomes.</p></div>
     {error && <div data-tour={items.length ? undefined : 'project-list-entries'}><Notice tone="error">{error} <button className="project-inline-button" onClick={() => void load()}>Try again</button></Notice></div>}
     {loading ? <div data-tour="project-list-entries"><Loading/></div> : items.length ? <>
       <div className="project-list-toolbar"><label className="search-input"><Icon name="search" size={19}/><input aria-label="Search projects" placeholder="Search your projects" value={query} onChange={event => setQuery(event.target.value)}/></label><span>{filtered.length} {filtered.length === 1 ? 'project' : 'projects'}</span></div>
@@ -106,7 +108,7 @@ const tourTab: Record<string, DetailTab> = {
   'project-history': 'analysis',
   'project-compare': 'analysis',
 };
-function ProjectDetail({ id, analysisRoute, catalog, notify }: { id: string; analysisRoute: boolean; catalog: ProjectCatalog | null; notify: (value: string) => void }) {
+function ProjectDetail({ id, analysisRoute, query, catalog, notify }: { id: string; analysisRoute: boolean; query: string; catalog: ProjectCatalog | null; notify: (value: string) => void }) {
   const [project, setProject] = useState<Project | null>(null);
   const [draft, setDraft] = useState<ProjectInput | null>(null);
   const [chosenTab, setTab] = useState<DetailTab | null>(null);
@@ -129,7 +131,7 @@ function ProjectDetail({ id, analysisRoute, catalog, notify }: { id: string; ana
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
     const beforeRouteChange = (event: Event) => {
-      const path = window.location.hash.slice(1).replace(/\/$/, '');
+      const path = window.location.hash.slice(1).split('?')[0].replace(/\/$/, '');
       const projectPath = `/projects/${encodeURIComponent(id)}`;
       if (path === projectPath || path === projectPath + '/analysis') return;
       if (!window.confirm('You have unsaved project changes. Leave this project and discard the draft?')) event.preventDefault(); };
@@ -156,6 +158,11 @@ function ProjectDetail({ id, analysisRoute, catalog, notify }: { id: string; ana
   const analysis = analysisOptions.find(item => item.value === draft.analysis_type)!;
   const isLift = project.analysis_type === 'robot_behavior' && project.robot_template === 'packaging_lift_v1';
   const projectPath = `/projects/${encodeURIComponent(id)}`;
+  const params = new URLSearchParams(query);
+  const batchId = analysisRoute ? params.get('batch') : null;
+  const runId = analysisRoute ? params.get('run') : null;
+  const viewingResults = analysisRoute && Boolean(batchId || runId || params.has('replay'));
+  const campaignSetup = analysisRoute && params.get('setup') === 'campaign';
   function showSimulations() {
     setAnalysisOpened(true);
     setMatrixRequest(previous => previous + 1);
@@ -170,6 +177,15 @@ function ProjectDetail({ id, analysisRoute, catalog, notify }: { id: string; ana
       if (analysisRoute) go(projectPath);
     }
   }
+  if (viewingResults || campaignSetup) return <>
+    <a className="back-link" href={batchId || campaignSetup ? '#/campaigns' : '#' + projectPath}>{batchId || campaignSetup ? 'All campaigns' : 'Back to project'}</a>
+    <SectionHeading eyebrow={campaignSetup ? 'NEW PROJECT CAMPAIGN' : batchId ? 'CAMPAIGN RESULTS' : 'VISUAL REPLAYS'}
+      title={project.name} description={campaignSetup ? 'Choose the conditions to test on this project revision.' : undefined}
+      action={<a className="button secondary" href={'#' + projectPath + '/analysis'}>Analysis &amp; runs</a>}/>
+    {campaignSetup ? <ProjectAnalysis project={project} dirty={dirty} reload={load} notify={notify} matrixRequest={0}
+      onTourCapabilities={setTourCapabilities} campaignSetup/> :
+      <ReplayWorkspace key={batchId ?? 'history'} projectId={id} batchId={batchId} runId={runId}/>}
+  </>;
   return <>
     <a className="back-link" href="#/projects">All projects</a>
     <SectionHeading eyebrow="PROJECT WORKSPACE" title={project.name} description={`${analysisName(project.analysis_type)} · ${stageName(project.entry_stage)} · Revision ${project.revision}`} action={<div className="project-heading-actions">
@@ -180,7 +196,8 @@ function ProjectDetail({ id, analysisRoute, catalog, notify }: { id: string; ana
           const next = tourTab[step.target];
           if (next && next !== tab) openTab(next);
         }}/>
-      {isLift && <button type="button" className="button primary" onClick={showSimulations}>View simulations<Icon name="chevron" size={16}/></button>}
+      <a className="button primary" href={'#' + projectPath + '/analysis?replay=latest'}><Icon name="play" size={16}/>View replays</a>
+      {isLift && <button type="button" className="button secondary" onClick={showSimulations}>View simulations<Icon name="chevron" size={16}/></button>}
       <a className="button secondary" href={`/api/projects/${encodeURIComponent(project.id)}/export`} download><Icon name="download" size={17}/>Export saved report</a>
     </div>}/>
     {!isLift && <div className="project-capability-note"><Icon name="info" size={19}/><p>{analysis.boundary}</p></div>}

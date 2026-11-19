@@ -4,6 +4,8 @@ Start the local API with `failureforge serve` and select a project in the workbe
 
 ## Run the first check
 
+**Projects → View replays** opens the saved results for one prototype. **Campaigns → New campaign** starts a batch for any saved project. Choose a suite to group supported cases, a parameter sweep to vary an eligible input, or an operating environment matrix on models that provide one. Open a saved campaign to compare its conditions and play a selected result. [Recorded examples and audit](project-workbench-audit.md)
+
 Create a **Structural analysis** project. Copy its project ID from the project record, or look it up with `GET /api/projects`. Save this single check as `beam.json`.
 
 ```json
@@ -90,6 +92,16 @@ The promotion response contains the saved project and a `rechecks` object with `
 For a measured first-order joint response, bind the robot-motion input `time_constant_s` to the promoted `<joint name> time constant` parameter. Use `velocity_servo` mode and one commanded rotational joint matching the measurement. Supply the time constant or a literal gain. When a time constant is supplied, the gain in reciprocal seconds is its inverse. This is a joint position-response model and its evidence records the selected joint and effective gain.
 
 The adapter catalog lists bindable top-level fields in `binding_units` and accepted spellings or prefixes in `binding_accepted_units`. Store separate scalar and unit values, such as `200` and `GPa`. A missing parameter, ambiguous literal plus binding, out-of-range value, incompatible unit, or unsupported field rejects the submission. The service applies the complete suite atomically. In a comparison, a changed material value can be a design revision. A changed load or acceptance threshold makes the runs incomparable; changing the declared binding also changes the test definition.
+
+## Watch a project or campaign run
+
+Open **Projects → select a project → View replays**. For a campaign, select **View result** on a condition. Play or scrub either video to move both cameras to the same instant. Open **Inspect the model and recorded values** below them for the numerical trace or field.
+
+For a custom robot, upload its URDF as a robot model. Attach each referenced STL as a CAD file with its original, unique filename before running the analysis. Select the URDF for an articulated motion run and enter targets using its joint names. The replay uses that run’s frozen revision, mesh scales, visual origins, joints and recorded poses. Supported Gazebo pinhole cameras use the declared link mount, field of view and image aspect ratio. The renderer supplies overview and close-up views when the model needs them. Missing link surfaces can be represented with explicitly labeled frame guides.
+
+Camera captions describe how to read each study. The packaging lift follows simulated carriage height and applied force on an illustrative fixture. Beam and rod views scan a static field. CAD views inspect the recorded surface. A single-joint log drives an angle gauge, and material calibration shows independent held-out measurements at the supplied fixture. The bowl benchmark presents the RGB observations its simulated cameras captured during execution.
+
+On first viewing, the local renderer encodes two H.264 MP4s and caches the pair by evidence hash and renderer version. Rendering reads the saved run without executing the controller again. For API clients, GET `/api/projects/{project}/analysis/{run}/camera-replay` to check availability, POST to start a render, then GET the same endpoint until it returns both video URLs. The files support HTTP range requests for seeking.
 
 ## Supported studies
 

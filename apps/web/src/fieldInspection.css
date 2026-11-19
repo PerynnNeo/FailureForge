@@ -1,0 +1,9 @@
+.field-inspection { display: grid; gap: 12px; min-width: 0; }
+.field-inspection h4 { margin: 0; color: #243e4d; font-size: 1.05rem; }
+.field-inspection-figure { margin: 0; min-width: 0; }
+.field-inspection-figure svg { display: block; width: 100%; max-height: 300px; border: 1px solid #d1dde2; border-radius: 6px; background: #f2f6f7; }
+.field-inspection-figure text { font: 13px system-ui, sans-serif; fill: #354f60; }
+.field-inspection figcaption { color: #4d6371; font-size: .84rem; margin-top: 6px; }
+.inspection-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.inspection-controls label { display: grid; flex: 1 1 140px; min-width: 0; gap: 3px; font-size: .86rem; color: #334e5d; }
+.inspection-controls input[type=range] { accent-color: #3e7591; width: 100%; margin: 0; }

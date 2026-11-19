@@ -4,7 +4,7 @@ import { Notice, Status } from './components';
 import type { RunInput } from './analysisInputs';
 
 type Field = { field: string; unit: string; label: string };
-type SweepCatalog = { adapters: Record<string, Field[]>; max_points: number };
+export type SweepCatalog = { adapters: Record<string, Field[]>; max_points: number };
 type Sweep = { suite_id: string; label: string; adapter: string; field: string; reference_value: number; project_revision: number; created_at: string };
 type Point = { value: number; reference: boolean; run_id: string; status: string; passed: boolean | null; error?: string; metrics: Record<string, unknown> };
 type SweepDetail = Sweep & {
@@ -27,13 +27,15 @@ function choices(fields: Field[], draft: Record<string, string>, bindings: Recor
   });
 }
 
-export default function ProjectSweeps({ projectId, revision, adapter, draft, bindings, currentTest, disabled, onRun, onQueue }: {
+export default function ProjectSweeps({ projectId, revision, adapter, draft, bindings, currentTest, disabled, onRun, onQueue, setupCatalog, onCreated }: {
   projectId: string; revision: number; adapter: string; draft: Record<string, string>; bindings: Record<string, string>;
   currentTest: () => RunInput; disabled: boolean; onRun: (id: string) => void; onQueue: () => void;
+  setupCatalog?: SweepCatalog; onCreated?: (suiteId: string) => void;
 }) {
   const base = `/projects/${encodeURIComponent(projectId)}/sweeps`;
   const [open, setOpen] = useState(false);
-  const [catalog, setCatalog] = useState<SweepCatalog | null>(null);
+  const [savedCatalog, setCatalog] = useState<SweepCatalog | null>(null);
+  const catalog = setupCatalog ?? savedCatalog;
   const [sweeps, setSweeps] = useState<Sweep[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [detail, setDetail] = useState<SweepDetail | null>(null);
@@ -55,11 +57,11 @@ export default function ProjectSweeps({ projectId, revision, adapter, draft, bin
   useEffect(() => { setValues(''); setError(''); }, [adapter, selected?.field]);
   useEffect(() => {
     let current = true;
-    if (open) void Promise.all([request<SweepCatalog>(`${base}/catalog`), request<{ sweeps: Sweep[] }>(base)])
+    if (open && !setupCatalog) void Promise.all([request<SweepCatalog>(`${base}/catalog`), request<{ sweeps: Sweep[] }>(base)])
       .then(([options, history]) => { if (current) { setCatalog(options); setSweeps(history.sweeps); setLoadError(''); } })
       .catch((failure: Error) => { if (current) setLoadError(failure.message); });
     return () => { current = false; };
-  }, [open, base, revision, refresh]);
+  }, [open, base, revision, refresh, setupCatalog]);
   useEffect(() => {
     if (!open || !sweep) return;
     let current = true;
@@ -90,21 +92,20 @@ export default function ProjectSweeps({ projectId, revision, adapter, draft, bin
       const key = submission?.body === encoded ? submission.key : crypto.randomUUID();
       setSubmission({ body: encoded, key });
       const result = await post<SweepDetail>(base, body, key);
+      if (onCreated) { setSubmission(null); onCreated(result.suite_id); return; }
       setSelectedId(result.suite_id); setDetail(result); setSubmission(null);
       setRefresh(index => index + 1); onQueue();
     } catch (failure) { setError((failure as Error).message); }
     finally { setWorking(false); }
   }
-  return <details className="project-panel sweep-panel" onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary>Parameter sweeps</summary>
-    {open && <div className="project-form-stack">
+  const controls = <div className="project-form-stack">
       {loadError && <Notice tone="error">{loadError} <button type="button" className="project-inline-button" onClick={() => setRefresh(index => index + 1)}>Retry</button></Notice>}
       {catalog && (selected ? <>
         <label className="project-field"><span>Vary one input</span><select aria-label="Sweep field" value={selected.field}
           onChange={event => { setSelectedField(event.target.value); setValues(''); }}>
           {fields.map(item => <option key={item.field} value={item.field}>{item.label} ({item.unit})</option>)}
         </select></label>
-        <label className="project-field"><span>Values in increasing order ({selected.unit})</span>
+        <label className="project-field" data-tour="campaign-sweep-values"><span>Values in increasing order ({selected.unit})</span>
           <input value={values} onChange={event => setValues(event.target.value)} placeholder="Separate values with commas"/>
           <small>Include the reference value {selected.value}. Each of the 2–{catalog.max_points} points uses the run label and other inputs above.</small>
         </label>
@@ -130,6 +131,9 @@ export default function ProjectSweeps({ projectId, revision, adapter, draft, bin
             <td><button type="button" className="project-inline-button" onClick={() => onRun(point.run_id)}>Inspect run</button></td></tr>)}</tbody></table></div>
         <a className="button secondary" href={`/api${base}/${encodeURIComponent(detail.suite_id)}`} download={`${detail.suite_id}-sweep.json`}>Export sweep JSON</a>
       </>}
-    </div>}
+    </div>;
+  if (setupCatalog) return <section className="project-panel" data-tour="campaign-sweep"><header className="project-panel-header"><h3>Sweep values</h3></header>{controls}</section>;
+  return <details className="project-panel sweep-panel" onToggle={event => setOpen(event.currentTarget.open)}>
+    <summary>Parameter sweeps</summary>{open && controls}
   </details>;
 }

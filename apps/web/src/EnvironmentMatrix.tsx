@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatTime, label, post, request } from './api';
-import { LiftTrace } from './AnalysisResults';
+import { RunVisual } from './RunVisual';
 import { Loading, Notice } from './components';
 import { axisValues, cellOutcome, millimetres } from './environmentConditions';
 import type { MatrixCell, MatrixDetail, MatrixRecord } from './environmentConditions';
@@ -34,6 +34,7 @@ function Condition({ cell, projectId, back }: { cell: MatrixCell; projectId: str
     {cell.error && <Notice tone="warning">{cell.error}</Notice>}
     {error ? <Notice tone="error">{error} <button type="button" className="project-inline-button" onClick={() => setAttempt(n => n + 1)}>Retry</button></Notice>
       : !run ? <Loading/> : <>
+        <RunVisual run={run} runPath={path}/>
         {metrics && <dl className="analysis-metrics">
           <div><dt>Error at arrival</dt><dd>{millimetres(metrics.arrival_error_m)}</dd></div>
           <div><dt>Maximum error during hold</dt><dd>{millimetres(metrics.max_hold_error_m)}</dd></div>
@@ -44,7 +45,6 @@ function Condition({ cell, projectId, back }: { cell: MatrixCell; projectId: str
             stayed_within_travel: 'Carriage travel', stayed_within_speed_limit: 'Speed limit' } as Record<string, string>)[key] ?? label(key);
           return <li key={key}>{name}<strong className={`matrix-tag ${passed ? 'passed' : 'failed'}`}>{passed ? 'Passed' : 'Failed'}</strong></li>;
         })}</ul>}
-        {run.result && <LiftTrace result={run.result}/>}
         <div className="analysis-actions">
           <a className="button secondary" href={`/api${path}`} download={`${run.id}.json`}>Export run JSON</a>
           {cell.bundle_url && <a className="button secondary" href={cell.bundle_url} download={`${run.id}.zip`}>Download evidence bundle</a>}
@@ -53,7 +53,7 @@ function Condition({ cell, projectId, back }: { cell: MatrixCell; projectId: str
   </section>;
 }
 
-function MatrixForm({ revision, disabled, base, onSaved, tour }: {
+export function MatrixForm({ revision, disabled, base, onSaved, tour }: {
   revision: number; disabled: boolean; base: string; onSaved: (result: MatrixDetail) => void; tour?: string;
 }) {
   const [name, setName] = useState('Packaging station loads');

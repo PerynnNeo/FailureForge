@@ -1,0 +1,6 @@
+.campaign-project-picker { max-width: 720px; }
+.campaign-project-picker .field select { width: 100%; }
+.campaign-project-summary { margin: 16px 0 22px; }
+.campaign-project-summary p { margin-bottom: 6px; }
+.campaign-project-summary span { color: var(--muted); font-size: .875rem; }
+.campaign-overview-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

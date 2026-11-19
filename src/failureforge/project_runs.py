@@ -51,6 +51,11 @@ class Single(ProjectTest, Revision):
 
 class Suite(Revision):
     tests: list[ProjectTest] = Field(min_length=1, max_length=MAX_SUITE_TESTS)
+    label: str | None = Field(default=None, min_length=1, max_length=120)
+
+
+def _suite_label(tests):
+    return tests[0].label if len(tests) == 1 else f"{len(tests)}-case test suite"
 
 
 def project_adapters(project):
@@ -169,7 +174,10 @@ class ProjectRuns:
                     definition TEXT, binding_evidence TEXT, recheck_of TEXT, calibration_run_id TEXT);
                 CREATE INDEX IF NOT EXISTS project_run_queue ON project_runs(status,created_at,ordinal);
                 CREATE INDEX IF NOT EXISTS project_run_revision ON project_runs(project_id,project_revision,created_at);
-                CREATE INDEX IF NOT EXISTS project_run_history ON project_runs(project_id,created_at);""")
+                CREATE INDEX IF NOT EXISTS project_run_history ON project_runs(project_id,created_at);
+                CREATE INDEX IF NOT EXISTS project_run_suite ON project_runs(project_id,suite_id,ordinal);
+                CREATE TABLE IF NOT EXISTS project_named_suites(
+                    suite_id TEXT PRIMARY KEY, label TEXT NOT NULL);""")
         # Serialize schema upgrades across concurrent service startups. Existing completed
         # rows retain the evidence hash captured by their original worker.
         with self.store.connection(True) as db:
@@ -189,7 +197,8 @@ class ProjectRuns:
         if self.thread:
             self.thread.join(5)
 
-    def submit(self, project_id, revision, tests, key, *, sweep=None, environment_matrix=None):
+    def submit(self, project_id, revision, tests, key, *, sweep=None, environment_matrix=None,
+               explicit_suite=False, suite_label=None):
         # Empty bindings retain the original literal-only request hash for retries.
         definitions = [t.model_dump(exclude_defaults=True) for t in tests]
         request = {"revision": revision, "tests": definitions}
@@ -197,6 +206,8 @@ class ProjectRuns:
             request["sweep"] = sweep
         if environment_matrix is not None:
             request["environment_matrix"] = environment_matrix
+        if suite_label is not None:
+            request["label"] = suite_label
         scope = f"project-analysis:{project_id}"
         if key is not None and not 8 <= len(key) <= 200:
             raise HTTPException(422, "Idempotency-Key must contain 8 to 200 characters")
@@ -207,11 +218,17 @@ class ProjectRuns:
         with self.store.connection(True) as db:
             previous = self.store._idempotent(db, scope, key, request) if key else None
             if previous:
+                if explicit_suite:
+                    db.execute("INSERT OR IGNORE INTO project_named_suites VALUES(?,?)",
+                               (previous["suite_id"], suite_label or _suite_label(tests)))
                 return previous
             project = self.projects._get(db, project_id)
             if project["revision"] != revision:
                 raise Conflict("Project changed. Reload before starting this analysis.")
             receipt = self._enqueue(db, project, tests, sweep=sweep)
+            if explicit_suite:
+                db.execute("INSERT INTO project_named_suites VALUES(?,?)",
+                           (receipt["suite_id"], suite_label or _suite_label(tests)))
             if environment_matrix is not None:
                 db.execute(
                     "INSERT INTO project_environment_matrices(suite_id, project_id, definition, created_at) "
@@ -437,7 +454,11 @@ def analysis_router(runs):
         record = runs.projects.get(project)
         catalog = [{**a, **binding_catalog(a["id"], record["analysis_type"])} for a in project_adapters(record)]
         with runs.store.connection() as db:
-            rows = db.execute(f"SELECT {SUMMARY} FROM project_runs WHERE project_id=? ORDER BY created_at DESC,ordinal LIMIT 200", (project,))
+            rows = db.execute(f"""SELECT {SUMMARY},
+                    CASE WHEN json_extract(result,'$.model.reference_id')='two_finger_hand_v1'
+                         AND coalesce(json_extract(snapshot,'$.robot_template'),'')!='two_finger_hand_v1'
+                         THEN 1 ELSE 0 END AS reference_example
+                    FROM project_runs WHERE project_id=? ORDER BY created_at DESC,ordinal LIMIT 200""", (project,))
             return {"adapters": catalog, "runs": [dict(r) for r in rows]}
 
     @router.post("/analysis", status_code=202)
@@ -447,7 +468,8 @@ def analysis_router(runs):
 
     @router.post("/analysis-suite", status_code=202)
     def run_suite(project: str, spec: Suite, idempotency_key: str | None = Header(None)):
-        result = runs.submit(project, spec.expected_revision, spec.tests, idempotency_key)
+        result = runs.submit(project, spec.expected_revision, spec.tests, idempotency_key,
+                             explicit_suite=True, suite_label=spec.label)
         return {"suite_id": result["suite_id"], "runs": [runs.get(project, i) for i in result["ids"]]}
 
     @router.get("/analysis-suite/{suite_id}")

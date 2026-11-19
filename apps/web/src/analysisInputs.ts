@@ -14,6 +14,7 @@ export type RunInput = { label: string; adapter: string; inputs: Inputs; binding
 export type RunSummary = {
   id: string; label: string; adapter: string; project_revision: number;
   created_at: string | number; status: string; error?: string | null; suite_id?: string; attempt?: number;
+  reference_example?: number;
 };
 export type RunDetail = RunSummary & {
   inputs: Inputs; result?: Inputs | null; snapshot?: Inputs; definition?: RunInput; binding_evidence?: Inputs;
@@ -47,6 +48,20 @@ export function inputFields(adapter: Adapter): InputField[] {
 export function fieldText(value: unknown): string {
   if (value == null) return '';
   return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+}
+
+export const referenceHandChoice = 'builtin:two_finger_hand_v1';
+
+/** A saved motion test with no asset ID was authored for the built-in hand. */
+export function motionModelChoice(inputs: Inputs | undefined, referenceProject: boolean) {
+  if (typeof inputs?.model_asset_id === 'string' && inputs.model_asset_id) return inputs.model_asset_id;
+  return inputs || referenceProject ? referenceHandChoice : '';
+}
+
+export function runInputs(adapterId: string, fields: InputField[], draft: Record<string, string>): Inputs {
+  if (adapterId !== 'robot_motion') return parseFields(fields, draft);
+  if (!draft.model_asset_id) throw new Error('Choose an attached URDF or explicitly select the built-in two-finger reference hand.');
+  return parseFields(fields, draft.model_asset_id === referenceHandChoice ? { ...draft, model_asset_id: '' } : draft);
 }
 
 export function parseFields(fields: InputField[], draft: Record<string, string>): Inputs {

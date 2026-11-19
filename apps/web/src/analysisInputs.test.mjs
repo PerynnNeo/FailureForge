@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fieldText, inputFields, parseFields } from './analysisInputs.ts';
+import { fieldText, inputFields, motionModelChoice, parseFields, referenceHandChoice, runInputs } from './analysisInputs.ts';
 import { workerFor, workerLabel } from './workerStatus.ts';
 
 test('analysis forms preserve nested data, numeric inputs and literal strings', () => {
@@ -29,4 +29,15 @@ test('live eligibility and status use each campaign backend heartbeat', () => {
   assert.match(workerLabel(both), /Robot and synthetic/);
   assert.equal(workerFor({ worker: synthetic }, 'libero'), undefined);
   assert.equal(workerFor({ worker: robot }, 'libero'), robot);
+});
+
+test('motion drafts require a deliberate robot and preserve authored reference and URDF choices', () => {
+  const fields = [{ name: 'model_asset_id', type: 'string', required: false }];
+  assert.equal(motionModelChoice(undefined, false), '');
+  assert.equal(motionModelChoice(undefined, true), referenceHandChoice);
+  assert.equal(motionModelChoice({}, false), referenceHandChoice);
+  assert.equal(motionModelChoice({ model_asset_id: 'asset_urdf' }, false), 'asset_urdf');
+  assert.throws(() => runInputs('robot_motion', fields, {}), /Choose an attached URDF/);
+  assert.deepEqual(runInputs('robot_motion', fields, { model_asset_id: referenceHandChoice }), {});
+  assert.deepEqual(runInputs('robot_motion', fields, { model_asset_id: 'asset_urdf' }), { model_asset_id: 'asset_urdf' });
 });

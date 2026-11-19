@@ -22,6 +22,9 @@ failureforge = "failureforge.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+failureforge = ["visual_models/*/*.stl", "visual_models/*/manifest.json", "visual_models/*/LICENSE-*.txt"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

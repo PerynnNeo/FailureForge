@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { label, post, request } from './api';
 import { Loading, Notice } from './components';
-import { fieldCaption, fieldText, inputFields, parseFields } from './analysisInputs';
+import { fieldCaption, fieldText, inputFields, motionModelChoice, referenceHandChoice, runInputs } from './analysisInputs';
 import type { Adapter, InputField, Inputs, RunDetail, RunInput, RunSummary } from './analysisInputs';
 import AnalysisResults from './AnalysisResults';
 import ProjectSweeps from './ProjectSweeps';
-import EnvironmentMatrix from './EnvironmentMatrix';
+import type { SweepCatalog } from './ProjectSweeps';
+import EnvironmentMatrix, { MatrixForm } from './EnvironmentMatrix';
+import { HelpTutorial } from './HelpTutorial';
+import { batchSetupGuide } from './campaignTutorial';
+import { projectBatchHref } from './campaignHistory';
 import type { Project } from './projectTypes';
 import type { ProjectTourCapabilities } from './projectTutorial';
 
 type Catalog = { adapters: Adapter[]; runs: RunSummary[] };
 type Rechecks = { suite_id: string | null; run_ids: string[]; previous_run_ids: string[]; more_available: boolean };
 const assetFields: Record<string, { kind: string; extension: string; empty?: string }> = {
-  model_asset_id: { kind: 'robot_model', extension: '.urdf', empty: 'Use the two-finger reference hand' },
+  model_asset_id: { kind: 'robot_model', extension: '.urdf' },
   controller_asset_id: { kind: 'controller', extension: '.json', empty: 'Use the default controller' },
   cad_asset_id: { kind: 'cad', extension: '.stl' },
   bom_asset_id: { kind: 'bom', extension: '.csv', empty: 'Skip bill of materials' }, training_asset_id: { kind: 'measurements', extension: '.csv' },
@@ -26,13 +30,15 @@ function InputControl({ field, draft, update, project }: {
 }) {
   const { name, schema, type, required } = field;
   const value = draft[name] ?? '';
+  const model = name === 'model_asset_id';
   const filter = assetFields[name];
   const assets = filter ? project.assets.filter(asset => asset.kind === filter.kind &&
     (!filter.extension || asset.filename.toLowerCase().endsWith(filter.extension))) : [];
   return <label className={`project-field ${type === 'array' || type === 'object' ? 'analysis-wide' : ''}`}>
-    <span>{fieldCaption(field)}{required && ' *'}</span>
-    {filter ? <select value={value} required={required} disabled={name === 'controller_asset_id' && draft.mode !== 'mujoco_pd'} onChange={event => update(event.target.value)}>
-      <option value="">{filter.empty ?? 'Select an attached file'}</option>
+    <span>{model ? 'Robot model to run' : fieldCaption(field)}{(required || model) && ' *'}</span>
+    {filter ? <select value={value} required={required || model} disabled={name === 'controller_asset_id' && draft.mode !== 'mujoco_pd'} onChange={event => update(event.target.value)}>
+      <option value="">{model ? 'Choose a robot model' : filter.empty ?? 'Select an attached file'}</option>
+      {model && <option value={referenceHandChoice}>Built-in example · two-finger reference hand</option>}
       {assets.map(asset => <option value={asset.id} key={asset.id}>{asset.filename}</option>)}
     </select> : schema.const !== undefined ?
       <input value={value} readOnly/> : schema.enum || type === 'boolean' ?
@@ -51,9 +57,10 @@ function InputControl({ field, draft, update, project }: {
   </label>;
 }
 
-export default function ProjectAnalysis({ project, dirty, reload, notify, matrixRequest, onTourCapabilities }: {
+export default function ProjectAnalysis({ project, dirty, reload, notify, matrixRequest, onTourCapabilities, campaignSetup = false }: {
   project: Project; dirty: boolean; reload: () => Promise<void>; notify: (message: string) => void; matrixRequest: number;
   onTourCapabilities: (capabilities: ProjectTourCapabilities | null) => void;
+  campaignSetup?: boolean;
 }) {
   const base = `/projects/${encodeURIComponent(project.id)}/analysis`;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -72,18 +79,33 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [bindings, setBindings] = useState<Record<string, string>>({});
   const [suite, setSuite] = useState<RunInput[]>([]);
+  const [suiteName, setSuiteName] = useState('');
+  const [batchKind, setBatchKind] = useState<'suite' | 'sweep' | 'matrix'>(project.robot_template === 'packaging_lift_v1' ? 'matrix' : 'suite');
+  const [sweepCatalog, setSweepCatalog] = useState<SweepCatalog | null>(null);
+  const [sweepError, setSweepError] = useState('');
   const [selected, setSelected] = useState('');
   const [busy, setBusy] = useState(false);
   const [promotion, setPromotion] = useState<{ revision: number; rechecks: Rechecks } | null>(null);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
   const lastSubmission = useRef<{ body: string; key: string } | null>(null);
+  const draftsByModel = useRef(new Map<string, { values: Record<string, string>; bound: Record<string, string>; title: string }>());
   const refresh = () => setRefreshIndex(index => index + 1);
+  const isReferenceHand = project.robot_source === 'supported' && project.robot_template === 'two_finger_hand_v1';
   const choose = useCallback((adapter: Adapter, inputs?: Inputs, title = adapter.id === 'calibration' ? `${adapter.label} (example measurements)` : adapter.label, bound: Record<string, string> = {}) => {
     const next = editorValues(inputs ?? adapter.example);
     if (!inputs) for (const name of Object.keys(assetFields)) delete next[name];
+    if (adapter.id === 'robot_motion') next.model_asset_id = motionModelChoice(inputs, isReferenceHand);
     setAdapterId(adapter.id); setDraft(next); setRunLabel(title); setBindings(bound);
-  }, []);
+  }, [isReferenceHand]);
+  useEffect(() => {
+    if (!campaignSetup) return;
+    let current = true;
+    void request<SweepCatalog>(`/projects/${encodeURIComponent(project.id)}/sweeps/catalog`)
+      .then(data => { if (current) { setSweepCatalog(data); setSweepError(''); } })
+      .catch((failure: Error) => { if (current) setSweepError(failure.message); });
+    return () => { current = false; };
+  }, [campaignSetup, project.id, project.revision, refreshIndex]);
   useEffect(() => {
     let current = true;
     void request<Catalog>(base).then(data => {
@@ -103,6 +125,20 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
     return () => window.clearInterval(timer);
   }, [activeRuns]);
   const adapter = catalog?.adapters.find(item => item.id === adapterId);
+  const sweepModels = catalog?.adapters.filter(item => Boolean(sweepCatalog?.adapters[item.id]?.length)) ?? [];
+  const mode = (batchKind === 'matrix' && !canRunMatrix) || (batchKind === 'sweep' && !sweepModels.length) ? 'suite' : batchKind;
+  const sweepSetup = campaignSetup && mode === 'sweep';
+  const matrixSetup = campaignSetup && mode === 'matrix';
+  const modelMissing = adapterId === 'robot_motion' && !draft.model_asset_id;
+  const selectable = sweepSetup ? sweepModels : catalog?.adapters ?? [];
+  const modelSelected = Boolean(adapter && selectable.some(item => item.id === adapter.id));
+  const openBatch = (id: string) => { window.location.hash = projectBatchHref(project.id, id); };
+  function changeAdapter(next: Adapter) {
+    if (adapter) draftsByModel.current.set(adapter.id, { values: draft, bound: bindings, title: runLabel });
+    const saved = draftsByModel.current.get(next.id);
+    if (!saved) { choose(next); return; }
+    setAdapterId(next.id); setDraft(saved.values); setBindings(saved.bound); setRunLabel(saved.title);
+  }
   const velocityServo = adapterId === 'robot_motion' && draft.mode === 'velocity_servo';
   const usesTimeConstant = velocityServo && Boolean(bindings.time_constant_s || draft.time_constant_s?.trim());
   const fields = adapter ? inputFields(adapter).filter(field =>
@@ -117,28 +153,29 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
   }
   function currentTest(): RunInput {
     if (!adapter || !runLabel.trim()) throw new Error('Choose an analysis and enter a run label.');
-    const inputs = parseFields(fields.filter(field => !bindings[field.name]), draft);
+    const inputs = runInputs(adapter.id, fields.filter(field => !bindings[field.name]), draft);
     const activeBindings = Object.fromEntries(fields.filter(field => bindings[field.name]).map(field => [field.name, bindings[field.name]]));
     return { label: runLabel.trim(), adapter: adapter.id, inputs, ...(Object.keys(activeBindings).length ? { bindings: activeBindings } : {}) };
   }
   function addTest() {
-    if (!formRef.current?.reportValidity()) return;
+    if (suite.length >= 16 || !formRef.current?.reportValidity()) return;
     try { const test = currentTest(); setSuite(items => [...items, test]); setError(''); }
     catch (failure) { setError(errorText(failure)); }
   }
   async function execute(asSuite: boolean) {
-    if (busy || dirty) return;
+    if (busy || dirty || (campaignSetup && (!asSuite || !suiteName.trim() || !suite.length))) return;
     setError(''); setBusy(true);
     try {
-      const body = asSuite ? { expected_revision: project.revision, tests: suite } : { ...currentTest(), expected_revision: project.revision };
+      const body = asSuite ? { expected_revision: project.revision, tests: suite, ...(campaignSetup && { label: suiteName.trim() }) } : { ...currentTest(), expected_revision: project.revision };
       const encoded = JSON.stringify(body);
       if (lastSubmission.current?.body !== encoded) lastSubmission.current = { body: encoded, key: crypto.randomUUID() };
       if (asSuite) {
-        const data = await post<{ runs: RunSummary[] }>(`${base}-suite`, body, lastSubmission.current.key);
+        const data = await post<{ suite_id: string; runs: RunSummary[] }>(`${base}-suite`, body, lastSubmission.current.key);
         setSuite([]); setSelected(data.runs[0]?.id ?? '');
         const failures = data.runs.filter(run => run.error || run.status === 'failed' || run.status === 'error');
         if (failures.length) setError(failures.map(run => `${run.label}: ${run.error ?? run.status}`).join('\n'));
         notify(`Queued ${data.runs.length} ${data.runs.length === 1 ? 'run' : 'runs'}. Follow progress in run history.`);
+        if (campaignSetup) openBatch(data.suite_id);
       } else {
         const run = await post<RunSummary>(base, body, lastSubmission.current.key);
         setSelected(run.id); notify('Analysis queued. Follow progress in run history.');
@@ -182,18 +219,38 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
     {error && <Notice tone="error">{error}</Notice>}
     {catalogError && <Notice tone="error">{catalogError} <button type="button" className="project-inline-button" onClick={refresh}>Refresh analysis</button></Notice>}
     {!catalog ? !catalogError && <Loading/> : <>
-      <EnvironmentMatrix key={project.id} projectId={project.id} revision={project.revision}
+      {campaignSetup && <section className="project-panel"><header className="project-panel-header"><div>
+        <h3>Campaign setup</h3><p>Build a batch for {project.name} on revision {project.revision}.</p></div>
+        <HelpTutorial title="Batch setup tutorial" steps={batchSetupGuide(mode, modelSelected)}/></header>
+        <div className="project-form-stack"><label className="project-field" data-tour="campaign-batch-kind"><span>Campaign type</span>
+          <select value={mode} onChange={event => setBatchKind(event.target.value as typeof batchKind)}>
+            <option value="suite">Test suite</option>
+            {sweepModels.length > 0 && <option value="sweep">Parameter sweep</option>}
+            {canRunMatrix && <option value="matrix">Environment matrix</option>}
+          </select><small>{mode === 'suite' ? 'Build up to 16 named tests. Each test keeps its own model and inputs.' : mode === 'sweep' ? 'Vary one model input and compare the results against a reference value.' : 'Cross parcel masses with packing-head forces and choose a reference condition.'}</small>
+        </label>
+        {sweepError && <Notice tone="warning">Sweep options could not load. {sweepError} <button type="button" className="project-inline-button" onClick={refresh}>Retry</button></Notice>}
+        {dirty && <Notice>Save the project changes before starting a campaign.</Notice>}
+        </div>
+      </section>}
+      {!campaignSetup && <EnvironmentMatrix key={project.id} projectId={project.id} revision={project.revision}
         available={canRunMatrix} onVisibilityChange={setMatrixVisible}
-        disabled={dirty || busy} onQueue={refresh} revealRequest={matrixRequest}/>
-      <section className="project-panel"><header className="project-panel-header"><div>
-        <h3>Run an analysis</h3><p>Each run records its inputs and saved project revision {project.revision}. The initial values are examples. For calibration, replace the example data with your own measurements.</p>
-      </div></header>
-      {adapter ? <form ref={formRef} className="analysis-form" onSubmit={event => { event.preventDefault(); void execute(false); }}>
+        disabled={dirty || busy} onQueue={refresh} revealRequest={matrixRequest}/>}
+      {campaignSetup && canRunMatrix && <section hidden={!matrixSetup} className="project-panel">
+        <header className="project-panel-header"><div><h3>Environment matrix</h3><p>The lift moves to 150 mm by 1 s and holds against the downward force until 2 s. Its arrival and hold tolerance is 10 mm.</p></div></header>
+        <div className="project-form-stack"><MatrixForm revision={project.revision} disabled={dirty || busy}
+          base={`/projects/${encodeURIComponent(project.id)}/environment-matrices`}
+          onSaved={record => openBatch(record.suite_id)} tour="campaign-matrix-values"/></div>
+      </section>}
+      <section className="project-panel" hidden={matrixSetup}><header className="project-panel-header"><div>
+        <h3>{campaignSetup ? sweepSetup ? 'Reference test' : 'Configure a test' : 'Run an analysis'}</h3><p>Each run records its inputs and saved project revision {project.revision}. The initial values are examples. For calibration, replace the example data with your own measurements.</p>
+      </div>{!campaignSetup && <a className="button secondary" href={`#/projects/${encodeURIComponent(project.id)}/analysis?setup=campaign`}>New campaign</a>}</header>
+      {adapter ? <form ref={formRef} className="analysis-form" onSubmit={event => { event.preventDefault(); if (!campaignSetup) void execute(false); else if (!sweepSetup) addTest(); }}>
         <fieldset disabled={busy}><div className="project-form-stack">
-          <label className="project-field" data-tour="project-model"><span>Analysis model</span><select value={adapterId} onChange={event => {
-            const next = catalog.adapters.find(item => item.id === event.target.value); if (next) choose(next);
-          }}>{catalog.adapters.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select><small>{adapter.description}</small></label>
-          <label className="project-field"><span>Run label</span><input required maxLength={120} value={runLabel} onChange={event => setRunLabel(event.target.value)}/></label>
+          <label className="project-field" data-tour="project-model"><span>Analysis model</span><select value={modelSelected ? adapterId : ''} onChange={event => {
+            const next = selectable.find(item => item.id === event.target.value); if (next) changeAdapter(next);
+          }}>{!modelSelected && <option value="">Choose a supported model</option>}{selectable.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select><small>{modelSelected && adapter.description}</small></label>
+          {modelSelected && <><label className="project-field"><span>{sweepSetup ? 'Sweep name' : 'Run label'}</span><input required maxLength={sweepSetup ? 100 : 120} value={runLabel} onChange={event => setRunLabel(event.target.value)}/></label>
           <div className="analysis-inputs">{fields.map(field => {
             const unit = adapter.binding_units?.[field.name];
             const bound = bindings[field.name];
@@ -214,24 +271,29 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
           {usesTimeConstant && <p className="small muted">The velocity-servo gain is the reciprocal of the supplied time constant. Use one commanded rotational joint matching the measurement.</p>}
           <details className="analysis-disclosure"><summary data-tour="project-qualification">Model input specification</summary><pre>{JSON.stringify(adapter.schema, null, 2)}</pre></details>
           {dirty && <Notice>Save project changes before starting an analysis.</Notice>}
-          <div className="analysis-actions" data-tour="project-run">
-            <button className="button primary" type="submit" disabled={dirty}>{busy ? 'Working…' : 'Run analysis'}</button>
+          {!sweepSetup && <div className="analysis-actions" data-tour="project-run">
+            {!campaignSetup && <button className="button primary" type="submit" disabled={dirty}>{busy ? 'Working…' : 'Run analysis'}</button>}
             <button className="button secondary" type="button" disabled={suite.length >= 16} onClick={addTest}>Add to suite</button>
-          </div>
+          </div>}</>}
         </div></fieldset>
       </form> : <p className="card-pad" data-tour="project-model">No analysis models are available for this project type.</p>}
       </section>
-      {suite.length > 0 && <section className="project-panel"><header className="project-panel-header"><div><h3>Test suite</h3><p>Run the saved inputs below on project revision {project.revision}.</p></div></header>
-        <div className="project-form-stack"><ol className="analysis-suite">{suite.map((test, index) => <li key={index}>
+      {(campaignSetup || suite.length > 0) && <section hidden={campaignSetup && mode !== 'suite'} className="project-panel" data-tour="campaign-suite-review"><header className="project-panel-header"><div><h3>Test suite</h3><p>Run the saved inputs below on project revision {project.revision}.</p></div></header>
+        <div className="project-form-stack">
+          {campaignSetup && <label className="project-field"><span>Campaign name</span><input required maxLength={120} value={suiteName} onChange={event => setSuiteName(event.target.value)}/></label>}
+          {!suite.length && <p className="small muted">Configure a test above and choose Add to suite.</p>}
+          <ol className="analysis-suite">{suite.map((test, index) => <li key={index}>
           <div><strong>{test.label}</strong><small>{label(test.adapter)}</small></div>
           <button type="button" disabled={busy} className="project-inline-button" aria-label={`Remove ${test.label}`} onClick={() => setSuite(items => items.filter((_, i) => i !== index))}>Remove</button>
-        </li>)}</ol><button type="button" className="button primary" disabled={dirty || busy || suite.some(test => !catalog.adapters.some(item => item.id === test.adapter))} onClick={() => void execute(true)}>Run suite ({suite.length})</button></div>
+        </li>)}</ol><button type="button" className="button primary" disabled={dirty || busy || !suite.length || (campaignSetup && !suiteName.trim()) || suite.some(test => !catalog.adapters.some(item => item.id === test.adapter))} onClick={() => void execute(true)}>Run suite ({suite.length})</button></div>
       </section>}
-      {adapterId !== 'packaging_lift' && <ProjectSweeps projectId={project.id} revision={project.revision} adapter={adapterId} draft={draft} bindings={bindings}
-        currentTest={currentTest} disabled={dirty || busy} onQueue={refresh} onRun={id => {
+      {(!campaignSetup ? adapterId !== 'packaging_lift' : sweepCatalog && sweepModels.some(item => item.id === adapterId)) && <div hidden={campaignSetup && !sweepSetup}>
+        <ProjectSweeps projectId={project.id} revision={project.revision} adapter={adapterId} draft={draft} bindings={bindings}
+        currentTest={currentTest} disabled={dirty || busy || modelMissing} setupCatalog={campaignSetup ? sweepCatalog ?? undefined : undefined}
+        onCreated={campaignSetup ? openBatch : undefined} onQueue={refresh} onRun={id => {
           setSelected(id); refresh(); document.getElementById('analysis-history')?.scrollIntoView({ block: 'start' });
-        }}/>}
-      {promotion && <section className="project-panel">
+        }}/></div>}
+      {!campaignSetup && promotion && <section className="project-panel">
         <header className="project-panel-header"><div><h3>Calibration rechecks · revision {promotion.revision}</h3>
           <p>{promotion.rechecks.run_ids.length ? 'Inspect each check with the newly calibrated parameter.' : 'No checks on the previous revision referenced this parameter.'}</p>
         </div></header>
@@ -243,11 +305,11 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
           {promotion.rechecks.more_available && <Notice>Automatic replay used the 16 most recent distinct checks. Earlier definitions are available in run history for manual replay.</Notice>}
         </div>}
       </section>}
-      <AnalysisResults base={base} adapters={catalog.adapters} runs={catalog.runs} selected={selected} select={setSelected}
+      {!campaignSetup && <AnalysisResults base={base} adapters={catalog.adapters} runs={catalog.runs} selected={selected} select={setSelected}
         refresh={refresh} refreshIndex={refreshIndex} running={busy} jobAction={jobAction} loadSuite={loadSuite} currentRevision={project.revision} promote={dirty ? undefined : promote} reuse={run => {
           const model = catalog.adapters.find(item => item.id === run.adapter);
           if (model) { choose(model, run.definition?.inputs ?? run.inputs, run.label, run.definition?.bindings); formRef.current?.scrollIntoView({ block: 'start' }); }
-        }}/>
+        }}/>}
     </>}
   </div>;
 }

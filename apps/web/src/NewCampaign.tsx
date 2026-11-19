@@ -1,14 +1,53 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { post } from './api';
-import { Icon, Notice } from './components';
+import { label, post, request } from './api';
+import { Empty, Icon, Loading, Notice, SectionHeading } from './components';
 import type { Backend, CampaignSpec, Catalog, Health, Method } from './types';
 import { workerFor } from './workerStatus';
 import ReferencePreview from './ReferencePreview';
 import { HelpTutorial } from './HelpTutorial';
-import { campaignSetupGuide } from './campaignTutorial';
+import { campaignSetupGuide, projectCampaignGuide } from './campaignTutorial';
+import { projectCampaignSetup } from './campaignHistory';
+import { analysisOptions } from './projectTypes';
+import type { Project } from './projectTypes';
 
-export default function NewCampaign({ catalog, health, onClose, onCreated }: { catalog: Catalog | null; health: Health | null; onClose: () => void; onCreated: (id: string) => void }) {
+export function NewProjectCampaign() {
+  const [projects, setProjects] = useState<Project[] | null>(null);
+  const [selectedId, setSelectedId] = useState('');
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const selected = projects?.find(project => project.id === selectedId);
+  useEffect(() => {
+    let current = true;
+    setError('');
+    void request<{ items: Project[] }>('/projects').then(data => {
+      if (current) setProjects(data.items);
+    }).catch((failure: Error) => { if (current) setError(failure.message); });
+    return () => { current = false; };
+  }, [attempt]);
+  return <>
+    <a className="back-link" href="#/campaigns">All campaigns</a>
+    <SectionHeading title="New campaign" description="Choose the prototype you want to test across conditions."
+      action={Boolean(projects?.length) && <HelpTutorial title="New campaign tutorial" steps={projectCampaignGuide(Boolean(selected))}/>}/>
+    {error ? <Notice tone="error">{error} <button className="project-inline-button" onClick={() => setAttempt(value => value + 1)}>Retry</button></Notice>
+      : !projects ? <Loading/> : !projects.length ? <section className="card"><Empty icon="layers" title="Create a project to start a campaign"
+        action={<a className="button primary" href="#/projects/new">Create project</a>}>A project holds the model, inputs and success criteria for its campaigns.</Empty></section>
+      : <section className="card campaign-project-picker"><div className="card-pad">
+        <label className="field" data-tour="project-campaign-choice">Project
+          <select value={selected?.id ?? ''} onChange={event => setSelectedId(event.target.value)}>
+            <option value="">Choose a saved project</option>
+            {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+          </select>
+        </label>
+        {selected && <>
+          <div className="campaign-project-summary"><p>{selected.goal}</p><span>{analysisOptions.find(item => item.value === selected.analysis_type)?.title ?? label(selected.analysis_type)} · revision {selected.revision}</span></div>
+          <a className="button primary" data-tour="project-campaign-configure" href={projectCampaignSetup(selected.id)}>Configure campaign<Icon name="chevron" size={16}/></a>
+        </>}
+      </div></section>}
+  </>;
+}
+
+export default function NewBenchmarkCampaign({ catalog, health, onClose, onCreated }: { catalog: Catalog | null; health: Health | null; onClose: () => void; onCreated: (id: string) => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [name, setName] = useState('Camera & lighting investigation');
   const canUseRobot = Boolean(workerFor(health, 'libero')?.online && health?.readiness.qualified);
@@ -33,10 +72,10 @@ export default function NewCampaign({ catalog, health, onClose, onCreated }: { c
   }
   return <dialog ref={dialog} className="campaign-dialog" onCancel={e => { if (e.target === dialog.current) onClose(); }} onClick={e => { if (e.target === dialog.current && !busy) onClose(); }} aria-labelledby="new-campaign-title">
     <div className="dialog-heading">
-      <div><span className="eyebrow">CONTROLLED EXPERIMENT</span><h2 id="new-campaign-title">New campaign</h2><p>A bounded search for a reproducible change in behavior.</p></div>
+      <div><h2 id="new-campaign-title">New bowl benchmark</h2><p>Test the bowl-placement task under camera and lighting changes.</p></div>
       <div className="analysis-actions">
         <HelpTutorial title="Campaign tutorial" steps={campaignSetupGuide}/>
-        <button type="button" className="icon-button" aria-label="Close new campaign" onClick={onClose} disabled={busy}><Icon name="close"/></button>
+        <button type="button" className="icon-button" aria-label="Close benchmark setup" onClick={onClose} disabled={busy}><Icon name="close"/></button>
       </div>
     </div>
     <form onSubmit={submit}>

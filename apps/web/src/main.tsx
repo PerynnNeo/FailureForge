@@ -7,7 +7,7 @@ const readRoute = () => window.location.hash.slice(1) || '/';
 
 function SiteRouter() {
   const [route, setRoute] = useState(readRoute);
-  const inWorkspace = /^\/(?:workspace|projects(?:\/[^/]+(?:\/analysis)?)?|campaigns(?:\/[^/]+)?|cases(?:\/[^/]+)?|runtime)\/?$/.test(route);
+  const inWorkspace = /^\/(?:workspace|projects(?:\/[^/]+(?:\/analysis)?)?|campaigns(?:\/[^/]+)?|cases(?:\/[^/]+)?|runtime)\/?$/.test(route.split('?')[0]);
 
   useEffect(() => {
     let acceptedRoute = readRoute();

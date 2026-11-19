@@ -22,6 +22,9 @@ from .project_runs import ProjectRuns, analysis_router
 from .project_bundle import bundle_router
 from .project_sweeps import sweep_router
 from .environment_matrices import environment_matrix_router
+from .project_campaigns import campaign_router
+from .project_replay import replay_router
+from .project_camera import CameraReplays, camera_router
 from .qualification_preview import qualification_report, qualification_router
 
 
@@ -41,6 +44,7 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
     artifacts = ArtifactStore(root / "artifacts")
     projects_router, projects = project_router(store, root / "project-assets")
     analyses = ProjectRuns(projects)
+    cameras = CameraReplays(analyses, root / "project-camera-replays")
     @asynccontextmanager
     async def lifespan(app):
         analyses.start()
@@ -48,6 +52,7 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
             yield
         finally:
             analyses.close()
+            cameras.pool.shutdown(wait=False, cancel_futures=True)
     app = FastAPI(title="FailureForge", version="0.1.0", lifespan=lifespan)
     app.state.store, app.state.artifacts, app.state.data_dir = store, artifacts, root
     app.state.projects = projects
@@ -56,6 +61,9 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
     app.include_router(bundle_router(analyses))
     app.include_router(sweep_router(analyses))
     app.include_router(environment_matrix_router(analyses))
+    app.include_router(campaign_router(analyses))
+    app.include_router(replay_router(analyses))
+    app.include_router(camera_router(cameras))
     app.include_router(qualification_router(root / "qualification"))
     token = os.environ.get("FAILUREFORGE_API_TOKEN")
     origins = os.environ.get("FAILUREFORGE_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000").split(",")

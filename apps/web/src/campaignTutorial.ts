@@ -4,22 +4,68 @@ import type { Campaign } from './types';
 export function campaignListGuide(hasMatches: boolean): TutorialStep[] {
   const steps: TutorialStep[] = [
     {
-      target: 'campaign-create', title: 'Set up a benchmark campaign',
-      body: 'New campaign opens the setup form for the bowl-placement benchmark. You can explore camera and lighting changes with the same robot and task.',
+      target: 'campaign-create', title: 'Test a project across conditions',
+      body: 'Choose New campaign, select a saved project, then configure its tests. Use a suite for several test definitions, a sweep for values of one input, or an environment matrix for combinations of supported conditions.',
     },
     {
       target: 'campaign-search', title: 'Find a saved campaign',
-      body: 'Type part of its name or ID. Clear the search to see the full list again.',
+      body: 'Type part of a campaign name, project name or batch ID. Clear the search to see the full history again.',
     },
     {
-      target: 'campaign-filter', title: 'Filter by progress or execution mode',
-      body: 'Choose Active campaigns for ongoing work, Robot experiments for simulated robot runs, or Synthetic validations for generated workflow tests.',
+      target: 'campaign-filter', title: 'Filter by progress or test type',
+      body: 'Choose Active campaigns for ongoing work. Use the test type to find a project suite, sweep, environment matrix or bowl benchmark.',
     },
   ];
   if (hasMatches) steps.push({
     target: 'campaign-open', title: 'Open a campaign',
-    body: 'Select a campaign name to inspect its scene changes, recorded episodes and any failure cases. The badge under each name identifies how it was run.',
+    body: 'Select a campaign name. In a project batch, choose View result beside a condition to watch its camera pair. A bowl benchmark opens its search results and recorded episodes.',
   });
+  steps.push({
+    target: 'campaign-benchmark', title: 'Run the bowl-placement benchmark',
+    body: 'New bowl benchmark opens a separate experiment with a fixed robot and task. Choose LIBERO for simulated robot episodes or synthetic validation to check the software workflow.',
+  });
+  return steps;
+}
+
+export function projectCampaignGuide(hasProject: boolean): TutorialStep[] {
+  const steps: TutorialStep[] = [{
+    target: 'project-campaign-choice', title: 'Choose the prototype to test',
+    body: 'Select the saved project that contains your model and acceptance criteria. You can review its goal and revision before continuing.',
+  }];
+  if (hasProject) steps.push({
+    target: 'project-campaign-configure', title: 'Set up the batch',
+    body: 'Configure campaign opens this project’s batch setup. Choose the supported tests, enter the conditions you want to compare, then review the inputs before starting the batch.',
+  });
+  return steps;
+}
+
+export function batchSetupGuide(mode: 'suite' | 'sweep' | 'matrix', modelSelected: boolean): TutorialStep[] {
+  const steps: TutorialStep[] = [{
+    target: 'campaign-batch-kind', title: 'Choose a test method',
+    body: 'A suite runs a list of tests you define. A sweep varies one input. An environment matrix tests combinations of conditions. The menu shows the methods supported for this project.',
+  }];
+  if (mode === 'matrix') return [...steps, {
+    target: 'campaign-matrix-values', title: 'Enter the operating conditions',
+    body: 'Enter increasing parcel masses in kilograms and head forces in newtons. Select one value from each list for the reference. Name the matrix and choose Run environment matrix to queue every combination.',
+  }];
+  steps.push({
+    target: 'project-model', title: 'Configure the model and inputs',
+    body: 'Select the model, name the test and enter the inputs for this revision. For robot motion, check which robot is selected and match the joint targets to that robot.',
+  });
+  if (mode === 'sweep' && modelSelected) steps.push({
+    target: 'campaign-sweep', title: 'Choose the input to vary',
+    body: 'Select a numeric input. Enter between 2 and 16 increasing values, including the reference shown here. Run sweep queues one run per value.',
+  });
+  if (mode === 'suite') {
+    if (modelSelected) steps.push({
+      target: 'project-run', title: 'Add a test to the suite',
+      body: 'Choose Add to suite to keep the current model, inputs and label. Change the inputs or choose another model and add another test. You can include up to 16.',
+    });
+    steps.push({
+      target: 'campaign-suite-review', title: 'Name and run the suite',
+      body: 'Enter a campaign name, check the test list, and remove any entries you do not need. Run suite queues these tests and opens their shared results.',
+    });
+  }
   return steps;
 }
 

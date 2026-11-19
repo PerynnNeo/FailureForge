@@ -59,7 +59,7 @@ vendor/lerobot/.venv/bin/python -m failureforge --data-dir data approve-scene-re
 
 This records an explicit operator attestation tied to hashes of the actual evidence. It does not substitute for the inspection. The implementation does not preapprove this step. A live worker rejects missing qualification, pending scene review, changed evidence, or a changed runtime fingerprint.
 
-After review, **New campaign** lets you inspect both recorded policy-camera views for completed reference episodes before submitting work. Playback remains available while the worker is offline. The local API lists these states at `GET /api/qualification/references`. Each camera link verifies its MP4 against the reviewed manifest before serving the recording. In-progress qualification directories and operator diagnostics stay private.
+After review, **New bowl benchmark** in Campaigns lets you inspect both recorded policy-camera views for completed reference episodes before submitting work. Playback remains available while the worker is offline. The local API lists these states at `GET /api/qualification/references`. Each camera link verifies its MP4 against the reviewed manifest before serving the recording. In-progress qualification directories and operator diagnostics stay private.
 
 Start the sequential robot worker:
 

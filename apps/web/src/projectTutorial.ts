@@ -77,7 +77,7 @@ export const projectGuide: TutorialStep[] = [
     target: 'project-files',
     title: 'Prepare your files',
     body: 'If you have a source file, select its purpose to see the accepted formats. A drawing can document geometry, a robot description can describe joints, and a measurement file can record a physical test.',
-    action: 'Choose a file and select Upload file. Open its inspection details to see what the app could read. You can leave Files empty while working on the brief.',
+    action: 'Choose a file and select Upload file. For a robot with STL surfaces, upload its URDF and each referenced STL under its original filename before running the test.',
   },
   {
     target: 'project-parameters',
@@ -114,8 +114,8 @@ export const projectGuide: TutorialStep[] = [
   {
     target: 'project-history',
     title: 'Investigate a result',
-    body: 'Run history shows the cases recorded for this project. Once a run is available, Inspect run opens its inputs, status and results. The evidence available depends on the selected analysis.',
-    action: 'Choose the run by label or revision. Compare its reported result with your pass rule. If the case failed or stopped early, read the recorded checks or error details.',
+    body: 'Choose a case under Inspect run. Its viewer follows the recorded evidence. You can replay motion over time, move through positions along a part, inspect a mesh or compare measured and predicted readings.',
+    action: 'Play or scrub either camera to follow both views. Open “Inspect the model and recorded values” to compare the measurements with your pass rule.',
   },
   {
     target: 'project-compare',
@@ -129,7 +129,7 @@ const matrixStep: TutorialStep = {
   target: 'project-matrix',
   title: 'Explore operating conditions',
   body: 'Each cell in an operating environment matrix represents one combination of conditions. Read the row and column labels to see what varied across the runs.',
-  action: 'In a saved matrix, select a condition to see its recorded trace and checks. When the setup form is available, use it to choose conditions and a reference case for a new matrix.',
+  action: 'Select a condition to open its visual result, trace and checks. Use the replay controls when motion is available. To test new conditions, use the matrix setup form.',
 };
 
 const unavailableModelStep: TutorialStep = {

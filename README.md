@@ -1,6 +1,8 @@
 # FailureForge
 
-A local workspace for preparing hardware tests and investigating failures of a supported robot policy in simulation.
+A local workspace for testing a prototype across operating conditions and replaying the evidence for each result.
+
+Open a project and choose **View replays** to play its recorded motion, inspect static fields or explore measured samples. Use **Campaigns → New campaign** to test a group of conditions on any saved project and compare their outcomes. **New bowl benchmark** opens the separate camera-recorded policy experiment. [Audit of the five saved projects](docs/project-workbench-audit.md)
 
 The [packaging lift example](examples/packaging-lift/README.md) tests one fixed prototype across nine external operating conditions. Choose a tray payload and packing-head force in the workbench to see whether the lift reaches its target and holds position through the pressing cycle.
 
@@ -39,7 +41,7 @@ The three-step setup asks for your starting stage, analysis, and working brief. 
 
 The service accepts up to 40 files per project, 10 MiB per file, 80 parameters, and 30 test plans. Supported XML and JSON have a 2 MiB intake limit. For execution, each adapter validates its own input contract in a separate solver process. STL inventory supports declared units and optional CSV bill-of-materials mapping. The URDF adapter supports documented joints, physical properties and primitive shapes. The controller format is declarative JSON. Uploaded programs and archives are stored as attachments.
 
-For a local installation with dynamic project motion, additionally install `python -m pip install -e ".[project-robot]"` in the **application** environment. Choose **Analysis & runs** within a saved project to configure an adapter, inspect fields or trajectories, download a run, or compare a revision. [Project analysis and CI](docs/project-analysis.md) · [Articulated motion and upload examples](docs/articulated-motion.md).
+Choose **View replays** inside a project to watch its completed runs from two synchronized cameras. **Campaigns** lets you select a tested condition and watch that run. For local 3D playback, install `python -m pip install -e ".[project-robot]"` in the application environment and install FFmpeg with H.264 encoding and an OpenGL 3.3 renderer. The Linux workbench uses headless EGL. [Project analysis and camera playback](docs/project-analysis.md) · [Articulated motion and upload examples](docs/articulated-motion.md)
 
 The [OpenManipulator-X example](examples/openmanipulator-x/README.md) includes a manufacturer's URDF and two independently recorded physical trials with licenses, source revisions, replayable inputs and held-out calibration measurements. [Project sweeps](docs/project-sweeps.md) explains how to search a finite range and inspect individual outcomes.
 

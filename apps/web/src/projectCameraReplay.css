@@ -1,0 +1,14 @@
+.project-camera-replay { min-width: 0; }
+.project-camera-replay h4 { margin: 0; font-size: 1.1rem; }
+.project-camera-status { margin: 5px 0 12px; color: var(--muted); font-size: .88rem; line-height: 1.45; }
+.project-camera-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.project-camera-pair figure { margin: 0; min-width: 0; overflow: hidden; border: 1px solid #d8e0e5; border-radius: 6px; background: #f7f9fa; }
+.project-camera-pair figcaption { padding: 9px 12px; font-size: .88rem; font-weight: 600; color: #294454; }
+.project-camera-pair video { width: 100%; aspect-ratio: 16 / 9; display: block; object-fit: contain; background: #14232c; }
+.project-camera-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin: 9px 0 0; color: var(--muted); font-size: .82rem; }
+.project-camera-actions button { display: inline-flex; align-items: center; gap: 5px; }
+.project-camera-details { min-width: 0; }
+.project-camera-details[open] > summary { margin-bottom: 12px; }
+@media (max-width: 650px) {
+  .project-camera-pair { grid-template-columns: 1fr; }
+}
