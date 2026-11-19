@@ -5,8 +5,8 @@ import { Icon } from './components';
 import { synchronizeCameras } from './cameraPlayback';
 import './projectCameraReplay.css';
 
-type View = { id: 'main' | 'detail'; label: string; url: string };
-type Replay = {
+export type View = { id: 'main' | 'detail'; label: string; url: string };
+export type Replay = {
   status: 'ready' | 'available' | 'rendering' | 'unavailable' | 'failed';
   description: string; views?: View[]; duration_s?: number;
 };
@@ -49,27 +49,16 @@ function CameraPair({ main, detail }: { main: View; detail: View }) {
   </>;
 }
 
-export function ProjectCameraReplay({ runPath, children }: { runPath: string; children: ReactNode }) {
-  const path = runPath + '/camera-replay';
-  const container = useRef<HTMLElement>(null);
+export type CameraReplayState = { replay: Replay | null; requestError: string; retry: () => void };
+
+/** Load a run's camera replay (available -> POST render -> ready polling), gated on `active`. */
+export function useCameraReplay(path: string, active: boolean): CameraReplayState {
   const retryFailed = useRef(false);
-  const [visible, setVisible] = useState(false);
   const [replay, setReplay] = useState<Replay | null>(null);
   const [requestError, setRequestError] = useState('');
   const [attempt, setAttempt] = useState(0);
-  const [inspect, setInspect] = useState(false);
   useEffect(() => {
-    if (!container.current) return;
-    let intersecting = false;
-    const update = () => setVisible(intersecting && !document.hidden);
-    const observer = new IntersectionObserver(([entry]) => { intersecting = entry.isIntersecting; update(); });
-    observer.observe(container.current);
-    document.addEventListener('visibilitychange', update);
-    return () => { observer.disconnect(); document.removeEventListener('visibilitychange', update); };
-  }, []);
-
-  useEffect(() => {
-    if (!visible) return;
+    if (!active) return;
     let current = true, timer = 0, submitted = false;
     async function load() {
       try {
@@ -93,15 +82,31 @@ export function ProjectCameraReplay({ runPath, children }: { runPath: string; ch
     }
     void load();
     return () => { current = false; window.clearTimeout(timer); };
-  }, [path, visible, attempt]);
+  }, [path, active, attempt]);
+  function retry() { retryFailed.current = true; setRequestError(''); setReplay(null); setAttempt(n => n + 1); }
+  return { replay, requestError, retry };
+}
 
+export function ProjectCameraReplay({ runPath, children }: { runPath: string; children: ReactNode }) {
+  const path = runPath + '/camera-replay';
+  const container = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [inspect, setInspect] = useState(false);
+  useEffect(() => {
+    if (!container.current) return;
+    let intersecting = false;
+    const update = () => setVisible(intersecting && !document.hidden);
+    const observer = new IntersectionObserver(([entry]) => { intersecting = entry.isIntersecting; update(); });
+    observer.observe(container.current);
+    document.addEventListener('visibilitychange', update);
+    return () => { observer.disconnect(); document.removeEventListener('visibilitychange', update); };
+  }, []);
+
+  const { replay, requestError, retry } = useCameraReplay(path, visible);
   const unavailable = replay?.status === 'unavailable';
   const failed = Boolean(requestError) || replay?.status === 'failed';
   const ready = replay?.status === 'ready' && !requestError;
   const main = replay?.views?.find(view => view.id === 'main'), detail = replay?.views?.find(view => view.id === 'detail');
-  function retry() {
-    retryFailed.current = true; setRequestError(''); setReplay(null); setAttempt(n => n + 1);
-  }
   return <>
     <section ref={container} className="project-camera-replay" aria-label="Camera replay">
       <h4>{ready ? 'Reconstructed camera replay' : 'Camera replay'}</h4>

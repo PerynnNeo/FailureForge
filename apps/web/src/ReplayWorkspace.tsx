@@ -2,30 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { formatTime, label, request } from './api';
 import { Icon, Loading, Notice, Status } from './components';
 import type { RunDetail, RunSummary } from './analysisInputs';
+import type { Condition } from './campaignCompare';
+import { coordinateText, verdict } from './campaignVerdict';
+import { CompareWithReference } from './CompareWithReference';
 import { RunVisual } from './RunVisual';
 import './replayWorkspace.css';
 
-type Condition = Pick<RunSummary, 'id' | 'label' | 'adapter' | 'status' | 'error'> & {
-  passed: boolean | null; reference: boolean; coordinates: Record<string, unknown>; metrics: Record<string, unknown>;
-};
 type Batch = {
   suite_id: string; kind: string; label: string; status: string; project_revision: number;
   runs: Condition[]; field?: string | null;
 };
 const active = (status: string) => status === 'running' || status === 'queued';
-function verdict(run: Condition) {
-  if (run.error) return 'Inconclusive';
-  if (run.status !== 'completed') return label(run.status);
-  return run.passed == null ? 'Measurement only' : run.passed ? 'Passed' : 'Failed';
-}
-function coordinateText(run: Condition, field?: string | null) {
-  return Object.entries(run.coordinates).map(([k, v]) => {
-    if (k === 'payload_kg') return v + ' kg';
-    if (k === 'head_force_n') return v + ' N';
-    const key = k === 'value' ? field ?? 'input' : k;
-    return label(key) + ' = ' + (typeof v === 'object' ? JSON.stringify(v) : String(v));
-  }).join(' · ');
-}
 
 export default function ReplayWorkspace({ projectId, batchId, runId }: {
   projectId: string; batchId: string | null; runId: string | null;
@@ -130,6 +117,10 @@ export default function ReplayWorkspace({ projectId, batchId, runId }: {
         <Status value={batch.status}/></header>
       <div className="project-form-stack">
         {reference && <p><strong>Reference condition</strong> <a className="text-link" href={href(reference.id)} onClick={focusReplay}>{coordinateText(reference, batch.field) || reference.label}</a> · {verdict(reference)}</p>}
+        {batch.runs.filter(row => row.status === 'completed').length > 1 && <details className="compare-disclosure">
+          <summary>Compare with reference</summary>
+          <CompareWithReference base={base} runs={batch.runs} field={batch.field} reference={reference}/>
+        </details>}
         {key && <label className="project-field"><span>Compare measured quantity</span><select value={key} onChange={e => setMetric(e.target.value)}>
           {metrics.map(k => <option key={k} value={k}>{label(k)}</option>)}</select></label>}
         {failures.length > 0 && <label className="recorded-filter"><input type="checkbox" checked={onlyFailures} onChange={e => setOnlyFailures(e.target.checked)}/>Show failed conditions only</label>}
