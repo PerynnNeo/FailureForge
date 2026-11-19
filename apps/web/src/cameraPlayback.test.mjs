@@ -142,9 +142,10 @@ test('removing the link after a decode error leaves the healthy player running i
   const first = new Video(), second = new Video();
   const sync = synchronizeCameras(first, second, assert.fail);
   await first.play();
-  sync.disconnect(false);
+  second.error = {code: 3};
   second.pause();
   assert.equal(first.paused, false);
+  sync.disconnect(false);
   second.currentTime = 3;
   assert.equal(first.currentTime, 0);
 });

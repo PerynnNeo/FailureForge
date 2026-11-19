@@ -57,7 +57,7 @@ export function synchronizeCameras(first: HTMLVideoElement, second: HTMLVideoEle
 
   function match(source: HTMLVideoElement, other: HTMLVideoElement, tolerance: number) {
     followRate(source, other);
-    align(source, other, tolerance);
+    align(source, other, stepping.has(other) ? 0 : tolerance);
     if (source.paused || stepping.has(other) || !other.paused) return;
     // play() on an ended video restarts it at zero. Hold its final frame until
     // the user seeks back into the interval shared by both recordings.
@@ -74,9 +74,10 @@ export function synchronizeCameras(first: HTMLVideoElement, second: HTMLVideoEle
       takeControl(); match(source, other, 0.025);
     });
     on('pause', () => {
-      if (!source.paused || stepping.has(source)) return;
+      if (!source.paused || stepping.has(source) || source.error || other.error) return;
       if (source.ended && source.duration * scale(source) < other.duration * scale(other)) {
         if (!other.paused || stepping.has(other)) {
+          if (driver === source) align(source, other, .025);
           driver = other;
           stepping.delete(other);
           if (other.paused) start(other);
