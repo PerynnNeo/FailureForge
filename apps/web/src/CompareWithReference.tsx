@@ -1,84 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { label, request } from './api';
 import { Icon, Loading, Notice } from './components';
-import type { Inputs, RunDetail } from './analysisInputs';
-import { measuredNumber } from './recordedFields';
+import type { RunDetail } from './analysisInputs';
+import { RunResult } from './CampaignRunResult';
 import { synchronizeCameras } from './cameraPlayback';
+import { readMotion } from './motionData';
 import { useCameraReplay, useViewportActive } from './ProjectCameraReplay';
 import type { Replay, View } from './ProjectCameraReplay';
-import { changedInputs, defaultPair, resolvePair, splitCriteria } from './campaignCompare';
+import { changedInputs, defaultPair, resolvePair } from './campaignCompare';
 import type { Condition } from './campaignCompare';
-import { coordinateValue, verdict } from './campaignVerdict';
+import { coordinateText, coordinateValue } from './campaignVerdict';
 import './compareWithReference.css';
 
-const active = (status: string) => status === 'running' || status === 'queued';
-
-/** Fetch a single run's full detail, guarded against races and stale paths. */
+/** Only expose the response for the currently selected condition. */
 function useRunDetail(path: string) {
-  const [detail, setDetail] = useState<RunDetail | null>(null);
-  const [error, setError] = useState('');
+  const [response, setResponse] = useState<{path: string; detail: RunDetail | null; error: string}>();
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    let current = true, timer = 0;
-    setDetail(null); setError('');
-    async function load() {
-      try {
-        const data = await request<RunDetail>(path);
-        if (!current) return;
-        setDetail(data);
-        if (active(data.status)) timer = window.setTimeout(() => void load(), 2000);
-      } catch (failure) { if (current) setError((failure as Error).message); }
-    }
-    if (path) void load();
-    return () => { current = false; window.clearTimeout(timer); };
-  }, [path]);
-  return { detail, error };
-}
-
-function runVerdict(run: Condition, detail: RunDetail | null) {
-  if (!detail) return verdict(run);
-  if (detail.assessment_error) return 'Inconclusive';
-  if (detail.status !== 'completed') return label(detail.status);
-  const passed = detail.result?.passed ?? (detail.result?.summary as Inputs | undefined)?.validation_passed;
-  return typeof passed === 'boolean' ? (passed ? 'Passed' : 'Failed') : 'Measurement only';
-}
-
-function verdictClass(text: string) {
-  return text === 'Passed' ? 'text-green' : text === 'Failed' ? 'text-red' : undefined;
-}
-
-/** Format one criterion/limit value: numbers via measuredNumber, everything else readable. */
-function limitValue(value: unknown) {
-  if (typeof value === 'number' && Number.isFinite(value)) return measuredNumber(value);
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  return String(value);
-}
-
-/** Measured result + acceptance limit + verdict for one run, mirroring RunVisual's NumericalSummary. */
-function RunResult({ run, detail }: { run: Condition; detail: RunDetail | null }) {
-  const outcome = runVerdict(run, detail);
-  const result = (detail?.result ?? undefined) as Inputs | undefined;
-  const metrics = (result?.summary ?? result?.metrics ?? result ?? run.metrics) as Inputs;
-  const scalars = Object.entries(metrics).filter(([, value]) => typeof value === 'number' && Number.isFinite(value));
-  const { checks, limits, nested } = splitCriteria(result?.criteria as Record<string, unknown> | undefined);
-  return <div className="compare-run-result">
-    <h5>{run.label}</h5>
-    <p className="compare-verdict">Verdict · <strong className={verdictClass(outcome)}>{outcome}</strong></p>
-    {run.error && <p className="small muted">{run.error}</p>}
-    {scalars.length > 0 && <><h6>Measured result</h6>
-      <dl className="analysis-metrics">{scalars.map(([name, value]) => <div key={name}>
-        <dt>{label(name)}</dt><dd>{measuredNumber(value as number)}</dd></div>)}</dl></>}
-    {(checks.length > 0 || limits.length > 0 || nested.length > 0) && <><h6>Acceptance limit</h6>
-      {checks.length > 0 && <ul className="matrix-checks">{checks.map(([name, passed]) => <li key={name}>{label(name)}
-        <strong className={'matrix-tag ' + (passed ? 'passed' : 'failed')}>{passed ? 'Passed' : 'Failed'}</strong></li>)}</ul>}
-      {limits.length > 0 && <dl className="analysis-metrics">{limits.map(([name, value]) => <div key={name}>
-        <dt>{label(name)}</dt><dd>{measuredNumber(value as number)}</dd></div>)}</dl>}
-      {nested.map(([name, value]) => <div key={name} className="compare-nested-criterion">
-        <h6>{label(name)}</h6>
-        <dl className="analysis-metrics">{Object.entries(value as Inputs).map(([key, inner]) => <div key={key}>
-          <dt>{label(key)}</dt><dd>{limitValue(inner)}</dd></div>)}</dl></div>)}</>}
-    {!scalars.length && !checks.length && !limits.length && !nested.length && !run.error &&
-      <p className="small muted">No measured result recorded for this condition.</p>}
-  </div>;
+    let current = true;
+    if (path) void request<RunDetail>(path).then(
+      detail => { if (current) setResponse({path, detail, error: ''}); },
+      failure => { if (current) setResponse({path, detail: null, error: (failure as Error).message}); },
+    );
+    return () => { current = false; };
+  }, [path, attempt]);
+  const selected = response?.path === path ? response : undefined;
+  return { detail: selected?.detail ?? null, error: selected?.error ?? '', retry: () => setAttempt(n => n + 1) };
 }
 
 function replayState(replay: Replay | null, requestError: string) {
@@ -89,8 +36,16 @@ function replayState(replay: Replay | null, requestError: string) {
   return { hasFootage, main, message };
 }
 
-/** Side-by-side main views driven on one shared timeline when both runs have footage. */
-function ComparePlayers({ leftPath, rightPath }: { leftPath: string; rightPath: string }) {
+function recordingDuration(detail: RunDetail | null) {
+  if (!detail?.result) return;
+  const motion = readMotion(detail.result);
+  const times = motion?.kind === 'response' ? motion.logs[0].times : motion?.times;
+  return times && times[times.length - 1] - times[0];
+}
+
+function ComparePlayers({ leftPath, rightPath, leftDuration, rightDuration }: {
+  leftPath: string; rightPath: string; leftDuration?: number; rightDuration?: number;
+}) {
   const container = useRef<HTMLElement>(null);
   const visible = useViewportActive(container);
   const left = useCameraReplay(leftPath + '/camera-replay', visible);
@@ -98,49 +53,66 @@ function ComparePlayers({ leftPath, rightPath }: { leftPath: string; rightPath: 
   const leftVideo = useRef<HTMLVideoElement>(null), rightVideo = useRef<HTMLVideoElement>(null);
   const playback = useRef<ReturnType<typeof synchronizeCameras> | null>(null);
   const [playbackError, setPlaybackError] = useState('');
+  type Side = 'left' | 'right';
+  type MediaState = 'loading' | 'playable' | 'failed';
+  const [media, setMedia] = useState<Record<Side, MediaState>>({left: 'loading', right: 'loading'});
 
   const leftState = replayState(left.replay, left.requestError);
   const rightState = replayState(right.replay, right.requestError);
-  const synced = leftState.hasFootage && rightState.hasFootage;
+  const synced = leftState.hasFootage && rightState.hasFootage && media.left === 'playable' && media.right === 'playable';
 
   useEffect(() => {
     if (!synced || !leftVideo.current || !rightVideo.current) return;
     setPlaybackError('');
-    const sync = synchronizeCameras(leftVideo.current, rightVideo.current,
-      () => setPlaybackError('The browser could not play both camera views.'));
+    const first = leftVideo.current, second = rightVideo.current;
+    const sync = synchronizeCameras(first, second,
+      () => setPlaybackError('Synchronized playback was interrupted. Restart both runs to try again.'),
+      leftDuration && rightDuration ? [leftDuration, rightDuration] : undefined);
     playback.current = sync;
-    return () => { sync.disconnect(); playback.current = null; };
-  }, [synced, leftState.main?.url, rightState.main?.url]);
+    return () => {
+      // Let the decodable side continue if its partner fails during playback.
+      sync.disconnect(!(first.error || second.error));
+      playback.current = null;
+    };
+  }, [synced, leftState.main?.url, rightState.main?.url, leftDuration, rightDuration]);
 
-  const sides: Array<{ key: 'left' | 'right'; title: string; state: ReturnType<typeof replayState>;
-    ref: typeof leftVideo; retry: () => void }> = [
-    { key: 'left', title: 'Reference run', state: leftState, ref: leftVideo, retry: left.retry },
-    { key: 'right', title: 'Comparison run', state: rightState, ref: rightVideo, retry: right.retry },
+  const sides: Array<{ key: Side; title: string; state: ReturnType<typeof replayState>;
+    ref: typeof leftVideo; canRetry: boolean; retry: () => void }> = [
+    { key: 'left', title: 'Reference run', state: leftState, ref: leftVideo,
+      canRetry: Boolean(left.requestError) || left.replay?.status === 'failed', retry: left.retry },
+    { key: 'right', title: 'Comparison run', state: rightState, ref: rightVideo,
+      canRetry: Boolean(right.requestError) || right.replay?.status === 'failed', retry: right.retry },
   ];
+  const markMedia = (key: Side, status: MediaState) => setMedia(previous => ({ ...previous, [key]: status }));
   return <section ref={container} className="compare-players" aria-label="Side-by-side camera replay">
     <div className="compare-video-pair">{sides.map(side =>
-      <figure key={side.key}><figcaption>{side.title}</figcaption>
-        {side.state.hasFootage && side.state.main
+      <figure key={side.key}><figcaption>{side.title}{side.state.main && ' · ' + side.state.main.label}</figcaption>
+        {media[side.key] === 'failed' ? <p className="compare-replay-status" role="alert">
+          This camera video could not be loaded. <button type="button" className="project-inline-button"
+            onClick={() => markMedia(side.key, 'loading')}>Retry video</button></p>
+        : side.state.hasFootage && side.state.main
           ? <video ref={side.ref} src={side.state.main.url} aria-label={side.title + ' camera replay'}
-              controls playsInline muted preload="auto"/>
+              controls playsInline muted preload="auto" onLoadedData={() => markMedia(side.key, 'playable')}
+              onError={() => markMedia(side.key, 'failed')}/>
           : <p className="compare-replay-status" role="status">{side.state.message}
-              {(side.state.message && !side.state.hasFootage) && <> <button type="button" className="project-inline-button" onClick={side.retry}>Retry</button></>}
+              {side.canRetry && <> <button type="button" className="project-inline-button" onClick={side.retry}>Retry</button></>}
             </p>}
+        {side.state.hasFootage && <p className="compare-replay-status">{side.state.message}</p>}
       </figure>)}</div>
     {synced && <div className="project-camera-actions">
-      <span>Both runs play on one shared timeline.</span>
-      <button className="project-inline-button" type="button" disabled={Boolean(playbackError)} onClick={() => playback.current?.restart()}>
+      <span>{leftDuration && rightDuration ? 'Linked by elapsed time in each recorded run.' : 'Linked by elapsed video time.'}</span>
+      <button className="project-inline-button" type="button" onClick={() => { setPlaybackError(''); playback.current?.restart(); }}>
         <Icon name="refresh" size={14}/>Restart both runs</button>
     </div>}
-    {playbackError && <p role="alert">{playbackError}</p>}
+    {synced && playbackError && <p role="alert">{playbackError}</p>}
   </section>;
 }
 
-export function CompareWithReference({ base, runs, field, reference }: {
-  base: string; runs: Condition[]; field?: string | null; reference?: Condition;
+export function CompareWithReference({ base, runs, field, reference, selectedId }: {
+  base: string; runs: Condition[]; field?: string | null; reference?: Condition; selectedId?: string;
 }) {
   const completed = runs.filter(run => run.status === 'completed');
-  const [pair, setPair] = useState(() => defaultPair(runs, reference?.id));
+  const [pair, setPair] = useState(() => defaultPair(runs, reference?.id, selectedId));
   const { left, right } = resolvePair(runs, pair);
 
   const leftPath = left ? base + '/' + encodeURIComponent(left.id) : '';
@@ -161,7 +133,9 @@ export function CompareWithReference({ base, runs, field, reference }: {
   function picker(side: 'left' | 'right', value: string | null) {
     return <label className="project-field"><span>{side === 'left' ? 'Reference' : 'Comparison'}</span>
       <select value={value ?? ''} onChange={event => setPair(prev => ({ ...prev, [side]: event.target.value }))}>
-        {completed.map(run => <option key={run.id} value={run.id}>{run.label}{run.reference ? ' · Reference' : ''}</option>)}
+        {completed.map(run => <option key={run.id} value={run.id}>
+          {[run.label,coordinateText(run,field),run.reference ? 'Reference' : ''].filter(Boolean).join(' · ')}
+        </option>)}
       </select></label>;
   }
 
@@ -170,29 +144,35 @@ export function CompareWithReference({ base, runs, field, reference }: {
   return <div className="compare-panel">
     <div className="compare-pickers">{picker('left', pair.left)}{picker('right', pair.right)}</div>
     {pair.left && pair.left === pair.right && <Notice tone="warning">Pick two different conditions to compare.</Notice>}
-    {error && <Notice tone="error">{error}</Notice>}
+    {error && <Notice tone="error">{error} <button className="project-inline-button" onClick={() => {
+      if (leftDetail.error) leftDetail.retry();
+      if (rightDetail.error) rightDetail.retry();
+    }}>Retry loading results</button></Notice>}
 
     {distinct && <>
       <div className="compare-diff">
         <h5>Changed inputs</h5>
+        {left?.adapter !== right?.adapter && <p>Analysis models differ: {label(left?.adapter)} and {label(right?.adapter)}.</p>}
         {changes.length === 0
-          ? <p className="small muted">No input differences between these conditions.</p>
+          ? <p className="small muted">{bothLoaded ? 'No input differences between these conditions.' : 'Full input comparison requires both saved results.'}</p>
           : <div className="analysis-table-scroll"><table className="data-table">
               <thead><tr><th>Input</th><th>Reference</th><th>Comparison</th></tr></thead>
               <tbody>{changes.map(change => <tr key={change.key}>
                 <td>{label(change.key === 'value' ? field ?? 'input' : change.key)}</td>
-                <td>{coordinateValue(change.key, change.left, field)}</td>
-                <td>{coordinateValue(change.key, change.right, field)}</td>
+                <td>{coordinateValue(change.key, change.left, field, false)}</td>
+                <td>{coordinateValue(change.key, change.right, field, false)}</td>
               </tr>)}</tbody>
             </table></div>}
       </div>
+
+      <ComparePlayers key={left!.id + '|' + right!.id} leftPath={leftPath} rightPath={rightPath}
+        leftDuration={recordingDuration(leftDetail.detail)} rightDuration={recordingDuration(rightDetail.detail)}/>
 
       <div className="compare-results">
         {left ? <RunResult run={left} detail={leftDetail.detail}/> : <Loading/>}
         {right ? <RunResult run={right} detail={rightDetail.detail}/> : <Loading/>}
       </div>
 
-      <ComparePlayers key={left!.id + '|' + right!.id} leftPath={leftPath} rightPath={rightPath}/>
     </>}
   </div>;
 }

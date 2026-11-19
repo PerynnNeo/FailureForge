@@ -27,6 +27,7 @@ export default function ReplayWorkspace({ projectId, batchId, runId }: {
   const panel = useRef<HTMLElement>(null);
   const [metric, setMetric] = useState('');
   const [onlyFailures, setOnlyFailures] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
   useEffect(() => {
     let current = true, timer = 0;
     async function load() {
@@ -117,9 +118,11 @@ export default function ReplayWorkspace({ projectId, batchId, runId }: {
         <Status value={batch.status}/></header>
       <div className="project-form-stack">
         {reference && <p><strong>Reference condition</strong> <a className="text-link" href={href(reference.id)} onClick={focusReplay}>{coordinateText(reference, batch.field) || reference.label}</a> · {verdict(reference)}</p>}
-        {batch.runs.filter(row => row.status === 'completed').length > 1 && <details className="compare-disclosure">
+        {batch.runs.filter(row => row.status === 'completed').length > 1 && <details className="compare-disclosure"
+          onToggle={event => setCompareOpen(event.currentTarget.open)}>
           <summary>Compare with reference</summary>
-          <CompareWithReference base={base} runs={batch.runs} field={batch.field} reference={reference}/>
+          {compareOpen && <CompareWithReference key={selected} base={base} runs={batch.runs} field={batch.field}
+            reference={reference} selectedId={selected}/>}
         </details>}
         {key && <label className="project-field"><span>Compare measured quantity</span><select value={key} onChange={e => setMetric(e.target.value)}>
           {metrics.map(k => <option key={k} value={k}>{label(k)}</option>)}</select></label>}

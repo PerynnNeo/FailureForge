@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { changedInputs, defaultPair, resolvePair, completedConditions, splitCriteria } from './campaignCompare.ts';
+import { changedInputs, defaultPair, resolvePair, completedConditions } from './campaignCompare.ts';
 
 function condition(id, overrides = {}) {
   return {
@@ -78,32 +78,14 @@ test('identical runs produce an empty diff and missing keys count as changes', (
   assert.deepEqual(diff, [{ key: 'extra', left: undefined, right: true }]);
 });
 
-test('splitCriteria separates boolean checks, numeric limits and nested objects without dropping any', () => {
-  // mirrors robot_motion's criteria shape (project_robot.py), including the nested servo_response.
-  const criteria = {
-    joint_target_tolerance: 0.02,
-    check_all_joint_position_and_velocity_limits: true,
-    qualification_required: false,
-    servo_response: { joint: 'left_knuckle', time_constant_s: 0.1, effective_gain_per_s: 10 },
-  };
-  const { checks, limits, nested } = splitCriteria(criteria);
-  assert.deepEqual(checks.map(([k]) => k).sort(),
-    ['check_all_joint_position_and_velocity_limits', 'qualification_required']);
-  assert.deepEqual(limits, [['joint_target_tolerance', 0.02]]);
-  // the object-valued criterion must be surfaced, not discarded
-  assert.deepEqual(nested, [['servo_response',
-    { joint: 'left_knuckle', time_constant_s: 0.1, effective_gain_per_s: 10 }]]);
-
-  // every input key is accounted for across exactly one bucket
-  const covered = [...checks, ...limits, ...nested].map(([k]) => k).sort();
-  assert.deepEqual(covered, Object.keys(criteria).sort());
+test('opening comparison follows the inspected condition, with a failure preferred by default', () => {
+  const runs = [condition('ref',{reference:true}), condition('pass'), condition('fail',{passed:false})];
+  assert.deepEqual(defaultPair(runs,'ref','pass'), {left:'ref',right:'pass'});
+  assert.deepEqual(defaultPair(runs,'ref'), {left:'ref',right:'fail'});
+  assert.deepEqual(defaultPair(runs,'ref','ref'), {left:'ref',right:'fail'});
 });
 
-test('splitCriteria tolerates empty/undefined criteria and non-finite numbers', () => {
-  assert.deepEqual(splitCriteria(undefined), { checks: [], limits: [], nested: [] });
-  assert.deepEqual(splitCriteria({}), { checks: [], limits: [], nested: [] });
-  // NaN/Infinity are not finite limits, and arrays count as nested objects
-  const { limits, nested } = splitCriteria({ bad: NaN, inf: Infinity, waypoints: [1, 2] });
-  assert.deepEqual(limits, []);
-  assert.deepEqual(nested, [['waypoints', [1, 2]]]);
+test('nested object key order is immaterial while ordered trajectory samples remain distinct', () => {
+  assert.deepEqual(changedInputs({a:{joints:[{x:2,y:1}]}},{a:{joints:[{y:1,x:2}]}}),[]);
+  assert.equal(changedInputs({path:[0,1]},{path:[1,0]}).length,1);
 });

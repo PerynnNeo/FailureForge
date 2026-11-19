@@ -13,14 +13,15 @@ export type ComparePair = { left: string | null; right: string | null };
 
 /**
  * Choose the default left/right pair: left prefers the reference condition (else the first
- * completed one); right prefers the first completed non-reference condition that differs from left.
+ * completed one); right follows the case being inspected, then prefers a recorded failure.
  */
-export function defaultPair(runs: Condition[], referenceId?: string | null): ComparePair {
+export function defaultPair(runs: Condition[], referenceId?: string | null, selectedId?: string | null): ComparePair {
   const completed = completedConditions(runs);
   const reference = referenceId && completed.some(run => run.id === referenceId) ? referenceId : null;
   const left = reference ?? completed[0]?.id ?? null;
-  const right = completed.find(run => run.id !== left && !run.reference)?.id
-    ?? completed.find(run => run.id !== left)?.id ?? null;
+  const available = completed.filter(run => run.id !== left);
+  const right = available.find(run => run.id === selectedId)?.id
+    ?? available.find(run => run.passed === false && !run.error)?.id ?? available[0]?.id ?? null;
   return { left, right };
 }
 
@@ -36,7 +37,7 @@ export type ChangedInput = { key: string; left: unknown; right: unknown };
 
 /**
  * Diff two input/coordinate maps, returning only the keys whose values differ. Objects and arrays
- * are compared structurally via JSON.stringify so this is agnostic to project type.
+ * are compared structurally; JSON object property order does not change an input.
  */
 export function changedInputs(left: Inputs | undefined, right: Inputs | undefined): ChangedInput[] {
   const a = left ?? {}, b = right ?? {};
@@ -50,27 +51,11 @@ export function changedInputs(left: Inputs | undefined, right: Inputs | undefine
 
 function sameValue(a: unknown, b: unknown): boolean {
   if (a === b) return true;
-  if (a === undefined || b === undefined) return false;
-  if (typeof a === 'object' || typeof b === 'object') return JSON.stringify(a) === JSON.stringify(b);
-  return false;
-}
-
-export type SplitCriteria = {
-  checks: Array<[string, boolean]>;
-  limits: Array<[string, number]>;
-  nested: Array<[string, Record<string, unknown>]>;
-};
-
-/**
- * Split acceptance criteria into the three shapes the compare panel renders: boolean pass/fail
- * checks, finite-number limits, and nested objects (e.g. robot_motion's servo_response). Keeping
- * this pure lets the Node test runner confirm that nested-object criteria are never dropped.
- */
-export function splitCriteria(criteria: Record<string, unknown> | undefined): SplitCriteria {
-  const entries = Object.entries(criteria ?? {});
-  return {
-    checks: entries.filter((e): e is [string, boolean] => typeof e[1] === 'boolean'),
-    limits: entries.filter((e): e is [string, number] => typeof e[1] === 'number' && Number.isFinite(e[1])),
-    nested: entries.filter((e): e is [string, Record<string, unknown>] => e[1] !== null && typeof e[1] === 'object'),
-  };
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameValue(v, b[i]));
+  }
+  const left = a as Inputs, right = b as Inputs;
+  return Object.keys(left).length === Object.keys(right).length
+    && Object.keys(left).every(key => Object.hasOwn(right, key) && sameValue(left[key], right[key]));
 }
