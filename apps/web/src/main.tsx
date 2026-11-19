@@ -7,11 +7,18 @@ const readRoute = () => window.location.hash.slice(1) || '/';
 
 function SiteRouter() {
   const [route, setRoute] = useState(readRoute);
-  const inWorkspace = /^\/(?:workspace|campaigns(?:\/[^/]+)?|cases(?:\/[^/]+)?|runtime)\/?$/.test(route);
+  const inWorkspace = /^\/(?:workspace|projects(?:\/[^/]+)?|campaigns(?:\/[^/]+)?|cases(?:\/[^/]+)?|runtime)\/?$/.test(route);
 
   useEffect(() => {
+    let acceptedRoute = readRoute();
     const onHashChange = () => {
-      setRoute(readRoute());
+      const nextRoute = readRoute();
+      if (nextRoute !== acceptedRoute && !window.dispatchEvent(new CustomEvent('failureforge:before-route-change', { cancelable: true }))) {
+        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${acceptedRoute}`);
+        return;
+      }
+      acceptedRoute = nextRoute;
+      setRoute(nextRoute);
       window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', onHashChange);
@@ -25,7 +32,7 @@ function SiteRouter() {
   }, [inWorkspace]);
 
   return inWorkspace
-    ? <Suspense fallback={<div role="status" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f3f5f7', color: '#253746', fontFamily: 'system-ui, sans-serif' }}>Opening your workspace…</div>}><App /></Suspense>
+    ? <Suspense fallback={<div role="status" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f3f5f7', color: '#253746', fontFamily: 'system-ui, sans-serif' }}>Opening your workspace…</div>}><App route={route}/></Suspense>
     : <LandingPage />;
 }
 

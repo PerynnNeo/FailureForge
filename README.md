@@ -1,6 +1,8 @@
 # FailureForge
 
-A local workbench for finding, inspecting, reducing, and reproducing failures of a supported pretrained robot policy in simulation.
+A local workspace for preparing hardware tests and investigating failures of a supported robot policy in simulation.
+
+Projects now accept five starting points: concept, CAD design, robot model, existing simulation, and physical prototype. Save requirements, attach files, record physical properties and their sources, define multiple test plans, and review the preparation checklist. Robot behavior, structural, and thermal projects have separate input guidance. These are preparation workflows; custom robot execution, calibration, general regression suites, and structural/thermal solvers are planned integrations.
 
 The application implements durable campaigns, three search strategies, matched reference comparisons, bounded reduction, confirmation, fresh paired reruns, trace inspection, and verified case exports. The real LIBERO/SmolVLA integration is implemented against the pinned upstream sources but **has not yet been executed or qualified on the RTX 5090 PC**. Robot results are unavailable until that qualification passes.
 
@@ -19,7 +21,7 @@ cd ../..
 .venv/Scripts/python.exe -m failureforge dev --synthetic
 ```
 
-Open **http://127.0.0.1:8000** for the landing page, then choose **Open workbench** (direct link: `http://127.0.0.1:8000/#/workspace`). The landing page includes an illustrative interactive 3D scene and an explanation of the investigation workflow; its artwork is not recorded robot evidence. The explicit `--synthetic` flag starts a separate diagnostic worker. Choose **Synthetic validation** in the campaign form to exercise the application. All such results and bundles carry a synthetic label. They contain a mathematical diagnostic trace and no fabricated robot videos.
+Open **http://127.0.0.1:8000** for the landing page, then choose **Start a project** (project list: `http://127.0.0.1:8000/#/projects`). The existing benchmark remains under **Campaigns**. The landing page includes an illustrative interactive 3D scene; its artwork is not recorded robot evidence. The explicit `--synthetic` flag starts a separate diagnostic worker. Choose **Synthetic validation** in the campaign form to exercise the application. All such results and bundles carry a synthetic label. They contain a mathematical diagnostic trace and no fabricated robot videos.
 
 To inspect existing evidence without running any worker:
 
@@ -28,6 +30,14 @@ To inspect existing evidence without running any worker:
 ```
 
 For frontend hot reload, run `npm run dev` in `apps/web` while the API runs on port 8000. Vite proxies `/api` to the local service. The production build is served directly by FastAPI. Both bind to loopback by default.
+
+## Project preparation
+
+The three-step setup asks for your starting stage, analysis, and working brief. Each project provides **Overview**, **Files**, **Parameters**, and **Test plans** sections. Saved changes use revision checks to prevent silent overwrites; uploads also update the revision. Export the saved preparation report as JSON for review or handoff.
+
+The service accepts up to 40 files per project, 10 MiB per file, 80 parameters, and 30 test plans. Supported XML and JSON files have a stricter 2 MiB limit and bounded syntax inspection. URDF/MJCF inventories can flag missing explicit inertia and unresolved references. These checks do not compile a model or establish physical validity. CAD, controller packages, images, and other attachments remain opaque; archives are not extracted and uploaded code is not executed. All new project execution gates remain closed pending an appropriate validated adapter.
+
+See the [detailed journey and architecture guide](docs/product-journeys-and-architecture.md), also available as a [17-page PDF](output/pdf/failureforge-product-journeys.pdf), for nine customer journeys, required inputs, outputs, technical choices, and staged acceptance criteria.
 
 ## RTX 5090 execution host
 
@@ -97,7 +107,7 @@ npm test
 npm run build
 ```
 
-The workspace `--basetemp` avoids restricted Windows system-temp directory rename behavior. Tests cover finite bounds, state-bank separation, deterministic search, nonmonotonic reduction, phase budgets, shared retries, API idempotency, cancellation, stale leases, partial-candidate resume, the process watchdog, corruption, nested export validation, and the complete synthetic journey. Frontend checks cover failure counts, action allowances, and evidence pairing. Synthetic tests do not qualify robot behavior.
+The workspace `--basetemp` avoids restricted Windows system-temp directory rename behavior. Tests cover finite bounds, state-bank separation, deterministic search, nonmonotonic reduction, phase budgets, shared retries, API idempotency, cancellation, stale leases, partial-candidate resume, the process watchdog, corruption, nested export validation, and the complete synthetic journey. Project tests cover the stage/analysis matrix, persistence, revision conflicts, upload limits and integrity, hostile structured inputs, and execution gates. Frontend checks cover failure counts, action allowances, and evidence pairing. Synthetic tests do not qualify robot behavior.
 
 Use [the implementation review](docs/implementation-review.md) for the scientific decisions and [build status](docs/build-status.md) for what is implemented versus still awaiting GPU validation. The `.kiro` specifications are prepared project inputs; this repository does not claim that Kiro has already executed them.
 
@@ -110,6 +120,7 @@ src/failureforge/
   persistence.py           SQLite queue, events, leases and allowances
   artifacts.py             Episode publication and portable bundle reader
   api.py                   Lightweight FastAPI service
+  projects.py              Staged project intake, asset storage and readiness
   cli.py                   Shared command line
   search/                  Random, Sobol, adaptive proposals and reduction
   worker/                  Experiment orchestration and process watchdog

@@ -5,6 +5,336 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/projects/catalog": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Get Catalog",
+        "operationId": "get_catalog_api_projects_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "List Projects",
+        "operationId": "list_projects_api_projects_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Create Project",
+        "operationId": "create_project_api_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectSpec"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{identifier}": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Get Project",
+        "operationId": "get_project_api_projects__identifier__get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Update Project",
+        "operationId": "update_project_api_projects__identifier__post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{identifier}/export": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Export Project",
+        "operationId": "export_project_api_projects__identifier__export_get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{identifier}/assets": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Upload Asset",
+        "operationId": "upload_asset_api_projects__identifier__assets_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "cad",
+                "robot_model",
+                "controller",
+                "bom",
+                "scene",
+                "measurements",
+                "requirements"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{identifier}/assets/{asset_id}": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Download Asset",
+        "operationId": "download_asset_api_projects__identifier__assets__asset_id__get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "summary": "Health",
@@ -712,6 +1042,277 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "Parameter": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 50,
+            "title": "Unit",
+            "default": ""
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "imported",
+              "supplier",
+              "estimated",
+              "measured",
+              "calibrated"
+            ],
+            "title": "Source"
+          },
+          "range_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range Min"
+          },
+          "range_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range Max"
+          },
+          "evidence": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Evidence",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "value",
+          "source"
+        ],
+        "title": "Parameter"
+      },
+      "ProjectSpec": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "entry_stage": {
+            "type": "string",
+            "enum": [
+              "concept",
+              "cad",
+              "model",
+              "simulation",
+              "prototype"
+            ],
+            "title": "Entry Stage"
+          },
+          "analysis_type": {
+            "type": "string",
+            "enum": [
+              "robot_behavior",
+              "structural",
+              "thermal"
+            ],
+            "title": "Analysis Type"
+          },
+          "goal": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Goal"
+          },
+          "success_criteria": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Success Criteria"
+          },
+          "robot_source": {
+            "type": "string",
+            "enum": [
+              "custom",
+              "supported"
+            ],
+            "title": "Robot Source",
+            "default": "custom"
+          },
+          "robot_template": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "leap_hand_v1",
+                  "franka_panda"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Robot Template"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 6000,
+            "title": "Notes",
+            "default": ""
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/Parameter"
+            },
+            "type": "array",
+            "maxItems": 80,
+            "title": "Parameters"
+          },
+          "test_plans": {
+            "items": {
+              "$ref": "#/components/schemas/TestPlan"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Test Plans"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "entry_stage",
+          "analysis_type",
+          "goal",
+          "success_criteria"
+        ],
+        "title": "ProjectSpec"
+      },
+      "ProjectUpdate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "entry_stage": {
+            "type": "string",
+            "enum": [
+              "concept",
+              "cad",
+              "model",
+              "simulation",
+              "prototype"
+            ],
+            "title": "Entry Stage"
+          },
+          "analysis_type": {
+            "type": "string",
+            "enum": [
+              "robot_behavior",
+              "structural",
+              "thermal"
+            ],
+            "title": "Analysis Type"
+          },
+          "goal": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Goal"
+          },
+          "success_criteria": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Success Criteria"
+          },
+          "robot_source": {
+            "type": "string",
+            "enum": [
+              "custom",
+              "supported"
+            ],
+            "title": "Robot Source",
+            "default": "custom"
+          },
+          "robot_template": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "leap_hand_v1",
+                  "franka_panda"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Robot Template"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 6000,
+            "title": "Notes",
+            "default": ""
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/Parameter"
+            },
+            "type": "array",
+            "maxItems": 80,
+            "title": "Parameters"
+          },
+          "test_plans": {
+            "items": {
+              "$ref": "#/components/schemas/TestPlan"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Test Plans"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "entry_stage",
+          "analysis_type",
+          "goal",
+          "success_criteria",
+          "expected_revision"
+        ],
+        "title": "ProjectUpdate"
+      },
       "RerunRequest": {
         "properties": {
           "allowance": {
@@ -724,6 +1325,56 @@
         "additionalProperties": false,
         "type": "object",
         "title": "RerunRequest"
+      },
+      "TestPlan": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Objective"
+          },
+          "success_criteria": {
+            "type": "string",
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Success Criteria"
+          },
+          "variation": {
+            "type": "string",
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Variation"
+          },
+          "timeout_seconds": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 86400.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout Seconds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "objective",
+          "success_criteria",
+          "variation"
+        ],
+        "title": "TestPlan"
       },
       "ValidationError": {
         "properties": {

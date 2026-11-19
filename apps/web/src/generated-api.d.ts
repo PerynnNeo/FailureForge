@@ -4,6 +4,110 @@
  */
 
 export interface paths {
+    "/api/projects/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Catalog */
+        get: operations["get_catalog_api_projects_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Projects */
+        get: operations["list_projects_api_projects_get"];
+        put?: never;
+        /** Create Project */
+        post: operations["create_project_api_projects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project */
+        get: operations["get_project_api_projects__identifier__get"];
+        put?: never;
+        /** Update Project */
+        post: operations["update_project_api_projects__identifier__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{identifier}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Project */
+        get: operations["export_project_api_projects__identifier__export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{identifier}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Asset */
+        post: operations["upload_asset_api_projects__identifier__assets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{identifier}/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Asset */
+        get: operations["download_asset_api_projects__identifier__assets__asset_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -319,6 +423,106 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** Parameter */
+        Parameter: {
+            /** Name */
+            name: string;
+            /** Value */
+            value: string;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "imported" | "supplier" | "estimated" | "measured" | "calibrated";
+            /** Range Min */
+            range_min?: number | null;
+            /** Range Max */
+            range_max?: number | null;
+            /**
+             * Evidence
+             * @default
+             */
+            evidence: string;
+        };
+        /** ProjectSpec */
+        ProjectSpec: {
+            /** Name */
+            name: string;
+            /**
+             * Entry Stage
+             * @enum {string}
+             */
+            entry_stage: "concept" | "cad" | "model" | "simulation" | "prototype";
+            /**
+             * Analysis Type
+             * @enum {string}
+             */
+            analysis_type: "robot_behavior" | "structural" | "thermal";
+            /** Goal */
+            goal: string;
+            /** Success Criteria */
+            success_criteria: string;
+            /**
+             * Robot Source
+             * @default custom
+             * @enum {string}
+             */
+            robot_source: "custom" | "supported";
+            /** Robot Template */
+            robot_template?: ("leap_hand_v1" | "franka_panda") | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Parameters */
+            parameters?: components["schemas"]["Parameter"][];
+            /** Test Plans */
+            test_plans?: components["schemas"]["TestPlan"][];
+        };
+        /** ProjectUpdate */
+        ProjectUpdate: {
+            /** Name */
+            name: string;
+            /**
+             * Entry Stage
+             * @enum {string}
+             */
+            entry_stage: "concept" | "cad" | "model" | "simulation" | "prototype";
+            /**
+             * Analysis Type
+             * @enum {string}
+             */
+            analysis_type: "robot_behavior" | "structural" | "thermal";
+            /** Goal */
+            goal: string;
+            /** Success Criteria */
+            success_criteria: string;
+            /**
+             * Robot Source
+             * @default custom
+             * @enum {string}
+             */
+            robot_source: "custom" | "supported";
+            /** Robot Template */
+            robot_template?: ("leap_hand_v1" | "franka_panda") | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Parameters */
+            parameters?: components["schemas"]["Parameter"][];
+            /** Test Plans */
+            test_plans?: components["schemas"]["TestPlan"][];
+            /** Expected Revision */
+            expected_revision: number;
+        };
         /** RerunRequest */
         RerunRequest: {
             /**
@@ -327,6 +531,19 @@ export interface components {
              * @constant
              */
             allowance: 2;
+        };
+        /** TestPlan */
+        TestPlan: {
+            /** Name */
+            name: string;
+            /** Objective */
+            objective: string;
+            /** Success Criteria */
+            success_criteria: string;
+            /** Variation */
+            variation: string;
+            /** Timeout Seconds */
+            timeout_seconds?: number | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -346,6 +563,246 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_catalog_api_projects_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_projects_api_projects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    create_project_api_projects_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectSpec"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_api_projects__identifier__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_project_api_projects__identifier__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_project_api_projects__identifier__export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_asset_api_projects__identifier__assets_post: {
+        parameters: {
+            query: {
+                filename: string;
+                kind: "cad" | "robot_model" | "controller" | "bom" | "scene" | "measurements" | "requirements";
+            };
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_asset_api_projects__identifier__assets__asset_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_api_health_get: {
         parameters: {
             query?: never;

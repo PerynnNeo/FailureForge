@@ -5,15 +5,16 @@ import { ScatterPlot } from './Charts';
 import { candidateFailureCount } from './candidateOutcomes';
 import NewCampaign from './NewCampaign';
 import CaseInspector from './CaseInspector';
+import Projects from './Projects';
 import type { Campaign, Catalog, Health } from './types';
 import './styles.css';
 
 const defaultDomain = { main_camera_dx_m: [-.04, .04] as [number, number], light_scale: [.7, 1.3] as [number, number] };
 const navigate = (path: string) => { window.location.hash = path; };
+const decodeSegment = (value: string) => { try { return decodeURIComponent(value); } catch { return value; } };
 const activeStatus = (status: string) => ['queued', 'running', 'searching', 'reducing', 'confirming', 'pending', 'cancelling'].includes(status);
 
-export default function App() {
-  const [route, setRoute] = useState(window.location.hash.slice(1) || '/');
+export default function App({ route }: { route: string }) {
   const [health, setHealth] = useState<Health | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -29,11 +30,11 @@ export default function App() {
     if (list.status === 'fulfilled') setCampaigns(list.value.items);
   }, []);
   useEffect(() => { void refresh(); const timer = window.setInterval(() => { if (!document.hidden) void refresh(); }, 4000); return () => clearInterval(timer); }, [refresh]);
-  useEffect(() => { const listener = () => { setRoute(window.location.hash.slice(1) || '/'); setMobileMenu(false); window.scrollTo(0, 0); }; window.addEventListener('hashchange', listener); return () => window.removeEventListener('hashchange', listener); }, []);
+  useEffect(() => { setMobileMenu(false); }, [route]);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(''), 6500); return () => clearTimeout(timer); }, [toast]);
-  const section = route.startsWith('/campaign') || route.startsWith('/case') ? 'campaigns' : route === '/runtime' ? 'runtime' : 'overview';
-  const campaignId = route.startsWith('/campaigns/') ? decodeURIComponent(route.split('/')[2]) : null;
-  const caseId = route.startsWith('/cases/') ? decodeURIComponent(route.split('/')[2]) : null;
+  const section = route.startsWith('/projects') ? 'projects' : route.startsWith('/campaign') || route.startsWith('/case') ? 'campaigns' : route === '/runtime' ? 'runtime' : 'overview';
+  const campaignId = route.startsWith('/campaigns/') ? decodeSegment(route.split('/')[2]) : null;
+  const caseId = route.startsWith('/cases/') ? decodeSegment(route.split('/')[2]) : null;
   const createButton = <button className="button primary" onClick={() => setNewCampaign(true)}><Icon name="plus" size={18}/>New campaign</button>;
   return <div className="app-shell">
     {mobileMenu && <button className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setMobileMenu(false)}/>}
@@ -42,17 +43,18 @@ export default function App() {
       <div className="workspace-label">WORKSPACE <span>LOCAL</span></div>
       <nav aria-label="Main navigation">
         <a className={section === 'overview' ? 'active' : ''} href="#/workspace" aria-current={section === 'overview' ? 'page' : undefined}><Icon name="overview"/>Overview</a>
+        <a className={section === 'projects' ? 'active' : ''} href="#/projects" aria-current={section === 'projects' ? 'page' : undefined}><Icon name="layers"/>Projects</a>
         <a className={section === 'campaigns' ? 'active' : ''} href="#/campaigns" aria-current={section === 'campaigns' ? 'page' : undefined}><Icon name="campaign"/>Campaigns<span className="nav-count">{campaigns.length}</span></a>
         <a className={section === 'runtime' ? 'active' : ''} href="#/runtime" aria-current={section === 'runtime' ? 'page' : undefined}><Icon name="runtime"/>Runtime & setup</a>
       </nav>
-      <div className="sidebar-context"><span className="eyebrow">THE EXPERIMENT</span><strong>One task. Two variables.<br/>Evidence you can inspect.</strong><p>Camera displacement<br/>Lighting intensity</p><div className="sidebar-coordinate"><span>Δx</span><i/><span>L</span></div></div>
+      <div className="sidebar-context"><span className="eyebrow">FROM DESIGN TO EVIDENCE</span><strong>Start at your stage.<br/>Prepare a meaningful test.</strong><p>Projects organize your design.<br/>Campaigns run the pinned benchmark.</p><div className="sidebar-coordinate"><span>PLAN</span><i/><span>TEST</span></div></div>
       <div className="sidebar-bottom"><div className={`connection-dot ${connected && health?.worker.online ? 'online' : ''}`}/><div><strong>{connected === null ? 'Connecting to service' : !connected ? 'API disconnected' : health?.worker.online ? `${health.worker.backend === 'synthetic' ? 'Synthetic' : 'Robot'} worker online` : 'Worker offline'}</strong><span>{connected ? 'Local execution workspace' : 'Start your local API to connect'}</span></div></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileMenu(true)}><Icon name="menu"/></button><span>Workspace</span><Icon name="chevron" size={13}/><strong>{section === 'overview' ? 'Overview' : section === 'runtime' ? 'Runtime & setup' : caseId ? 'Case investigation' : campaignId ? 'Campaign detail' : 'Campaigns'}</strong></div><div className="topbar-right"><span className="development-label">DEVELOPMENT WORKSPACE</span><div className="avatar" aria-label="Local workspace">FF</div></div></header>
+      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileMenu(true)}><Icon name="menu"/></button><span>Workspace</span><Icon name="chevron" size={13}/><strong>{section === 'projects' ? route === '/projects/new' ? 'New project' : route.startsWith('/projects/') ? 'Project detail' : 'Projects' : section === 'overview' ? 'Overview' : section === 'runtime' ? 'Runtime & setup' : caseId ? 'Case investigation' : campaignId ? 'Campaign detail' : 'Campaigns'}</strong></div><div className="topbar-right"><span className="development-label">DEVELOPMENT WORKSPACE</span><div className="avatar" aria-label="Local workspace">FF</div></div></header>
       <main id="main-content">
         {connected === false && <div className="connection-banner" role="status"><Icon name="info" size={18}/><span>API disconnected. Saved investigations will appear when the local service is running.</span><button onClick={() => void refresh()}>Retry connection</button></div>}
-        {caseId ? <CaseInspector id={caseId} notify={setToast}/> : campaignId ? <CampaignDetail id={campaignId} notify={setToast}/> : section === 'runtime' ? <Runtime health={connected ? health : null} catalog={catalog} connected={connected} refresh={refresh}/> : section === 'campaigns' ? <CampaignList campaigns={campaigns} createButton={createButton}/> : <Overview campaigns={campaigns} health={connected ? health : null} catalog={catalog} createButton={createButton} onCreate={() => setNewCampaign(true)}/>}
+        {section === 'projects' ? <Projects route={route} notify={setToast}/> : caseId ? <CaseInspector id={caseId} notify={setToast}/> : campaignId ? <CampaignDetail id={campaignId} notify={setToast}/> : section === 'runtime' ? <Runtime health={connected ? health : null} catalog={catalog} connected={connected} refresh={refresh}/> : section === 'campaigns' ? <CampaignList campaigns={campaigns} createButton={createButton}/> : <Overview campaigns={campaigns} health={connected ? health : null} catalog={catalog} createButton={createButton} onCreate={() => setNewCampaign(true)}/>}
       </main>
       <footer className="page-footer"><span>FailureForge <b>·</b> Controlled changes. Reproducible evidence.</span><span>Local-first research workspace</span></footer>
     </div>
@@ -66,7 +68,9 @@ function Overview({ campaigns, health, catalog, createButton, onCreate }: { camp
   const cases = campaigns.reduce((n, c) => n + (c.cases?.length ?? 0), 0);
   const active = campaigns.filter(c => activeStatus(c.status)).length;
   return <>
-    <SectionHeading eyebrow="INVESTIGATION WORKSPACE" title="Make failure reproducible." description="Find the scene changes that expose a policy’s limits. Keep the evidence." action={createButton}/>
+    <SectionHeading eyebrow="INVESTIGATION WORKSPACE" title="From a design to a testable question." description="Prepare your hardware projects and inspect evidence from the pinned benchmark." action={<a className="button primary" href="#/projects/new"><Icon name="plus" size={18}/>New project</a>}/>
+    <section className="project-entry-banner"><div><span className="eyebrow">YOUR HARDWARE. YOUR STARTING POINT.</span><h3>Build the information your test needs.</h3><p>Start from an idea, CAD, a robot model, a simulation, or a physical prototype. Save the brief, source files, parameter evidence, and several test plans in one project.</p></div><a className="button secondary" href="#/projects">Open projects<Icon name="chevron" size={16}/></a></section>
+    <div className="card-heading" style={{ padding: '0 0 19px', border: 0 }}><div><h3>Existing benchmark workspace</h3><p>One pinned robot task with camera and lighting variations. Custom project preparation is separate from these campaigns.</p></div>{createButton}</div>
     <div className="overview-grid">
       <section className="welcome-panel"><div><span className="eyebrow">A CONTROLLED CHANGE. A CLEARER ANSWER.</span><h2>From an observed failure<br/>to a case you can reproduce.</h2><p>Search camera and lighting changes, compare matched executions, then reduce the change and run fresh inference.</p><div className="welcome-tags"><span><Icon name="camera" size={16}/>2 camera views</span><span><Icon name="sliders" size={16}/>2 scene variables</span><span><Icon name="file" size={16}/>Verifiable export</span></div></div><div className="experiment-illustration" aria-hidden="true"><div className="illustration-grid"/><div className="iso-plane plane-top"/><div className="iso-plane plane-base"/><div className="robot-base"/><div className="robot-arm arm-one"/><div className="robot-arm arm-two"/><div className="robot-joint joint-one"/><div className="robot-joint joint-two"/><div className="robot-gripper"/><div className="target-cube"/><div className="light-line"/><span className="scene-label label-camera">Δx CAMERA</span><span className="scene-label label-light">L LIGHTING</span><div className="axis-origin"/></div></section>
       <section className="runtime-summary"><div className="card-title"><Icon name="runtime"/><span>Execution status</span><Status value={health?.worker.online ? 'ready' : 'offline'}/></div><h3>{health?.worker.online ? health.worker.backend === 'synthetic' ? 'Synthetic worker connected' : 'Robot worker connected' : 'Your workspace is ready.'}</h3><p>{health?.worker.online ? health.worker.backend === 'synthetic' ? 'Validate the complete workflow on generated test data.' : health.readiness.reason : 'Build and inspect here. Connect your execution PC when you’re ready for robot experiments.'}</p><div className="runtime-summary-rows"><span>Development machine <b>Laptop</b></span><span>Robot execution target <b>RTX 5090 PC</b></span><span>Robot qualification <b className={health?.readiness.qualified ? 'text-green' : ''}>{health?.readiness.qualified ? 'Qualified' : 'Not yet verified'}</b></span></div><a className="text-link" href="#/runtime">View runtime & setup <Icon name="external" size={14}/></a></section>

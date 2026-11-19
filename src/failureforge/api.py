@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from .artifacts import ArtifactError, ArtifactStore
 from .contracts import CampaignSpec, RerunRequest, catalog
 from .persistence import Conflict, Store
+from .projects import ASSET_LIMIT, project_router
 
 
 def public_data(value):
@@ -34,6 +35,8 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
     artifacts = ArtifactStore(root / "artifacts")
     app = FastAPI(title="FailureForge", version="0.1.0")
     app.state.store, app.state.artifacts, app.state.data_dir = store, artifacts, root
+    projects_router, app.state.projects = project_router(store, root / "project-assets")
+    app.include_router(projects_router)
     token = os.environ.get("FAILUREFORGE_API_TOKEN")
     origins = os.environ.get("FAILUREFORGE_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000").split(",")
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type", "Idempotency-Key", "Authorization"])
@@ -49,11 +52,27 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
                 origin = request.headers.get("origin")
                 if origin and origin not in origins:
                     return JSONResponse({"detail": "Origin is not allowed"}, status_code=403)
+                parts = request.url.path.split("/")
+                asset_upload = (request.method == "POST" and len(parts) == 5 and
+                                parts[1:3] == ["api", "projects"] and parts[4] == "assets")
+                body_limit = ASSET_LIMIT if asset_upload else 65536
                 try:
-                    if int(request.headers.get("content-length", "0")) > 65536:
+                    content_length = int(request.headers.get("content-length", "0"))
+                    if content_length < 0:
+                        return JSONResponse({"detail": "Invalid Content-Length"}, status_code=400)
+                    if content_length > body_limit:
                         return JSONResponse({"detail": "Request body exceeds limit"}, status_code=413)
                 except ValueError:
                     return JSONResponse({"detail": "Invalid Content-Length"}, status_code=400)
+                if not asset_upload:
+                    # Bound actual bytes too: chunked bodies may have no Content-Length.
+                    body, size = [], 0
+                    async for chunk in request.stream():
+                        size += len(chunk)
+                        if size > body_limit:
+                            return JSONResponse({"detail": "Request body exceeds limit"}, status_code=413)
+                        body.append(chunk)
+                    request._body = b"".join(body)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
