@@ -3,11 +3,15 @@ import type { FormEvent } from 'react';
 import { post } from './api';
 import { Icon, Notice } from './components';
 import type { Backend, CampaignSpec, Catalog, Health, Method } from './types';
+import { workerFor } from './workerStatus';
+import ReferencePreview from './ReferencePreview';
 
 export default function NewCampaign({ catalog, health, onClose, onCreated }: { catalog: Catalog | null; health: Health | null; onClose: () => void; onCreated: (id: string) => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [name, setName] = useState('Camera & lighting investigation');
-  const [backend, setBackend] = useState<Backend>('synthetic');
+  const canUseRobot = Boolean(workerFor(health, 'libero')?.online && health?.readiness.qualified);
+  const syntheticOnline = Boolean(workerFor(health, 'synthetic')?.online);
+  const [backend, setBackend] = useState<Backend>(canUseRobot && !syntheticOnline ? 'libero' : 'synthetic');
   const [method, setMethod] = useState<Method>('sobol_local_mix');
   const [count, setCount] = useState<CampaignSpec['candidate_count']>(32);
   const [seed, setSeed] = useState(42);
@@ -16,7 +20,6 @@ export default function NewCampaign({ catalog, health, onClose, onCreated }: { c
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const submission = useRef<{ spec: string; key: string } | null>(null);
-  const canUseRobot = Boolean(health?.worker.online && health.worker.backend === 'libero' && health.readiness.qualified);
   useEffect(() => { const node = dialog.current; node?.showModal(); return () => node?.close(); }, []);
   async function submit(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError('');
@@ -33,9 +36,10 @@ export default function NewCampaign({ catalog, health, onClose, onCreated }: { c
         {error && <Notice tone="error">{error}</Notice>}
         <label className="field">Campaign name<input autoFocus value={name} onChange={e => setName(e.target.value)} required maxLength={100}/></label>
         <fieldset className="backend-options"><legend>Execution mode</legend>
-          <label className={`radio-card ${backend === 'synthetic' ? 'chosen' : ''}`}><input type="radio" name="backend" checked={backend === 'synthetic'} onChange={() => setBackend('synthetic')}/><div><strong>Synthetic validation</strong><span>Exercise search, evidence, and job handling on your laptop.</span></div><span className="mini-tag">CPU</span></label>
+          <label className={`radio-card ${backend === 'synthetic' ? 'chosen' : ''}`}><input type="radio" name="backend" checked={backend === 'synthetic'} onChange={() => setBackend('synthetic')}/><div><strong>Synthetic validation</strong><span>{syntheticOnline ? 'Synthetic worker connected.' : 'Queues until a synthetic worker connects.'}</span></div><span className="mini-tag">CPU</span></label>
           <label className={`radio-card ${backend === 'libero' ? 'chosen' : ''} ${!canUseRobot ? 'disabled' : ''}`}><input type="radio" name="backend" checked={backend === 'libero'} onChange={() => setBackend('libero')} disabled={!canUseRobot}/><div><strong>LIBERO robot experiment</strong><span>{canUseRobot ? 'Qualified robot worker connected.' : 'Requires a qualified LIBERO worker on your execution PC.'}</span></div><span className="mini-tag">GPU</span></label>
         </fieldset>
+        <ReferencePreview/>
         {backend === 'synthetic' && <Notice>Synthetic runs validate the software workflow. Their outcomes and traces are generated test data and provide no evidence about robot performance.</Notice>}
         <div className="form-grid"><label className="field">Search method<select value={method} onChange={e => setMethod(e.target.value as Method)}><option value="sobol_local_mix">Sobol + local search</option><option value="sobol">Scrambled Sobol</option><option value="random">Uniform random</option></select></label><label className="field">Candidate budget<select value={count} onChange={e => setCount(Number(e.target.value) as CampaignSpec['candidate_count'])}><option value={8}>8 candidates · 16 search episodes</option><option value={16}>16 candidates · 32 search episodes</option><option value={32}>32 candidates · 64 search episodes</option></select></label></div>
         <p className="field-help">{method === 'sobol_local_mix' ? count <= 16 ? 'This budget uses only the Sobol warm-up. Local adaptation starts at candidate 17; choose 32 candidates to exercise it.' : 'Use 16 Sobol warm-up candidates, then mix global proposals with local changes around observed failures.' : method === 'sobol' ? 'Explore the domain with a seeded, scrambled Sobol sequence.' : 'Draw independent seeded samples uniformly across the declared domain.'}</p>
@@ -43,7 +47,7 @@ export default function NewCampaign({ catalog, health, onClose, onCreated }: { c
         <label className="field seed-field">Random seed<input type="number" min="0" max="2147483647" step="1" value={seed} onChange={e => setSeed(Number(e.target.value))} required/><span className="field-help">Saved with the campaign for reproducible proposals.</span></label>
         <div className="budget-preview"><Icon name="layers"/><div><strong>{count * 2} search episodes</strong><span>Plus 2 reference checks, up to 32 reduction + 20 confirmation episodes, and 2 shared infrastructure retries.</span></div><b>{count * 2 + 56}<small>attempt ceiling</small></b></div>
       </div>
-      <div className="dialog-footer"><button className="button secondary" type="button" onClick={onClose} disabled={busy}>Cancel</button><button className="button primary" type="submit" disabled={busy || !name.trim()}>{busy ? <span className="spinner"/> : <Icon name="play" size={16}/>} {busy ? 'Creating campaign…' : backend === 'synthetic' ? 'Start synthetic validation' : 'Start robot campaign'}</button></div>
+      <div className="dialog-footer"><button className="button secondary" type="button" onClick={onClose} disabled={busy}>Cancel</button><button className="button primary" type="submit" disabled={busy || !name.trim() || (backend === 'libero' && !canUseRobot)}>{busy ? <span className="spinner"/> : <Icon name="play" size={16}/>} {busy ? 'Creating campaign…' : backend === 'synthetic' ? 'Start synthetic validation' : 'Start robot campaign'}</button></div>
     </form>
   </dialog>;
 }

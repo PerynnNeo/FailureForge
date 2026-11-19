@@ -1,7 +1,6 @@
 """HTTP boundary. GPU work is only executed by the separate worker."""
 from __future__ import annotations
 
-import json
 import logging
 import os
 import secrets
@@ -13,10 +12,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from contextlib import asynccontextmanager
+
 from .artifacts import ArtifactError, ArtifactStore
 from .contracts import CampaignSpec, RerunRequest, catalog
 from .persistence import Conflict, Store
 from .projects import ASSET_LIMIT, project_router
+from .project_runs import ProjectRuns, analysis_router
+from .project_bundle import bundle_router
+from .project_sweeps import sweep_router
+from .qualification_preview import qualification_report, qualification_router
 
 
 def public_data(value):
@@ -33,10 +38,23 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
     root.mkdir(parents=True, exist_ok=True)
     store = Store(root / "failureforge.sqlite3")
     artifacts = ArtifactStore(root / "artifacts")
-    app = FastAPI(title="FailureForge", version="0.1.0")
+    projects_router, projects = project_router(store, root / "project-assets")
+    analyses = ProjectRuns(projects)
+    @asynccontextmanager
+    async def lifespan(app):
+        analyses.start()
+        try:
+            yield
+        finally:
+            analyses.close()
+    app = FastAPI(title="FailureForge", version="0.1.0", lifespan=lifespan)
     app.state.store, app.state.artifacts, app.state.data_dir = store, artifacts, root
-    projects_router, app.state.projects = project_router(store, root / "project-assets")
+    app.state.projects = projects
     app.include_router(projects_router)
+    app.include_router(analysis_router(analyses))
+    app.include_router(bundle_router(analyses))
+    app.include_router(sweep_router(analyses))
+    app.include_router(qualification_router(root / "qualification"))
     token = os.environ.get("FAILUREFORGE_API_TOKEN")
     origins = os.environ.get("FAILUREFORGE_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:8000,http://localhost:8000").split(",")
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type", "Idempotency-Key", "Authorization"])
@@ -101,21 +119,18 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
         return key
 
     def readiness():
-        path = root / "qualification" / "qualification.json"
-        if not path.exists():
+        report = qualification_report(root / "qualification")
+        if report is None:
             return {"qualified": False, "reason": "Run qualification and review the policy camera frames on the RTX 5090 execution host."}
-        try:
-            report = json.loads(path.read_text(encoding="utf-8"))
-            ready = bool(report.get("qualified") and report.get("scene_review_approved"))
-            return {"qualified": ready, "reason": "Qualification recorded; worker rechecks runtime identity before execution." if ready else "Qualification or manual scene review is pending.", "report": report}
-        except (ValueError, OSError):
-            return {"qualified": False, "reason": "Qualification report is unreadable."}
+        ready = report.get("qualified") is True and report.get("scene_review_approved") is True
+        return {"qualified": ready, "reason": "Qualification recorded; worker rechecks runtime identity before execution." if ready else "Qualification or manual scene review is pending."}
 
     @app.get("/api/health")
     def health():
         store.recover_expired()
         worker = store.worker_status()
         return {"status": "ok", "runtime_mode": worker["backend"] if worker["online"] else "offline", "worker": worker,
+                "workers": {name: store.worker_status(name) for name in ("libero", "synthetic")},
                 "readiness": readiness(), "sqlite": {"journal_mode": store.journal_mode}, "version": "0.1.0"}
 
     @app.get("/api/catalog")

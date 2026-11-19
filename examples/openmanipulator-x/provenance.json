@@ -1,0 +1,20 @@
+{
+  "study": "NAD physical OpenManipulator-X motor 11 free-motion joint sweep",
+  "dataset_authors": "Zhiyang Dou et al., NeuralActuator, Robotics: Science and Systems 2026",
+  "dataset_card": "https://huggingface.co/datasets/frankzydou/NAD/blob/ac4e634128c8e1d92ddaf023339c374d4e5863f9/README.md",
+  "dataset_revision": "ac4e634128c8e1d92ddaf023339c374d4e5863f9",
+  "dataset_license": "MIT, copyright 2026 The NeuralActuator Authors",
+  "trials": {
+    "train": {"url": "https://huggingface.co/datasets/frankzydou/NAD/resolve/ac4e634128c8e1d92ddaf023339c374d4e5863f9/data/force_unlabeled/joint_sweep_motor11/train/001.csv", "sha256": "2a59a5bf91997ecb02c3936fc509721bfb0b9530a83a0b3177d18ca184399086"},
+    "test": {"url": "https://huggingface.co/datasets/frankzydou/NAD/resolve/ac4e634128c8e1d92ddaf023339c374d4e5863f9/data/force_unlabeled/joint_sweep_motor11/test/001.csv", "sha256": "51054a6cc669024bbf30e585f476182cc9dc9fd7de7d26bd6d7e25cb735df470"}
+  },
+  "projection": {"time_s": "timestamp", "command_rad": "goal_pos1", "position_rad": "pos1"},
+  "selection": "One preselected single-joint sweep. Use all samples, original logged times and supplied train/test partition. Fit one first-order time constant to training only. The test file is a separate physical repetition of the same task.",
+  "acceptance": {"min_time_constant_s": 0.005, "max_time_constant_s": 5, "max_validation_rmse_rad": 0.02},
+  "criterion_origin": "Illustrative FailureForge acceptance threshold chosen before inspecting either trajectory. It is independent of vendor specifications.",
+  "model": {"manufacturer": "ROBOTIS", "revision": "bc555a9c41ebd7493dc945ddabc43fc649681b62", "url": "https://raw.githubusercontent.com/ROBOTIS-GIT/open_manipulator/bc555a9c41ebd7493dc945ddabc43fc649681b62/open_manipulator_description/urdf/open_manipulator_x/open_manipulator_x.urdf", "sha256": "784078c2a5bb16accd2ca4cbcf0d340403d6d343f047b433b503aeae85ef17d3", "license": "Apache-2.0", "relationship": "Manufacturer model of the hardware family. The data publisher does not identify this URDF revision as an exact digital twin of its individual follower arm."},
+  "licenses": {
+    "LICENSE-NeuralActuator.txt": {"url": "https://raw.githubusercontent.com/Frank-ZY-Dou/Dynamics-Modeling/541a93aac4368e73883e86a51f31a7add6bde059/NeuralActuator/LICENSE", "sha256": "f7dca68ac5ef25ab25986c9d3eb2b7c386b945b09ea13f668518b566aae427c5"},
+    "LICENSE-ROBOTIS.txt": {"url": "https://raw.githubusercontent.com/ROBOTIS-GIT/open_manipulator/bc555a9c41ebd7493dc945ddabc43fc649681b62/LICENSE", "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"}
+  }
+}

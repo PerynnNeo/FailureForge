@@ -1,0 +1,26 @@
+{
+  "verified": true,
+  "format": "failureforge.project-analysis.v1",
+  "id": "run_afbfe312282a4130afef601480dc9c18",
+  "evidence_hash": "3236a4c53e56a1482c8af22d654b970d60324402d72735948f193ddfdefebdca",
+  "project_revision": 9,
+  "adapter": "joint_response",
+  "files": 7,
+  "resources": [
+    "test-joint1.csv",
+    "LICENSE-ROBOTIS.txt",
+    "train-joint1.csv",
+    "LICENSE-NeuralActuator.txt",
+    "provenance.json"
+  ],
+  "rerun": {
+    "same_runtime_identity": false,
+    "exact_result_match": true,
+    "passed": true,
+    "summary": {
+      "time_constant_s": 0.04669487567333755,
+      "fit_rmse_rad": 0.0022338411883397608,
+      "validation_rmse_rad": 0.0028441826466628337
+    }
+  }
+}

@@ -68,7 +68,7 @@ class ProjectSpec(IntakeModel):
     goal: str = Field(min_length=1, max_length=3000)
     success_criteria: str = Field(min_length=1, max_length=3000)
     robot_source: Literal["custom", "supported"] = "custom"
-    robot_template: Literal["leap_hand_v1", "franka_panda"] | None = None
+    robot_template: Literal["two_finger_hand_v1", "leap_hand_v1", "franka_panda"] | None = None
     notes: str = Field(default="", max_length=6000)
     parameters: list[Parameter] = Field(default_factory=list, max_length=80)
     test_plans: list[TestPlan] = Field(default_factory=list, max_length=30)
@@ -100,11 +100,12 @@ def project_catalog():
             {"id": "prototype", "label": "Physical prototype", "description": "Attach measurements and record calibration evidence for comparison."},
         ],
         "analysis_types": [
-            {"id": "robot_behavior", "label": "Robot task behavior", "description": "Plan motion, contact, controller, and task-success investigations.", "execution_available": False},
-            {"id": "structural", "label": "Structural analysis", "description": "Prepare materials, loads, and constraints. A structural solver is not connected.", "execution_available": False},
-            {"id": "thermal", "label": "Thermal analysis", "description": "Prepare heat sources, material properties, and cooling conditions. A thermal solver is not connected.", "execution_available": False},
+            {"id": "robot_behavior", "label": "Robot task behavior", "description": "Test joint tracking on the reference hand or a supported articulated model.", "execution_available": True},
+            {"id": "structural", "label": "Structural analysis", "description": "Evaluate a rectangular cantilever with declared supports, dimensions and loads.", "execution_available": True},
+            {"id": "thermal", "label": "Thermal analysis", "description": "Evaluate a uniform rod with fixed end temperatures and internal heating.", "execution_available": True},
         ],
         "robot_templates": [
+            {"id": "two_finger_hand_v1", "label": "FailureForge two-finger hand", "description": "Bundled fixed-palm hand, version 1.0, MIT. The MuJoCo test measures contact-free joint tracking and fingertip separation.", "execution_available": True},
             {"id": "leap_hand_v1", "label": "LEAP Hand v1", "description": "Reference for hand-manipulation preparation; upload your model and controller. No hand execution adapter is installed.", "execution_available": False},
             {"id": "franka_panda", "label": "Franka Panda", "description": "Reference for manipulation preparation; this does not connect a project to the separate fixed LIBERO benchmark.", "execution_available": False},
         ],
@@ -112,7 +113,7 @@ def project_catalog():
         "asset_kinds": list(EXTENSIONS),
         "allowed_extensions": {kind: sorted(values) for kind, values in EXTENSIONS.items()},
         "limits": {"asset_bytes": ASSET_LIMIT, "inspection_bytes": INSPECTION_LIMIT, "max_assets": MAX_ASSETS, "max_parameters": 80, "max_test_plans": 30},
-        "capability_notice": "Project intake, asset inspection, provenance, and test planning are available. Custom robot, structural, thermal, and calibration execution are not connected. Reference robots are preparation guidance, not bundled executable models.",
+        "capability_notice": "Use Analysis & runs for bounded model execution, calibration, suites and regression. Each adapter declares its inputs, assumptions and units. LEAP and Panda intake templates provide planning guidance.",
     }
 
 
@@ -140,7 +141,7 @@ def derive_readiness(project):
     if undocumented:
         checks.append({"id": "parameter_evidence", "label": "Measurement evidence", "status": "missing", "detail": "Add evidence for parameters marked measured or calibrated: " + ", ".join(undocumented[:8])})
     analysis = {"robot_behavior": "Custom robot behavior", "structural": "Structural", "thermal": "Thermal"}[project["analysis_type"]]
-    checks.append({"id": "execution_adapter", "label": "Execution adapter and host qualification", "status": "blocked", "detail": f"{analysis} execution is not connected to projects. Uploaded files and source labels cannot qualify a runtime. The separate fixed benchmark is not this project."})
+    checks.append({"id": "execution_adapter", "label": "Execution from intake alone", "status": "blocked", "detail": f"{analysis} intake is a planning record. Configure an explicit bounded adapter in Analysis & runs to validate inputs and execute a test."})
     if not model_present or not parameters or not controller_present:
         phase, action = "preparation", "Prepare the missing model, physical parameters, and behavior inputs listed below."
     elif not plans:
@@ -148,7 +149,7 @@ def derive_readiness(project):
     elif any(check["status"] == "missing" for check in checks):
         phase, action = "validation", "Complete the missing evidence, then review model assumptions and parameter provenance."
     else:
-        phase, action = "qualification", "Intake metadata is assembled. Engineering model validation and an execution adapter are required before any run."
+        phase, action = "qualification", "Intake metadata is assembled. Select a supported analysis and review its test inputs."
     phase_details = [
         ("concept", "Define", "Record the intended task and measurable success criteria."),
         ("preparation", "Prepare", "Collect assets and physical parameter assumptions."),
@@ -160,7 +161,7 @@ def derive_readiness(project):
         ("regression", "Compare revisions", "Rerun saved cases against a versioned design or controller change."),
     ]
     statuses = {"concept": "complete", "preparation": "complete" if model_present and parameters and controller_present else "current", "validation": "current" if phase == "validation" else "future", "test_design": "complete" if plans else "current" if phase == "test_design" else "future", "qualification": "blocked", "execution": "blocked", "investigation": "future", "regression": "future"}
-    return {"phase": phase, "execution_allowed": False, "checks": checks,
+    return {"phase": phase, "execution_allowed": False, "analysis_url": f"/api/projects/{project['id']}/analysis", "checks": checks,
             "phases": [{"id": key, "label": label, "status": statuses[key], "detail": detail} for key, label, detail in phase_details],
             "next_action": action,
             "limitations": ["Readiness describes intake metadata, not a validated physical model or a simulation result.", "Measured and calibrated source labels are user-provided claims; attached evidence is not independently verified.", "Files are never executed, archives are never extracted, and model dependencies are not resolved by this intake service.", "Reference robot choices do not download models or install execution adapters."]}
@@ -260,7 +261,27 @@ class ProjectStore:
                     filename TEXT NOT NULL, kind TEXT NOT NULL, size_bytes INTEGER NOT NULL,
                     sha256 TEXT NOT NULL, inspection TEXT NOT NULL, created_at TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS project_assets_project ON project_assets(project_id);
+                CREATE TABLE IF NOT EXISTS project_revisions (
+                    project_id TEXT NOT NULL REFERENCES projects(id), revision INTEGER NOT NULL,
+                    saved_at TEXT NOT NULL, reason TEXT NOT NULL, snapshot TEXT NOT NULL,
+                    PRIMARY KEY(project_id,revision));
             """)
+        # Preserve the current state of older installations. Earlier drafts cannot be reconstructed.
+        with store.connection(True) as db:
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='project_runs'").fetchone():
+                db.execute("""INSERT OR IGNORE INTO project_revisions(project_id,revision,saved_at,reason,snapshot)
+                              SELECT project_id,project_revision,json_extract(snapshot,'$.updated_at'),
+                                     'Retained execution snapshot',snapshot FROM project_runs""")
+            for row in db.execute("""SELECT p.id FROM projects p WHERE NOT EXISTS
+                   (SELECT 1 FROM project_revisions r WHERE r.project_id=p.id AND r.revision=p.revision)""").fetchall():
+                self._remember(db, row["id"], "Imported current revision")
+
+    def _remember(self, db, identifier, reason):
+        project = self._get(db, identifier)
+        snapshot = {k: v for k, v in project.items() if k != "readiness"}
+        db.execute("INSERT INTO project_revisions VALUES(?,?,?,?,?)",
+                   (identifier, project["revision"], project["updated_at"], reason, json.dumps(snapshot, allow_nan=False)))
+        return project
 
     @staticmethod
     def asset_data(row):
@@ -289,16 +310,20 @@ class ProjectStore:
         identifier, now = new_id("project"), utc_now()
         with self.store.connection(True) as db:
             db.execute("INSERT INTO projects VALUES(?,1,?,?,?)", (identifier, spec.model_dump_json(), now, now))
-            return self._get(db, identifier)
+            return self._remember(db, identifier, "Project created")
 
     def update(self, identifier: str, spec: ProjectUpdate):
         with self.store.connection(True) as db:
-            existing = Store._required(db, "projects", identifier)
-            if existing["revision"] != spec.expected_revision:
-                raise Conflict("Project changed since it was opened. Reload before saving to avoid losing another update.")
-            data = spec.model_dump(exclude={"expected_revision"})
-            db.execute("UPDATE projects SET revision=revision+1,spec=?,updated_at=? WHERE id=?", (json.dumps(data, allow_nan=False), utc_now(), identifier))
-            return self._get(db, identifier)
+            return self.update_in_transaction(db, identifier, spec, "Project inputs revised")
+
+    def update_in_transaction(self, db, identifier, spec: ProjectUpdate, reason):
+        data = spec.model_dump(exclude={"expected_revision"})
+        changed = db.execute("UPDATE projects SET revision=revision+1,spec=?,updated_at=? WHERE id=? AND revision=?",
+                             (json.dumps(data, allow_nan=False), utc_now(), identifier, spec.expected_revision))
+        if not changed.rowcount:
+            Store._required(db, "projects", identifier)
+            raise Conflict("Project changed since it was opened. Reload before saving to avoid losing another update.")
+        return self._remember(db, identifier, reason)
 
     def add_asset(self, identifier, asset_id, filename, kind, size, digest, inspection):
         with self.store.connection(True) as db:
@@ -308,7 +333,7 @@ class ProjectStore:
                 raise HTTPException(409, "This project already has the maximum of 40 assets")
             db.execute("INSERT INTO project_assets VALUES(?,?,?,?,?,?,?,?)", (asset_id, identifier, filename, kind, size, digest, json.dumps(inspection, allow_nan=False), utc_now()))
             db.execute("UPDATE projects SET revision=revision+1,updated_at=? WHERE id=?", (utc_now(), identifier))
-            return self._get(db, identifier)
+            return self._remember(db, identifier, f"Attached {filename}")
 
     def asset_path(self, asset_id):
         if not re.fullmatch(r"asset_[0-9a-f]{32}", asset_id):
@@ -357,6 +382,21 @@ def project_router(store: Store, root: Path):
         project = projects.get(identifier)
         report = {"schema_version": "failureforge.project-intake.v1", "exported_at": utc_now(), "report_type": "preparation_report", "contains_simulation_results": False, "project": project}
         return Response(json.dumps(report, indent=2, ensure_ascii=False, allow_nan=False), media_type="application/json", headers={"Content-Disposition": f'attachment; filename="{project["id"]}-intake.json"'})
+
+    @router.get("/{identifier}/revisions")
+    def revision_history(identifier: str):
+        with store.connection() as db:
+            Store._required(db, "projects", identifier)
+            rows = db.execute("SELECT revision,saved_at,reason FROM project_revisions WHERE project_id=? ORDER BY revision DESC", (identifier,))
+            return {"items": [dict(row) for row in rows]}
+
+    @router.get("/{identifier}/revisions/{revision}")
+    def revision_snapshot(identifier: str, revision: int):
+        with store.connection() as db:
+            row = db.execute("SELECT snapshot FROM project_revisions WHERE project_id=? AND revision=?", (identifier, revision)).fetchone()
+            if row is None:
+                raise KeyError(revision)
+            return json.loads(row["snapshot"])
 
     @router.post("/{identifier}/assets", status_code=201, openapi_extra={
         "requestBody": {"required": True, "content": {"application/octet-stream": {

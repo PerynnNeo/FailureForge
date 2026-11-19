@@ -4,6 +4,8 @@ Product and implementation specification
 
 19 November 2026
 
+This roadmap records the original design and the preparation-only implementation at the time of writing. For the delivered adapters, measurements, suite runner and revision comparison, see [project analysis](project-analysis.md), [articulated motion](articulated-motion.md) and [build status](build-status.md).
+
 ## Purpose and reading guide
 
 FailureForge should help a hardware team move from a design question to a reproducible investigation. Its central promise is to find conditions under which a supported robot fails a defined task, explain the measured sequence, and preserve the case so a revised design or controller can be tested again.

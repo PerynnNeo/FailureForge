@@ -1,6 +1,6 @@
 # FailureForge on the execution PC
 
-The application can be developed and inspected on the laptop. Real episodes run on your separate RTX 5090 PC using Ubuntu 24.04, either native or WSL2. The source-reviewed runtime below has **not been executed on the target GPU** during implementation. CPU contract tests exercise batching, scene isolation, stopping, cancellation, and evidence gates; they cannot certify robot performance.
+The target PC uses Ubuntu 24.04 under WSL2. The frozen runtime has run the bowl-to-plate policy with CUDA 12.8 on an RTX 5090. See [build status](build-status.md) for the observed outcomes and evidence. The lightweight app can also run independently on a development machine.
 
 ## Prepare Linux and the frozen runtime
 
@@ -14,7 +14,7 @@ bash scripts/setup_robotics.sh
 
 The setup script clones LeRobot v0.6.1, verifies its tag and source commit prefix `7e241bd`, resolves the full commit, and synchronizes the release's **frozen** lock with the evaluation, LIBERO, and SmolVLA extras. It records the full commit, lock checksum, and uv version in `environment/`. It rejects a modified or different existing checkout. It does not upgrade PyTorch independently.
 
-The guard expects Python 3.12, LeRobot 0.6.1, torch 2.11.0+cu128, torchvision 0.26.0+cu128, hf-libero 0.1.4, robosuite 1.4.0, and MuJoCo 3.8.1. These are the guide's coherent reference versions, not a claim of tested interoperability. If the frozen upstream lock differs, diagnose and deliberately version a new profile; do not remove the guard to make the status green.
+The tested package tuple is Python 3.12, LeRobot 0.6.1, torch 2.11.0+cu128, torchvision 0.26.0+cu128, hf-libero 0.1.4, robosuite 1.4.0, and MuJoCo 3.8.1. Bootstrap links the installed LIBERO arena asset path to its verified downloaded snapshot, since this release reads some scene files directly from the package location.
 
 The bootstrap downloads the complete `lerobot/smolvla_libero` revision `a24f1f380461b665158d52acd140152c79e8b36d`, including checkpoint processors and normalization safetensors. It resolves the asset dataset and the checkpoint's VLM/tokenizer references to exact revisions and hashes their files. It downloads inference dependencies, not the training dataset. It writes project-local LIBERO configuration before importing the simulator and preserves any differing existing config. Hugging Face access and sufficient disk space are required only for this explicit preparation step.
 
@@ -59,6 +59,8 @@ vendor/lerobot/.venv/bin/python -m failureforge --data-dir data approve-scene-re
 
 This records an explicit operator attestation tied to hashes of the actual evidence. It does not substitute for the inspection. The implementation does not preapprove this step. A live worker rejects missing qualification, pending scene review, changed evidence, or a changed runtime fingerprint.
 
+After review, **New campaign** lets you inspect both recorded policy-camera views for completed reference episodes before submitting work. Playback remains available while the worker is offline. The local API lists these states at `GET /api/qualification/references`. Each camera link verifies its MP4 against the reviewed manifest before serving the recording. In-progress qualification directories and operator diagnostics stay private.
+
 Start the sequential robot worker:
 
 ```bash
@@ -102,6 +104,6 @@ FAILUREFORGE_RUN_GPU_TESTS=1 FAILUREFORGE_MODEL_PATH="$PWD/models/smolvla_libero
   vendor/lerobot/.venv/bin/python -m pytest tests/test_simulation_contract.py -m gpu
 ```
 
-The upstream test extra may be needed to provide pytest; do not change the inference dependency versions. These tests execute a short episode plus the scene identity/effect/reset checks; they are separate from the twelve-episode qualification gate. The remaining acceptance work is actual 5090 execution, baseline competence, scene review, clean-reader export, offline rerun, failure discovery, repeatability and measured throughput.
+The upstream test extra may be needed to provide pytest. The GPU tests execute a short episode plus the scene identity/effect/reset checks. The twelve-episode qualification gate and the subsequent campaign each have separate allocations. [Execution PC results](execution-host-results.md) records the actual runs, evidence and limitations.
 
 Source references: [pinned LIBERO adapter](https://raw.githubusercontent.com/huggingface/lerobot/v0.6.1/src/lerobot/envs/libero.py), [environment processor](https://raw.githubusercontent.com/huggingface/lerobot/v0.6.1/src/lerobot/processor/env_processor.py), [policy processors](https://raw.githubusercontent.com/huggingface/lerobot/v0.6.1/src/lerobot/policies/factory.py), [SmolVLA model](https://raw.githubusercontent.com/huggingface/lerobot/v0.6.1/src/lerobot/policies/smolvla/modeling_smolvla.py), [reference evaluator](https://raw.githubusercontent.com/huggingface/lerobot/v0.6.1/src/lerobot/scripts/lerobot_eval.py), [NVIDIA WSL instructions](https://docs.nvidia.com/cuda/wsl-user-guide/index.html).

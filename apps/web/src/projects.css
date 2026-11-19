@@ -1,4 +1,32 @@
 .projects-workspace{--project-muted:#5c7180;font-size:16px;line-height:1.6}
+.analysis-workspace,.analysis-comparison{display:grid;gap:20px;min-width:0}
+.project-revisions{margin-top:16px;padding:16px 20px;background:white;border:1px solid #dce5eb;border-radius:8px;font-size:14px}
+.project-revisions summary{cursor:pointer;font-weight:550}
+.project-revisions ul{padding:0;list-style:none}
+.project-revisions li{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;padding:7px 0}
+.analysis-form fieldset{border:0;padding:24px;margin:0;min-width:0}
+.analysis-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:18px}
+.analysis-wide{grid-column:1/-1}
+.analysis-binding{margin-bottom:10px}
+.sweep-panel>summary{padding:19px 24px;cursor:pointer;font-weight:600}
+.sweep-panel[open]>summary{border-bottom:1px solid #e1e8ed}
+.sweep-point-error{display:block;max-width:36ch;white-space:normal;color:#9b4339}
+.analysis-table-scroll{max-height:360px;max-width:100%;overflow:auto}
+.analysis-mesh{margin:0}
+.analysis-mesh canvas{width:100%;height:auto;display:block;background:#f3f7f8;border-radius:6px;margin:14px 0 6px}
+.analysis-mesh figcaption{font-size:13px;color:var(--project-muted)}
+.analysis-form .analysis-json,.analysis-disclosure pre{font-family:ui-monospace,Consolas,monospace;font-size:13px!important;line-height:1.5}
+.analysis-disclosure{color:#365063;border-top:1px solid #e1e8ed;padding-top:12px;min-width:0}
+.analysis-disclosure summary{cursor:pointer;font-size:14px;font-weight:600}
+.analysis-disclosure pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;background:#f4f7f8;padding:12px;border-radius:5px}
+.analysis-actions{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;font-size:14px}
+.analysis-suite{margin:0;padding:0;list-style:none}
+.analysis-suite li{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #e1e8ed;padding:9px 0}
+.analysis-suite li small{display:block;color:#5c7180}
+.analysis-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:12px 20px;margin:10px 0;min-width:0}
+.analysis-metrics dt,.analysis-notes h4{font-size:13px;font-weight:550;color:#5c7180}
+.analysis-metrics dd{margin:2px 0;color:#253e50;overflow-wrap:anywhere}
+.analysis-notes ul{font-size:14px;margin:6px 0;padding-left:19px}
 .projects-workspace button,.projects-workspace input,.projects-workspace textarea,.projects-workspace select{font:inherit}
 .projects-workspace .section-heading p,.projects-workspace .notice{font-size:16px}
 .projects-workspace .button{font-size:14px;min-height:44px}

@@ -45,15 +45,15 @@ export const stageOptions: { value: EntryStage; title: string; short: string; de
   { value: 'prototype', title: 'I have a physical prototype', short: 'Physical prototype', description: 'Connect measurements to a digital model and plan calibration and regression tests.' },
 ];
 export const analysisOptions: { value: AnalysisType; title: string; description: string; boundary: string }[] = [
-  { value: 'robot_behavior', title: 'Robot behavior', description: 'Does the robot complete its task when conditions change?', boundary: 'Custom robot execution needs a simulator adapter and validation. The existing pinned benchmark is available separately in Campaigns.' },
-  { value: 'structural', title: 'Strength & deformation', description: 'Could a part bend, yield, or break under specified loads?', boundary: 'Requirements and readiness planning are available. Structural meshing, solver execution, and strength predictions are not implemented.' },
-  { value: 'thermal', title: 'Heat & cooling', description: 'Could a component exceed its temperature limit?', boundary: 'Requirements and readiness planning are available. Thermal solver execution and temperature predictions are not implemented.' },
+  { value: 'robot_behavior', title: 'Robot behavior', description: 'Does the robot complete its task when conditions change?', boundary: 'Use the project’s Analysis tab to run supported motion studies and calibration with explicit model inputs. The LIBERO policy benchmark is available in Campaigns.' },
+  { value: 'structural', title: 'Strength & deformation', description: 'Could a part bend, yield, or break under specified loads?', boundary: 'Model a fixed-base beam with specified geometry, elastic modulus, and loads. Review predicted deflection and compare revisions in the Analysis tab.' },
+  { value: 'thermal', title: 'Heat & cooling', description: 'Could a component exceed its temperature limit?', boundary: 'Model a steady-state rod with fixed temperatures at both ends. Set its geometry, conductivity, and heat generation in the Analysis tab.' },
 ];
 export const assetKinds: { value: AssetKind; title: string; hint: string }[] = [
   { value: 'requirements', title: 'Requirements / sketches / references', hint: 'The intended task, acceptance criteria, concept sketches, or reference images. Images are stored without reconstructing geometry.' },
-  { value: 'cad', title: 'CAD geometry', hint: 'Geometry is stored as supplied. CAD conversion and mechanical validation are not performed.' },
+  { value: 'cad', title: 'CAD geometry', hint: 'Attach CAD geometry. The CAD inventory analysis accepts supported STL inputs.' },
   { value: 'robot_model', title: 'Robot description', hint: 'URDF / MJCF descriptions can receive basic text inspection. Referenced assets must also be supplied.' },
-  { value: 'controller', title: 'Controller / simulation package', hint: 'Stored for integration planning. Uploaded code and packages are never executed here.' },
+  { value: 'controller', title: 'Controller / simulation package', hint: 'Attach a JSON controller configuration for the reference hand. Other scripts and packages are stored as source material.' },
   { value: 'bom', title: 'Bill of materials', hint: 'Part names, selected components, and supplier references.' },
   { value: 'scene', title: 'Environment / object', hint: 'Test objects, workspace geometry, and scene configuration.' },
   { value: 'measurements', title: 'Physical measurements', hint: 'Measurements, calibration notes, or recorded hardware behavior.' },

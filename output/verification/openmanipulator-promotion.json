@@ -1,0 +1,130 @@
+{
+  "verified": true,
+  "project_id": "project_b91d43c26de543c5ac188d2918650e3e",
+  "project_name": "OpenManipulator-X · physical joint 1 sweep (NAD)",
+  "captured_utc": "2026-11-19T12:14:12.2905153Z",
+  "source_fit_id": "run_afbfe312282a4130afef601480dc9c18",
+  "calibration": {
+    "run_id": "run_36ceeded734b493c8e5dade8f3cfdead",
+    "revision": 10,
+    "evidence_hash": "10c7ac405f4af8e8a3a2f039bcebd88a021e1d6b23101ecfe3964bf1235bb5a3",
+    "source": "Published NAD OpenManipulator-X measurements, Dou et al. (RSS 2026), distinct training and held-out repetitions",
+    "joint": "joint1 / Dynamixel ID 11",
+    "physical_hardware": "NAD OpenManipulator-X follower, Dynamixel XM430-W350; individual serial/revision unreported",
+    "training_and_holdout_inputs_match_prior_fit": true,
+    "passed": true,
+    "max_validation_rmse_rad": 0.02,
+    "fit_rmse_rad": 0.0022338411883397608,
+    "held_out_rmse_rad": 0.0028441826466628337,
+    "time_constant_s": 0.04669487567333755
+  },
+  "assets": [
+    {
+      "filename": "train-joint1.csv",
+      "id": "asset_72f1e92ccc7c49099798e8b09b4447fe",
+      "sha256": "f403740ab76eea4f5b06113d87da2e936845f8e2e8ee067d2f50f13fc11e6ff5"
+    },
+    {
+      "filename": "test-joint1.csv",
+      "id": "asset_2a7274c3c3744748b1888cf1a4eea518",
+      "sha256": "47b5c98a730327990e22d9848dd5e5cf274a7c14e1fd82a47d38262d4d14e371"
+    },
+    {
+      "filename": "open_manipulator_x.urdf",
+      "id": "asset_2927fca33f2b45de8db8407864f8818a",
+      "sha256": "784078c2a5bb16accd2ca4cbcf0d340403d6d343f047b433b503aeae85ef17d3"
+    }
+  ],
+  "servo_check": {
+    "scope": "Model-predicted response to an illustrative step on the manufacturer URDF. The published physical measurements supply the fitted time constant.",
+    "authored_definition": {
+      "adapter": "robot_motion",
+      "bindings": {
+        "time_constant_s": "joint1 / Dynamixel ID 11 time constant"
+      },
+      "inputs": {
+        "duration_s": 0.4,
+        "initial": {
+          "joint1": 0
+        },
+        "mode": "velocity_servo",
+        "model_asset_id": "asset_2927fca33f2b45de8db8407864f8818a",
+        "samples": 41,
+        "targets": {
+          "joint1": 0.1
+        },
+        "tip_link": "end_effector_link",
+        "tolerance": 0.001
+      },
+      "label": "Joint 1 servo step · 0.1 rad in 0.4 s"
+    },
+    "baseline": {
+      "run_id": "run_19b06abefee84be88281173cbb50ff40",
+      "project_revision": 10,
+      "evidence_hash": "8d2edb1c47b1345b54c18bdc6976fe1f4e2373f84e7ed1d573ace791451f8770",
+      "binding_source": "estimated",
+      "time_constant_s": 0.1,
+      "effective_gain_per_s": 10,
+      "predicted_final_position_rad": 0.09816843611112658,
+      "predicted_final_error_rad": 0.0018315638888734276,
+      "passed": false
+    },
+    "automatic_replay": {
+      "run_id": "run_1a360f046f1349cf9079895f95f772c4",
+      "project_revision": 11,
+      "evidence_hash": "c063fb8ca2c29197b382a82c63ae538298ea1ec720f0b4a08e4c45ef12d471dc",
+      "binding_source": "calibrated",
+      "time_constant_s": 0.04669487567333755,
+      "effective_gain_per_s": 21.41562613841572,
+      "predicted_final_position_rad": 0.09998095746788788,
+      "predicted_final_error_rad": 0.00001904253211212903,
+      "passed": true
+    }
+  },
+  "verification": {
+    "identical_authored_check": true,
+    "recheck_of": "run_19b06abefee84be88281173cbb50ff40",
+    "calibration_run_id": "run_36ceeded734b493c8e5dade8f3cfdead",
+    "suite_membership": [
+      "run_1a360f046f1349cf9079895f95f772c4"
+    ],
+    "comparable": true,
+    "outcome": "resolved_failure",
+    "changed_inputs": {
+      "time_constant_s": {
+        "baseline": 0.1,
+        "candidate": 0.04669487567333755
+      }
+    }
+  },
+  "history": {
+    "initial_revision": 9,
+    "initial_parameter_count": 0,
+    "prior_revision": 10,
+    "promoted_revision": 11,
+    "preserved_asset_count": 8,
+    "preserved_initial_run_count": 7
+  },
+  "promotion": {
+    "revision": 11,
+    "rechecks": {
+      "suite_id": "suite_94ae55b835144e36a7825bfe6587c0e7",
+      "run_ids": [
+        "run_1a360f046f1349cf9079895f95f772c4"
+      ],
+      "previous_run_ids": [
+        "run_19b06abefee84be88281173cbb50ff40"
+      ],
+      "more_available": false
+    },
+    "parameter": {
+      "name": "joint1 / Dynamixel ID 11 time constant",
+      "value": "0.04669487567333755",
+      "unit": "s",
+      "source": "calibrated",
+      "range_min": null,
+      "range_max": null,
+      "evidence": "Validated analysis run_36ceeded734b493c8e5dade8f3cfdead, evidence 10c7ac405f4af8e8a3a2f039bcebd88a021e1d6b23101ecfe3964bf1235bb5a3"
+    }
+  }
+}

@@ -1,6 +1,10 @@
 # Build status
 
-## Expanded project preparation
+## Target PC release
+
+The RTX 5090 workbench now runs the pinned robot policy and bounded project analyses. Start with the [execution-host results and local examples](execution-host-results.md), [project analysis and CI](project-analysis.md), [supported URDF and controllers](articulated-motion.md), and [parameter sweeps](project-sweeps.md). The earlier laptop-only entries below record the state before deployment and hardware verification.
+
+## Earlier laptop build — project preparation
 
 Added on 19 November 2026:
 
@@ -23,7 +27,7 @@ Verification for this addition:
 
 The local API was refreshed with the new routes. Existing campaign evidence and the diagnostic worker were retained. QA records were kept in a separate ignored test database.
 
-## Existing benchmark engine
+## Earlier laptop build — benchmark engine
 
 Implemented on 19 November 2026 on the development laptop:
 
@@ -38,7 +42,7 @@ Implemented on 19 November 2026 on the development laptop:
 
 The real adapter remains **unexecuted on the target GPU**. No baseline competence, renderer compatibility, failure discovery, robot repeatability, throughput, or real case recording is claimed. The synthetic suite validates application logic only.
 
-## Verified locally
+## Earlier laptop verification
 
 Final verification on 19 November 2026:
 

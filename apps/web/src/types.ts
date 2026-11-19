@@ -5,10 +5,12 @@ export type Backend = CampaignSpec['backend'];
 export type Method = CampaignSpec['method'];
 export type Scene = { main_camera_dx_m: number; light_scale: number };
 export type Domain = components['schemas']['Domain'];
+export type WorkerStatus = { online: boolean; backend: string | null; last_seen: string | number | null };
 export type Health = {
   status: string;
   runtime_mode: 'offline' | Backend;
-  worker: { online: boolean; backend: string | null; last_seen: string | number | null };
+  worker: WorkerStatus;
+  workers?: Partial<Record<Backend, WorkerStatus>>;
   readiness: { qualified: boolean; reason: string };
 };
 export type Catalog = {
@@ -30,7 +32,8 @@ export type Candidate = {
 };
 export type Episode = {
   id: string; state_id: number; condition: 'reference' | 'changed'; phase: string;
-  outcome: string; steps: number; elapsed_seconds: number; scene_change: Scene;
+  status: string; candidate_id?: string | null;
+  outcome: string | null; steps: number; elapsed_seconds: number; scene_change: Scene;
   artifact_id?: string; artifacts?: { main_video?: string; wrist_video?: string; trace?: string };
   backend: Backend; seed?: number; policy_seed?: number;
 };

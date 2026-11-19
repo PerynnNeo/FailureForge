@@ -1,0 +1,11 @@
+{
+  "schema_version": "joint-pd-v1",
+  "bias_compensation": true,
+  "joints": {
+    "lift": {
+      "kp": 25,
+      "kd": 10,
+      "max_effort": 30
+    }
+  }
+}

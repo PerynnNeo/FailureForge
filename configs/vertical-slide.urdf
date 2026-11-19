@@ -1,0 +1,18 @@
+<robot name="vertical carriage">
+  <link name="base"/>
+  <link name="carriage">
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <collision>
+      <geometry><sphere radius="0.05"/></geometry>
+    </collision>
+  </link>
+  <joint name="lift" type="prismatic">
+    <parent link="base"/>
+    <child link="carriage"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.5" upper="0.5" velocity="2" effort="30"/>
+  </joint>
+</robot>

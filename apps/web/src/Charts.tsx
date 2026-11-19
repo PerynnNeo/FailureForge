@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Candidate, Domain } from './types';
 import { candidateFailureCount } from './candidateOutcomes';
 
@@ -38,20 +38,29 @@ export function ScatterPlot({ candidates, domain, selected, onSelect }: { candid
   </div>;
 }
 
-export function TraceChart({ samples }: { samples: Array<Record<string, unknown>> }) {
+export function TraceChart({ samples, xLabel = 'Control step' }: { samples: Array<Record<string, unknown>>; xLabel?: string }) {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 760px)');
+    const resize = () => setCompact(media.matches);
+    resize(); media.addEventListener('change', resize);
+    return () => media.removeEventListener('change', resize);
+  }, []);
   const series = useMemo(() => {
     const keys = samples.length ? Object.keys(samples[0]).filter(k => typeof samples[0][k] === 'number' && !['step', 'time', 'time_s', 'timestamp', 'sim_time', 'action_index'].includes(k)).slice(0, 3) : [];
     return keys.map(key => ({ key, values: samples.map((p, index) => ({ x: typeof p.step === 'number' ? p.step : index, y: Number(p[key]) })).filter(p => Number.isFinite(p.y)) }));
   }, [samples]);
   if (!series.length) return <p className="muted small">No scalar trace samples are available for plotting. The export preserves the original episode data.</p>;
   const all = series.flatMap(s => s.values);
+  if (!all.length) return <p className="muted small">No finite samples are available.</p>;
   const minY = Math.min(...all.map(p => p.y)), maxY = Math.max(...all.map(p => p.y));
-  const maxX = Math.max(1, ...all.map(p => p.x));
-  const x = (v: number) => 55 + v / maxX * 610, y = (v: number) => 165 - (v - minY) / Math.max(maxY - minY, .001) * 135;
+  const maxX = Math.max(...all.map(p => p.x)) || 1;
+  const width = compact ? 390 : 700, left = 68, right = width - 20;
+  const x = (v: number) => left + v / maxX * (right - left), y = (v: number) => maxY === minY ? 97.5 : 165 - (v - minY) / (maxY - minY) * 135;
   const colors = ['#3e7799', '#da7948', '#5c9480'];
-  return <div className="trace-chart"><svg viewBox="0 0 700 210" role="img" aria-label={`Episode scalar traces: ${series.map(s => s.key).join(', ')}`}>
-    {[0, .5, 1].map(f => <g key={f}><line x1="55" x2="665" y1={30 + 135 * f} y2={30 + 135 * f} stroke="#e5eaf0"/><text x="43" y={35 + 135 * f} textAnchor="end">{(maxY - (maxY - minY) * f).toFixed(2)}</text></g>)}
+  return <div className="trace-chart"><svg viewBox={`0 0 ${width} 210`} role="img" aria-label={`Plot of ${series.map(s => s.key).join(', ')}`}>
+    {(minY === maxY ? [.5] : [0, .5, 1]).map(f => <g key={f}><line x1={left} x2={right} y1={30 + 135 * f} y2={30 + 135 * f} stroke="#e5eaf0"/><text x={left - 7} y={35 + 135 * f} textAnchor="end">{Number((maxY - (maxY - minY) * f).toPrecision(3))}</text></g>)}
     {series.map((s, index) => <path key={s.key} d={s.values.map((v, i) => `${i ? 'L' : 'M'}${x(v.x).toFixed(2)},${y(v.y).toFixed(2)}`).join(' ')} stroke={colors[index]} strokeWidth="2" fill="none"/>)}
-    <text x="55" y="188">0</text><text x="665" y="188" textAnchor="end">{maxX}</text><text x="360" y="205" textAnchor="middle">Control step</text>
+    <text x={left} y="188">0</text><text x={right} y="188" textAnchor="end">{Number(maxX.toPrecision(4))}</text><text x={(left + right) / 2} y="205" textAnchor="middle">{xLabel}</text>
   </svg><div className="chart-legend">{series.map((s, i) => <span key={s.key}><i style={{ background: colors[i] }}/>{s.key.replaceAll('_', ' ')}</span>)}</div></div>;
 }

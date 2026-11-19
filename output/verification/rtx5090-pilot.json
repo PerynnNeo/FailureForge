@@ -1,0 +1,1305 @@
+{
+  "format": "failureforge.rtx5090-pilot.v1",
+  "assembled_at": "2026-11-19T12:10:00.630204+00:00",
+  "evidence_kind": "robot_simulation",
+  "execution_environment": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "nvidia_driver": "591.86",
+    "cuda": "12.8",
+    "gpu_compute_capability": [
+      12,
+      0
+    ],
+    "renderer": "egl",
+    "offline_loading": true,
+    "control_hz": 20,
+    "settle_steps": 10,
+    "policy": {
+      "chunk_size": 50,
+      "device": "cuda",
+      "internal_image_resize": [
+        512,
+        512
+      ],
+      "n_action_steps": 50,
+      "parameter_dtypes": [
+        "torch.bfloat16",
+        "torch.float32"
+      ],
+      "repo_id": "lerobot/smolvla_libero",
+      "revision": "a24f1f380461b665158d52acd140152c79e8b36d",
+      "snapshot_hash": "87e713d2d7c8321e7225c0d290e15647ef9a00c70d73e69f60523d44b71be4fe",
+      "use_amp": false
+    },
+    "task": {
+      "bddl_sha256": "5e19880ebc844f86b89f63b172aab0b7a89f85b6e6955891f544f0ea7d0795d5",
+      "initial_state_file_sha256": "27d5b81d739f969e40c72b6c88699e57a91ea61209946b21c593aae5990689cb",
+      "language": "pick up the black bowl from table center and place it on the plate",
+      "name": "pick_up_the_black_bowl_from_table_center_and_place_it_on_the_plate",
+      "suite": "libero_spatial",
+      "task_id": 2,
+      "task_order_index": 0
+    }
+  },
+  "approved_qualification": {
+    "file_sha256": "3d1e22b5fc9b4dde69e92fc879d5570631212402583aefce94d27963b82ae4a5",
+    "created_at": "2026-11-19T11:38:23.537554+00:00",
+    "qualified": true,
+    "scene_review_approved": true,
+    "scene_review": {
+      "attestation": "Reviewed actual main/wrist probe images: target visibility, orientation, occlusion, clipping and illumination are acceptable throughout the declared domain.",
+      "evidence_hash": "1a5c7f3db15e21b1d7b0fedeab28ef21d8b40c30c13b2826ffe3de90639aa873",
+      "reviewed_at": "2026-11-19T11:43:55.669536+00:00",
+      "reviewer": "Codex visual review of all 18 full-resolution policy views"
+    },
+    "attempted_episodes": 12,
+    "completed_episodes": 12,
+    "reference_qualification": {
+      "denominator": 10,
+      "passed": true,
+      "required": 8,
+      "successes": 8
+    },
+    "search_references": {
+      "passed": true,
+      "state_ids": [
+        0,
+        1
+      ]
+    },
+    "scene_probes": {
+      "passed": true,
+      "checked_conditions": 10,
+      "passed_conditions": 10,
+      "static_resets": 11
+    },
+    "failures": [],
+    "environment_fingerprint": "fa4760a85ddf49dc4f8d228b54394a4f4915c658ab3095e2f7616b3c812bd703",
+    "reference_trials": [
+      {
+        "state_id": 12,
+        "seed": 1741,
+        "status": "completed",
+        "outcome": "success"
+      },
+      {
+        "state_id": 13,
+        "seed": 1742,
+        "status": "completed",
+        "outcome": "success"
+      },
+      {
+        "state_id": 14,
+        "seed": 1743,
+        "status": "completed",
+        "outcome": "horizon_exhausted"
+      },
+      {
+        "state_id": 15,
+        "seed": 1744,
+        "status": "completed",
+        "outcome": "success"
+      },
+      {
+        "state_id": 16,
+        "seed": 1745,
+        "status": "completed",
+        "outcome": "success"
+      },
+      {
+        "state_id": 17,
+        "seed": 1746,
+        "status": "completed",
+        "outcome": "success"
+      },
+      {
+        "state_id": 18,
+        "seed": 1747,
+        "status": "completed",
+        "outcome": "horizon_exhausted"
+      },
+      {
+        "state_id": 19,
+        "seed": 1748,
+        "status": "completed",
+        "outcome": "success"
+      },
+      {
+        "state_id": 20,
+        "seed": 1749,
+        "status": "completed",
+        "outcome": "success"
+      },
+      {
+        "state_id": 21,
+        "seed": 1750,
+        "status": "completed",
+        "outcome": "success"
+      },
+      {
+        "state_id": 0,
+        "seed": 1729,
+        "status": "completed",
+        "outcome": "success"
+      },
+      {
+        "state_id": 1,
+        "seed": 1730,
+        "status": "completed",
+        "outcome": "success"
+      }
+    ],
+    "elapsed_seconds": 245.08140910499992,
+    "evidence_files": 148
+  },
+  "qualification_attempt_history": [
+    {
+      "directory": "robot-01",
+      "qualified": false,
+      "scene_review_approved": false,
+      "attempted_episodes": 1,
+      "completed_episodes": 0,
+      "failures": [
+        "Reference state 12: [Errno 2] No such file or directory: '/opt/failureforge/vendor/lerobot/.venv/lib/python3.12/site-packages/libero/libero/assets/scenes/libero_tabletop_base_style.xml'"
+      ],
+      "reference_qualification": {
+        "denominator": 10,
+        "passed": false,
+        "required": 8,
+        "successes": 0
+      },
+      "search_references": {
+        "passed": false,
+        "state_ids": [
+          0,
+          1
+        ]
+      },
+      "scene_probes": {
+        "passed": null,
+        "checked_conditions": 0,
+        "passed_conditions": 0,
+        "static_resets": null
+      },
+      "environment_fingerprint": "75c462c5071b1f6764d8961d681b8b8028ae1ee5e1176abb3a4016cb08dddc91",
+      "same_session_as_approved_qualification": false
+    },
+    {
+      "directory": "robot-02",
+      "qualified": false,
+      "scene_review_approved": false,
+      "attempted_episodes": 12,
+      "completed_episodes": 12,
+      "failures": [],
+      "reference_qualification": {
+        "denominator": 10,
+        "passed": true,
+        "required": 8,
+        "successes": 8
+      },
+      "search_references": {
+        "passed": true,
+        "state_ids": [
+          0,
+          1
+        ]
+      },
+      "scene_probes": {
+        "passed": false,
+        "checked_conditions": 10,
+        "passed_conditions": 6,
+        "static_resets": 11
+      },
+      "environment_fingerprint": "fa4760a85ddf49dc4f8d228b54394a4f4915c658ab3095e2f7616b3c812bd703",
+      "same_session_as_approved_qualification": false
+    },
+    {
+      "directory": "robot-03",
+      "qualified": true,
+      "scene_review_approved": true,
+      "attempted_episodes": 12,
+      "completed_episodes": 12,
+      "failures": [],
+      "reference_qualification": {
+        "denominator": 10,
+        "passed": true,
+        "required": 8,
+        "successes": 8
+      },
+      "search_references": {
+        "passed": true,
+        "state_ids": [
+          0,
+          1
+        ]
+      },
+      "scene_probes": {
+        "passed": true,
+        "checked_conditions": 10,
+        "passed_conditions": 10,
+        "static_resets": 11
+      },
+      "environment_fingerprint": "fa4760a85ddf49dc4f8d228b54394a4f4915c658ab3095e2f7616b3c812bd703",
+      "same_session_as_approved_qualification": true
+    }
+  ],
+  "matched_search_study": {
+    "schema_version": "1.0",
+    "backend": "libero",
+    "evidence_kind": "robot_simulation",
+    "shared_campaign_settings": {
+      "schema_version": "1.0",
+      "backend": "libero",
+      "candidate_count": 8,
+      "domain": {
+        "main_camera_dx_m": [
+          -0.04,
+          0.04
+        ],
+        "light_scale": [
+          0.7,
+          1.3
+        ]
+      },
+      "state_ids": [
+        0,
+        1
+      ],
+      "confirmation_state_ids": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    "environment_fingerprint": "fa4760a85ddf49dc4f8d228b54394a4f4915c658ab3095e2f7616b3c812bd703",
+    "fully_matched_completed_seeds": [
+      1729
+    ],
+    "methods": [
+      {
+        "method": "sobol",
+        "planned": 1,
+        "completed": 1,
+        "found": 1,
+        "no_find": 0,
+        "incomplete": 0,
+        "missing": 0
+      },
+      {
+        "method": "random",
+        "planned": 1,
+        "completed": 1,
+        "found": 1,
+        "no_find": 0,
+        "incomplete": 0,
+        "missing": 0
+      }
+    ],
+    "runs": [
+      {
+        "campaign_id": "campaign_ee10e6f79c9f4acf8a7e8e3097984d79",
+        "method": "sobol",
+        "seed": 1729,
+        "search_status": "succeeded",
+        "outcome": "found",
+        "search_error": null,
+        "completed_candidates": 8,
+        "failing_candidates": 2,
+        "first_failing_candidate_number": 1,
+        "search_attempts_to_first_failing_candidate": 2,
+        "baseline_attempts": 2,
+        "search_attempts": 16,
+        "attempt_errors_by_outcome": {},
+        "reserved_attempts": 0,
+        "completed_search_episode_seconds": 242.40662996300034
+      },
+      {
+        "campaign_id": "campaign_984a58de6f04490e8066ac57ca20da6b",
+        "method": "random",
+        "seed": 1729,
+        "search_status": "succeeded",
+        "outcome": "found",
+        "search_error": null,
+        "completed_candidates": 8,
+        "failing_candidates": 3,
+        "first_failing_candidate_number": 1,
+        "search_attempts_to_first_failing_candidate": 2,
+        "baseline_attempts": 2,
+        "search_attempts": 16,
+        "attempt_errors_by_outcome": {},
+        "reserved_attempts": 0,
+        "completed_search_episode_seconds": 263.4609855199992
+      }
+    ]
+  },
+  "campaigns": [
+    {
+      "campaign_id": "campaign_ee10e6f79c9f4acf8a7e8e3097984d79",
+      "name": "RTX 5090 pilot · sobol",
+      "method": "sobol",
+      "seed": 1729,
+      "jobs": [
+        {
+          "id": "job_80d3e1935e964657abfc7b3b515b8488",
+          "kind": "search",
+          "status": "succeeded",
+          "error": null
+        },
+        {
+          "id": "job_69896f9b2ac645c3830b11876ac38ad8",
+          "kind": "reduce",
+          "status": "succeeded",
+          "error": null
+        },
+        {
+          "id": "job_0dc59ef2d2e643ff8b178702f8f70841",
+          "kind": "confirm",
+          "status": "succeeded",
+          "error": null
+        },
+        {
+          "id": "job_6b48ad1b80d74ee1afa5de0f19e36e9e",
+          "kind": "rerun",
+          "status": "succeeded",
+          "error": null
+        }
+      ],
+      "episode_cost": {
+        "phases": {
+          "baseline": {
+            "attempted": 2,
+            "completed": 2,
+            "reserved": 0,
+            "retries": 0,
+            "outcomes": {
+              "success": 2
+            },
+            "completed_episode_seconds": 39.803599721999944
+          },
+          "search": {
+            "attempted": 16,
+            "completed": 16,
+            "reserved": 0,
+            "retries": 0,
+            "outcomes": {
+              "horizon_exhausted": 2,
+              "success": 14
+            },
+            "completed_episode_seconds": 242.40662996300034
+          },
+          "reduction": {
+            "attempted": 32,
+            "completed": 32,
+            "reserved": 0,
+            "retries": 0,
+            "outcomes": {
+              "success": 27,
+              "horizon_exhausted": 5
+            },
+            "completed_episode_seconds": 497.64646763799897
+          },
+          "confirmation": {
+            "attempted": 20,
+            "completed": 20,
+            "reserved": 0,
+            "retries": 0,
+            "outcomes": {
+              "success": 17,
+              "horizon_exhausted": 3
+            },
+            "completed_episode_seconds": 322.471819992998
+          },
+          "rerun": {
+            "attempted": 2,
+            "completed": 2,
+            "reserved": 0,
+            "retries": 0,
+            "outcomes": {
+              "success": 1,
+              "horizon_exhausted": 1
+            },
+            "completed_episode_seconds": 42.62169115500001
+          }
+        },
+        "attempted_episodes": 72,
+        "completed_episodes": 72,
+        "infrastructure_errors": 0,
+        "completed_episode_seconds": 1144.9502084709973,
+        "median_completed_episode_seconds": 13.097854386499876
+      },
+      "candidates": [
+        {
+          "proposal_number": 1,
+          "scene": {
+            "light_scale": 1.155050287768,
+            "main_camera_dx_m": 0.01032370694
+          },
+          "score": 0.5,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 2,
+          "scene": {
+            "light_scale": 0.98905122783,
+            "main_camera_dx_m": -0.01091137521
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 3,
+          "scene": {
+            "light_scale": 1.012535016611,
+            "main_camera_dx_m": -0.035987385064
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 4,
+          "scene": {
+            "light_scale": 0.841014745645,
+            "main_camera_dx_m": 0.035248312205
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 5,
+          "scene": {
+            "light_scale": 1.077356207743,
+            "main_camera_dx_m": 0.029978744611
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 6,
+          "scene": {
+            "light_scale": 0.757301933877,
+            "main_camera_dx_m": -0.028766026869
+          },
+          "score": 0.5,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 7,
+          "scene": {
+            "light_scale": 1.240232815966,
+            "main_camera_dx_m": -0.004315669835
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 8,
+          "scene": {
+            "light_scale": 0.922770047747,
+            "main_camera_dx_m": 0.004429716766
+          },
+          "score": 0.0,
+          "status": "completed"
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "case_ac171e43247c4b79aae890f75f76bef3",
+          "source_case_id": null,
+          "candidate_id": "candidate_954157b56773451683988048a77459e8",
+          "status": "reproduced",
+          "original_scene": {
+            "light_scale": 1.155050287768,
+            "main_camera_dx_m": 0.01032370694
+          },
+          "selected_scene": {
+            "light_scale": 1.0,
+            "main_camera_dx_m": 0.007742780205
+          },
+          "frozen_failing_state_ids": [
+            0
+          ],
+          "selection_rule": "max-failures_then-active-parameters_then-directional-linf_then-index-v1",
+          "discovery_pairs": [
+            {
+              "state_id": 0,
+              "reference": {
+                "episode_id": "episode_19565eb8cb774c41a07f030803a3b33a",
+                "outcome": "success",
+                "steps": 89,
+                "seed": 1588060384
+              },
+              "changed": {
+                "episode_id": "episode_82472a73f93d429b824a229201c4f651",
+                "outcome": "horizon_exhausted",
+                "steps": 280,
+                "seed": 1588060384
+              }
+            },
+            {
+              "state_id": 1,
+              "reference": {
+                "episode_id": "episode_d7433bc3aa6244358572131dc81f93f3",
+                "outcome": "success",
+                "steps": 95,
+                "seed": 2107485024
+              },
+              "changed": {
+                "episode_id": "episode_af027875145e4b45a76ce59af8d3c6b3",
+                "outcome": "success",
+                "steps": 103,
+                "seed": 2107485024
+              }
+            }
+          ],
+          "reduction": {
+            "reduced": true,
+            "claim": "Smallest retained witness among evaluated proposals; no global minimum established.",
+            "initial_pairs": [
+              {
+                "state_id": 0,
+                "reference": {
+                  "episode_id": "episode_613d112b18f54b2b8b391cd5ec3bdefb",
+                  "outcome": "success",
+                  "steps": 89,
+                  "seed": 1588060384
+                },
+                "changed": {
+                  "episode_id": "episode_c26f0f29da534a6c8b9adef66fa9c3ba",
+                  "outcome": "horizon_exhausted",
+                  "steps": 280,
+                  "seed": 1588060384
+                }
+              },
+              {
+                "state_id": 1,
+                "reference": {
+                  "episode_id": "episode_b1388d1166e045daac1c40a74a635fba",
+                  "outcome": "success",
+                  "steps": 95,
+                  "seed": 2107485024
+                },
+                "changed": {
+                  "episode_id": "episode_383fbbb9bafa47a09f5347ba7edd14da",
+                  "outcome": "success",
+                  "steps": 103,
+                  "seed": 2107485024
+                }
+              }
+            ],
+            "evaluated_proposals": 12,
+            "history": [
+              {
+                "index": 0,
+                "scene_change": {
+                  "light_scale": 1.155050287768,
+                  "main_camera_dx_m": 0.0
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "success"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              },
+              {
+                "index": 1,
+                "scene_change": {
+                  "light_scale": 1.0,
+                  "main_camera_dx_m": 0.01032370694
+                },
+                "outcomes": {
+                  "0": "horizon_exhausted",
+                  "1": "success"
+                },
+                "preserves_witness": true,
+                "accepted": true
+              },
+              {
+                "index": 2,
+                "scene_change": {
+                  "light_scale": 1.0,
+                  "main_camera_dx_m": 0.0
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "success"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              },
+              {
+                "index": 3,
+                "scene_change": {
+                  "light_scale": 1.038762571942,
+                  "main_camera_dx_m": 0.002580926735
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "horizon_exhausted"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              },
+              {
+                "index": 4,
+                "scene_change": {
+                  "light_scale": 1.077525143884,
+                  "main_camera_dx_m": 0.00516185347
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "success"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              },
+              {
+                "index": 5,
+                "scene_change": {
+                  "light_scale": 1.116287715826,
+                  "main_camera_dx_m": 0.007742780205
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "success"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              },
+              {
+                "index": 6,
+                "scene_change": {
+                  "light_scale": 1.0,
+                  "main_camera_dx_m": 0.002580926735
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "success"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              },
+              {
+                "index": 7,
+                "scene_change": {
+                  "light_scale": 1.0,
+                  "main_camera_dx_m": 0.00516185347
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "success"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              },
+              {
+                "index": 8,
+                "scene_change": {
+                  "light_scale": 1.0,
+                  "main_camera_dx_m": 0.007742780205
+                },
+                "outcomes": {
+                  "0": "horizon_exhausted",
+                  "1": "success"
+                },
+                "preserves_witness": true,
+                "accepted": true
+              },
+              {
+                "index": 9,
+                "scene_change": {
+                  "light_scale": 1.038762571942,
+                  "main_camera_dx_m": 0.0
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "success"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              },
+              {
+                "index": 10,
+                "scene_change": {
+                  "light_scale": 1.077525143884,
+                  "main_camera_dx_m": 0.0
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "success"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              },
+              {
+                "index": 11,
+                "scene_change": {
+                  "light_scale": 1.116287715826,
+                  "main_camera_dx_m": 0.0
+                },
+                "outcomes": {
+                  "0": "success",
+                  "1": "success"
+                },
+                "preserves_witness": false,
+                "accepted": false
+              }
+            ],
+            "final_pairs": [
+              {
+                "state_id": 0,
+                "reference": {
+                  "episode_id": "episode_ecba1a20569c40d69277d699c553e9ae",
+                  "outcome": "success",
+                  "steps": 89,
+                  "seed": 1588060384
+                },
+                "changed": {
+                  "episode_id": "episode_bc7a2bdc244041e9a12b139a724f6863",
+                  "outcome": "horizon_exhausted",
+                  "steps": 280,
+                  "seed": 1588060384
+                }
+              },
+              {
+                "state_id": 1,
+                "reference": {
+                  "episode_id": "episode_82568e89880d4dca940ee5b635fffe43",
+                  "outcome": "success",
+                  "steps": 95,
+                  "seed": 2107485024
+                },
+                "changed": {
+                  "episode_id": "episode_41a4ace136584ec7bb12003e31e8db71",
+                  "outcome": "success",
+                  "steps": 100,
+                  "seed": 2107485024
+                }
+              }
+            ],
+            "final_preserves_original_witness": true
+          },
+          "confirmation": {
+            "both_failure": 0,
+            "both_success": 7,
+            "changed_only_success": 2,
+            "changed_successes": 9,
+            "claim": "Paired outcomes on the declared held-out state bank; no population estimate.",
+            "denominator": 10,
+            "frozen_scene_change": {
+              "light_scale": 1.0,
+              "main_camera_dx_m": 0.007742780205
+            },
+            "induced_failure": 1,
+            "induced_failure_denominator": 8,
+            "reference_successes": 8
+          },
+          "confirmation_pairs": [
+            {
+              "state_id": 2,
+              "category": "both_success",
+              "reference": {
+                "episode_id": "episode_30e6b961cad14c36ac018c30999aa148",
+                "outcome": "success",
+                "steps": 99,
+                "seed": 135765777
+              },
+              "changed": {
+                "episode_id": "episode_ef47cc1ab1264097babdb994f307ab3e",
+                "outcome": "success",
+                "steps": 101,
+                "seed": 135765777
+              }
+            },
+            {
+              "state_id": 3,
+              "category": "both_success",
+              "reference": {
+                "episode_id": "episode_866fbc3f7dde4848ba2f205b2848a437",
+                "outcome": "success",
+                "steps": 96,
+                "seed": 1575350001
+              },
+              "changed": {
+                "episode_id": "episode_9f58cd57d694418a8110e1b900554b66",
+                "outcome": "success",
+                "steps": 102,
+                "seed": 1575350001
+              }
+            },
+            {
+              "state_id": 4,
+              "category": "both_success",
+              "reference": {
+                "episode_id": "episode_e6b62d148bc04fe384529dc3cc223f4b",
+                "outcome": "success",
+                "steps": 101,
+                "seed": 1465870700
+              },
+              "changed": {
+                "episode_id": "episode_2b2ec1ade2c14b3e9ea6db2482a81abf",
+                "outcome": "success",
+                "steps": 98,
+                "seed": 1465870700
+              }
+            },
+            {
+              "state_id": 5,
+              "category": "both_success",
+              "reference": {
+                "episode_id": "episode_14c423d871c6478693ad8dfd1040b231",
+                "outcome": "success",
+                "steps": 105,
+                "seed": 1615192918
+              },
+              "changed": {
+                "episode_id": "episode_c0996fa101a547fe815780cad329a61c",
+                "outcome": "success",
+                "steps": 117,
+                "seed": 1615192918
+              }
+            },
+            {
+              "state_id": 6,
+              "category": "both_success",
+              "reference": {
+                "episode_id": "episode_17d68d8370ff41d78f0fc9438bc75d34",
+                "outcome": "success",
+                "steps": 99,
+                "seed": 723260703
+              },
+              "changed": {
+                "episode_id": "episode_1831b5cad9c94a8fb34d2f761d97caf4",
+                "outcome": "success",
+                "steps": 114,
+                "seed": 723260703
+              }
+            },
+            {
+              "state_id": 7,
+              "category": "changed_only_success",
+              "reference": {
+                "episode_id": "episode_f1eac794a9fb477aa1056fd6cf453708",
+                "outcome": "horizon_exhausted",
+                "steps": 280,
+                "seed": 785538126
+              },
+              "changed": {
+                "episode_id": "episode_d8fb32669ff6411683a03bba19b46463",
+                "outcome": "success",
+                "steps": 99,
+                "seed": 785538126
+              }
+            },
+            {
+              "state_id": 8,
+              "category": "both_success",
+              "reference": {
+                "episode_id": "episode_a040cd92985c4f09afa7c846af7ffe5a",
+                "outcome": "success",
+                "steps": 101,
+                "seed": 1911875284
+              },
+              "changed": {
+                "episode_id": "episode_b1adaa728156445dada510445f30b660",
+                "outcome": "success",
+                "steps": 102,
+                "seed": 1911875284
+              }
+            },
+            {
+              "state_id": 9,
+              "category": "changed_only_success",
+              "reference": {
+                "episode_id": "episode_70afef0711ed4daeb12c6a3c87b6f858",
+                "outcome": "horizon_exhausted",
+                "steps": 280,
+                "seed": 631235935
+              },
+              "changed": {
+                "episode_id": "episode_4e9829bdb8104afc8057d5ad064791bf",
+                "outcome": "success",
+                "steps": 100,
+                "seed": 631235935
+              }
+            },
+            {
+              "state_id": 10,
+              "category": "both_success",
+              "reference": {
+                "episode_id": "episode_586819cd5ab54be7b1dde2a79f129fa7",
+                "outcome": "success",
+                "steps": 113,
+                "seed": 1033161157
+              },
+              "changed": {
+                "episode_id": "episode_1fc86debb8324518bd0828d75d515f15",
+                "outcome": "success",
+                "steps": 113,
+                "seed": 1033161157
+              }
+            },
+            {
+              "state_id": 11,
+              "category": "induced_failure",
+              "reference": {
+                "episode_id": "episode_cbab9d417bda4ac98c88cd32d78bac60",
+                "outcome": "success",
+                "steps": 99,
+                "seed": 1449281108
+              },
+              "changed": {
+                "episode_id": "episode_015aedb16fb1420db2ce46d577e524a5",
+                "outcome": "horizon_exhausted",
+                "steps": 280,
+                "seed": 1449281108
+              }
+            }
+          ],
+          "fresh_reruns": [
+            {
+              "job_id": "job_6b48ad1b80d74ee1afa5de0f19e36e9e",
+              "reproduced": true,
+              "scene": {
+                "light_scale": 1.0,
+                "main_camera_dx_m": 0.007742780205
+              },
+              "pairs": [
+                {
+                  "state_id": 0,
+                  "reference": {
+                    "episode_id": "episode_936d82986b124c8398518362cf53536e",
+                    "outcome": "success",
+                    "steps": 89,
+                    "seed": 1588060384
+                  },
+                  "changed": {
+                    "episode_id": "episode_b837382a5fd8435483119d234e30b832",
+                    "outcome": "horizon_exhausted",
+                    "steps": 280,
+                    "seed": 1588060384
+                  }
+                }
+              ]
+            }
+          ],
+          "archives": [
+            {
+              "filename": "case_ac171e43247c4b79aae890f75f76bef3_61eeb87500d02c24.zip",
+              "sha256": "ad82b9c904aae48399fc342ae909204736023e743324051c1027c25a8ea4eb0d",
+              "size_bytes": 29427365,
+              "case_id": "case_ac171e43247c4b79aae890f75f76bef3",
+              "clean_reader_valid": true,
+              "matches_final_live_state": false,
+              "files": 558,
+              "episodes": 50,
+              "episode_manifests": 50,
+              "confirmed": false,
+              "fresh_reruns": 0
+            },
+            {
+              "filename": "case_ac171e43247c4b79aae890f75f76bef3_a1151a4156ecdae9.zip",
+              "sha256": "5c6e3adc2a9431c2dd32efcef13d0f30ee55ba541dd9487c0b794cbf48d2e492",
+              "size_bytes": 43897057,
+              "case_id": "case_ac171e43247c4b79aae890f75f76bef3",
+              "clean_reader_valid": true,
+              "matches_final_live_state": true,
+              "files": 800,
+              "episodes": 72,
+              "episode_manifests": 72,
+              "confirmed": true,
+              "fresh_reruns": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "campaign_id": "campaign_984a58de6f04490e8066ac57ca20da6b",
+      "name": "RTX 5090 pilot · random",
+      "method": "random",
+      "seed": 1729,
+      "jobs": [
+        {
+          "id": "job_672a7b7779e540aabdfdbf44eb6b691a",
+          "kind": "search",
+          "status": "succeeded",
+          "error": null
+        }
+      ],
+      "episode_cost": {
+        "phases": {
+          "baseline": {
+            "attempted": 2,
+            "completed": 2,
+            "reserved": 0,
+            "retries": 0,
+            "outcomes": {
+              "success": 2
+            },
+            "completed_episode_seconds": 24.783229957999993
+          },
+          "search": {
+            "attempted": 16,
+            "completed": 16,
+            "reserved": 0,
+            "retries": 0,
+            "outcomes": {
+              "success": 13,
+              "horizon_exhausted": 3
+            },
+            "completed_episode_seconds": 263.4609855199992
+          }
+        },
+        "attempted_episodes": 18,
+        "completed_episodes": 18,
+        "infrastructure_errors": 0,
+        "completed_episode_seconds": 288.2442154779992,
+        "median_completed_episode_seconds": 13.2179174649998
+      },
+      "candidates": [
+        {
+          "proposal_number": 1,
+          "scene": {
+            "light_scale": 1.096798963779,
+            "main_camera_dx_m": 0.016599804134
+          },
+          "score": 0.5,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 2,
+          "scene": {
+            "light_scale": 0.991484219345,
+            "main_camera_dx_m": 0.026277544542
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 3,
+          "scene": {
+            "light_scale": 0.854603441315,
+            "main_camera_dx_m": -0.03513214605
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 4,
+          "scene": {
+            "light_scale": 0.798718314238,
+            "main_camera_dx_m": 0.009902605176
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 5,
+          "scene": {
+            "light_scale": 1.002889720139,
+            "main_camera_dx_m": 0.019317035797
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 6,
+          "scene": {
+            "light_scale": 1.163158858359,
+            "main_camera_dx_m": -0.005550559259
+          },
+          "score": 0.0,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 7,
+          "scene": {
+            "light_scale": 1.269215173001,
+            "main_camera_dx_m": 0.01012480679
+          },
+          "score": 0.5,
+          "status": "completed"
+        },
+        {
+          "proposal_number": 8,
+          "scene": {
+            "light_scale": 0.746293748048,
+            "main_camera_dx_m": -0.01762532578
+          },
+          "score": 0.5,
+          "status": "completed"
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "case_ce08c4c747de412fb7706f30b52503b9",
+          "source_case_id": null,
+          "candidate_id": "candidate_b2371cdbb50f424490f5c09d86e9c7b8",
+          "status": "observed",
+          "original_scene": {
+            "light_scale": 1.096798963779,
+            "main_camera_dx_m": 0.016599804134
+          },
+          "selected_scene": {
+            "light_scale": 1.096798963779,
+            "main_camera_dx_m": 0.016599804134
+          },
+          "frozen_failing_state_ids": [
+            1
+          ],
+          "selection_rule": "max-failures_then-active-parameters_then-directional-linf_then-index-v1",
+          "discovery_pairs": [
+            {
+              "state_id": 0,
+              "reference": {
+                "episode_id": "episode_0ee1973ff1b34c1dbdcd244d9ce1e81d",
+                "outcome": "success",
+                "steps": 89,
+                "seed": 1588060384
+              },
+              "changed": {
+                "episode_id": "episode_3b99d254d6fa42e9a1523ff16a222681",
+                "outcome": "success",
+                "steps": 96,
+                "seed": 1588060384
+              }
+            },
+            {
+              "state_id": 1,
+              "reference": {
+                "episode_id": "episode_a267343e3876480288cce4ac8a326292",
+                "outcome": "success",
+                "steps": 95,
+                "seed": 2107485024
+              },
+              "changed": {
+                "episode_id": "episode_e271ccb54a78489895a5c6d8c53f9338",
+                "outcome": "horizon_exhausted",
+                "steps": 280,
+                "seed": 2107485024
+              }
+            }
+          ],
+          "reduction": {
+            "reduced": null,
+            "claim": null,
+            "initial_pairs": [],
+            "evaluated_proposals": 0,
+            "history": [],
+            "final_pairs": [],
+            "final_preserves_original_witness": null
+          },
+          "confirmation": null,
+          "confirmation_pairs": [],
+          "fresh_reruns": [],
+          "archives": []
+        }
+      ]
+    }
+  ],
+  "standalone_verification": {
+    "workspace_bundle": "data/rtx5090-evidence/libero-failure-case.zip",
+    "sha256": "5c6e3adc2a9431c2dd32efcef13d0f30ee55ba541dd9487c0b794cbf48d2e492",
+    "source_archive": "case_ac171e43247c4b79aae890f75f76bef3_a1151a4156ecdae9.zip",
+    "bytes": 43897057,
+    "files": 800,
+    "episode_manifests": 72,
+    "clean_reader_receipt": {
+      "valid": true,
+      "schema_version": "1.0",
+      "case_id": "case_ac171e43247c4b79aae890f75f76bef3",
+      "backend": "libero",
+      "evidence_kind": "robot_simulation",
+      "file_count": 800
+    },
+    "clean_reader_receipt_sha256": "52924f42e97493425362506e63f35cb1f0f581186bc3e92fc3ff8867d335d8b5",
+    "isolated_rerun_receipt": {
+      "campaign_id": "campaign_85dac01735374ea6b1494c5e6680ca84",
+      "case_id": "case_49422e2b5fbf4935a802c2707da18a77",
+      "job_id": "job_6d0b645b478a4cb1ad80fabdcfc6f2e1",
+      "status": "succeeded",
+      "error": null
+    },
+    "result_log_sha256": "a8f471ecd662ef5dff921e2f50ff13760b43c52d300f17a6e7838cccbca6b121",
+    "recorded_network_interfaces": [
+      [
+        "lo",
+        "DOWN"
+      ]
+    ]
+  },
+  "isolated_bundle_replays": [
+    {
+      "source_case_id": "case_ac171e43247c4b79aae890f75f76bef3",
+      "imported_case_id": "case_49422e2b5fbf4935a802c2707da18a77",
+      "campaign_id": "campaign_85dac01735374ea6b1494c5e6680ca84",
+      "scene": {
+        "light_scale": 1.0,
+        "main_camera_dx_m": 0.007742780205
+      },
+      "jobs": [
+        {
+          "id": "job_6d0b645b478a4cb1ad80fabdcfc6f2e1",
+          "kind": "rerun",
+          "status": "succeeded",
+          "error": null
+        }
+      ],
+      "episode_cost": {
+        "phases": {
+          "rerun": {
+            "attempted": 2,
+            "completed": 2,
+            "reserved": 0,
+            "retries": 0,
+            "outcomes": {
+              "success": 1,
+              "horizon_exhausted": 1
+            },
+            "completed_episode_seconds": 55.93553607700005
+          }
+        },
+        "attempted_episodes": 2,
+        "completed_episodes": 2,
+        "infrastructure_errors": 0,
+        "completed_episode_seconds": 55.93553607700005,
+        "median_completed_episode_seconds": 27.967768038500026
+      },
+      "fresh_reruns": [
+        {
+          "job_id": "job_6d0b645b478a4cb1ad80fabdcfc6f2e1",
+          "reproduced": true,
+          "scene": {
+            "light_scale": 1.0,
+            "main_camera_dx_m": 0.007742780205
+          },
+          "pairs": [
+            {
+              "state_id": 0,
+              "reference": {
+                "episode_id": "episode_7cac3f8e10f748cf942faf08be0e7227",
+                "outcome": "success",
+                "steps": 89,
+                "seed": 1588060384
+              },
+              "changed": {
+                "episode_id": "episode_9082999192c445b08e14306566ed6006",
+                "outcome": "horizon_exhausted",
+                "steps": 280,
+                "seed": 1588060384
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -218,7 +218,7 @@ def test_cancellation_before_first_action_is_incomplete(tmp_path, monkeypatch):
 @pytest.mark.skipif(os.environ.get("FAILUREFORGE_RUN_GPU_TESTS") != "1", reason="Explicit target-PC GPU opt-in required")
 def test_real_episode_has_two_cameras_and_terminal_trace(tmp_path):
     """Short smoke only; full baseline qualification remains a separate gate."""
-    runner = LiberoRunner(Path(os.environ["FAILUREFORGE_MODEL_PATH"]))
+    runner = LiberoRunner(Path(os.environ["FAILUREFORGE_MODEL_PATH"]), os.environ.get("MUJOCO_GL", "egl"))
     try:
         result = runner.run({**REQUEST, "max_steps": 2}, tmp_path / "real")
         assert result["steps"] <= 2
@@ -238,7 +238,7 @@ def test_real_episode_has_two_cameras_and_terminal_trace(tmp_path):
 @pytest.mark.skipif(os.environ.get("FAILUREFORGE_RUN_GPU_TESTS") != "1", reason="Explicit target-PC GPU opt-in required")
 def test_real_identity_camera_light_effects_and_reset_isolation(tmp_path):
     from failureforge.simulation.qualification import _scene_probes
-    runner = LiberoRunner(Path(os.environ["FAILUREFORGE_MODEL_PATH"]))
+    runner = LiberoRunner(Path(os.environ["FAILUREFORGE_MODEL_PATH"]), os.environ.get("MUJOCO_GL", "egl"))
     try:
         runner._load()
         report = _scene_probes(runner, tmp_path / "scene-probes")

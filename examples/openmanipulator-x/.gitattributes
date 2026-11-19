@@ -1,0 +1,4 @@
+*-raw.csv -text
+open_manipulator_x.urdf -text
+LICENSE-*.txt -text
+*-joint1.csv text eol=lf

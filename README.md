@@ -2,9 +2,9 @@
 
 A local workspace for preparing hardware tests and investigating failures of a supported robot policy in simulation.
 
-Projects now accept five starting points: concept, CAD design, robot model, existing simulation, and physical prototype. Save requirements, attach files, record physical properties and their sources, define multiple test plans, and review the preparation checklist. Robot behavior, structural, and thermal projects have separate input guidance. These are preparation workflows; custom robot execution, calibration, general regression suites, and structural/thermal solvers are planned integrations.
+Projects accept concepts, CAD designs, robot models, existing simulations, and physical prototypes. **Analysis & runs** executes bounded studies, stores immutable evidence, groups studies into suites and compares project revisions. The built-in hand and compatible primitive URDF models support articulated motion. Structural projects support rectangular cantilever bending, and thermal projects support steady one-dimensional conduction. Separate calibration workflows estimate a material property or fit a joint response against held-out physical measurements.
 
-The application implements durable campaigns, three search strategies, matched reference comparisons, bounded reduction, confirmation, fresh paired reruns, trace inspection, and verified case exports. The real LIBERO/SmolVLA integration is implemented against the pinned upstream sources but **has not yet been executed or qualified on the RTX 5090 PC**. Robot results are unavailable until that qualification passes.
+The fixed LIBERO/SmolVLA benchmark runs separately. It supports three search strategies, matched reference comparisons, bounded reduction, held-out confirmation, fresh paired reruns, recorded cameras and verified case exports. Its live worker checks the target host's qualification record before starting a campaign. [Watch the 42-second demo](output/demo/failureforge-demo.mp4) · [See measured results from the RTX 5090](docs/execution-host-results.md) · [Set up an execution host](docs/robotics-setup.md).
 
 ## Run on the laptop
 
@@ -35,9 +35,13 @@ For frontend hot reload, run `npm run dev` in `apps/web` while the API runs on p
 
 The three-step setup asks for your starting stage, analysis, and working brief. Each project provides **Overview**, **Files**, **Parameters**, and **Test plans** sections. Saved changes use revision checks to prevent silent overwrites; uploads also update the revision. Export the saved preparation report as JSON for review or handoff.
 
-The service accepts up to 40 files per project, 10 MiB per file, 80 parameters, and 30 test plans. Supported XML and JSON files have a stricter 2 MiB limit and bounded syntax inspection. URDF/MJCF inventories can flag missing explicit inertia and unresolved references. These checks do not compile a model or establish physical validity. CAD, controller packages, images, and other attachments remain opaque; archives are not extracted and uploaded code is not executed. All new project execution gates remain closed pending an appropriate validated adapter.
+The service accepts up to 40 files per project, 10 MiB per file, 80 parameters, and 30 test plans. Supported XML and JSON have a 2 MiB intake limit. For execution, each adapter validates its own input contract in a separate solver process. STL inventory supports declared units and optional CSV bill-of-materials mapping. The URDF adapter supports documented joints, physical properties and primitive shapes. The controller format is declarative JSON. Uploaded programs and archives are stored as attachments.
 
-See the [detailed journey and architecture guide](docs/product-journeys-and-architecture.md), also available as a [17-page PDF](output/pdf/failureforge-product-journeys.pdf), for nine customer journeys, required inputs, outputs, technical choices, and staged acceptance criteria.
+For a local installation with dynamic project motion, additionally install `python -m pip install -e ".[project-robot]"` in the **application** environment. Choose **Analysis & runs** within a saved project to configure an adapter, inspect fields or trajectories, download a run, or compare a revision. [Project analysis and CI](docs/project-analysis.md) · [Articulated motion and upload examples](docs/articulated-motion.md).
+
+The [OpenManipulator-X example](examples/openmanipulator-x/README.md) includes a manufacturer's URDF and two independently recorded physical trials with licenses, source revisions, replayable inputs and held-out calibration measurements. [Project sweeps](docs/project-sweeps.md) explains how to search a finite range and inspect individual outcomes.
+
+The [original roadmap](docs/product-journeys-and-architecture.md) and its [17-page planning PDF](output/pdf/failureforge-product-journeys.pdf) describe the nine customer journeys and their design rationale. Current adapter coverage and limits are in the guides above.
 
 ## RTX 5090 execution host
 
@@ -86,6 +90,31 @@ Commands share the same persistence, engine, and artifact code as the API. Put `
 
 Search and case operations enqueue jobs. Use a continuously running worker or another `worker --once` invocation to execute them. `rerun-bundle` verifies its archive and executes a fresh paired rerun in an idle local queue. It does not execute imported scripts or deserialize pickle objects.
 
+### Compare search methods across seeds
+
+Save a JSON study manifest listing the seeds in advance and one campaign ID per seed for each method. Replace the example identifiers with IDs from your local campaigns. Use `null` for an unassigned run so it remains visible in the denominator.
+
+```json
+{
+  "backend": "synthetic",
+  "seeds": [1729, 1730],
+  "campaigns": {
+    "random": ["campaign_RANDOM_1729", null],
+    "sobol": ["campaign_SOBOL_1729", null],
+    "sobol_local_mix": ["campaign_MIX_1729", null]
+  }
+}
+```
+
+```powershell
+python -m failureforge --data-dir data study-report --manifest study.json
+python -m failureforge --data-dir data study-report --manifest study.json --format markdown
+```
+
+The report reads a single SQLite snapshot. Compare campaigns with the same backend, domain, candidate budget and state banks. For LIBERO studies, completed episodes must also share a recorded environment fingerprint. The summary lists seeds for which every method completed. A no-find requires a successful search across the full candidate bank. Interrupted or queued jobs retain their own status, and subsequent case work has no effect on a completed search's status.
+
+The first failing candidate is numbered from one and requires both paired search episodes. Search attempts to that observation include charged retries. Baseline screening is counted separately. The JSON includes per-outcome error counts and summed duration of completed search episodes in seconds. The report uses the campaign records and consumes no episode budget.
+
 ## Reliability and limits
 
 SQLite transactions reserve episode allowances before work starts. Unique lease tokens fence completion; a stale worker cannot expose its artifacts. Attempts have immutable directories, and artifact visibility follows the database commit. A directory left by an interrupted worker is unreferenced rather than presented as complete evidence. Started or uncertain attempts stay charged.
@@ -109,7 +138,7 @@ npm run build
 
 The workspace `--basetemp` avoids restricted Windows system-temp directory rename behavior. Tests cover finite bounds, state-bank separation, deterministic search, nonmonotonic reduction, phase budgets, shared retries, API idempotency, cancellation, stale leases, partial-candidate resume, the process watchdog, corruption, nested export validation, and the complete synthetic journey. Project tests cover the stage/analysis matrix, persistence, revision conflicts, upload limits and integrity, hostile structured inputs, and execution gates. Frontend checks cover failure counts, action allowances, and evidence pairing. Synthetic tests do not qualify robot behavior.
 
-Use [the implementation review](docs/implementation-review.md) for the scientific decisions and [build status](docs/build-status.md) for what is implemented versus still awaiting GPU validation. The `.kiro` specifications are prepared project inputs; this repository does not claim that Kiro has already executed them.
+Use [the original implementation review](docs/implementation-review.md) for the scientific decisions and [build status](docs/build-status.md) for measured target-host results. The `.kiro` specifications are prepared project inputs.
 
 ## Repository
 

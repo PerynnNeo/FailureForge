@@ -13,6 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+project-robot = ["mujoco==3.8.1"]
 test = ["pytest==8.4.0", "httpx==0.28.1", "hypothesis==6.135.9"]
 
 [project.scripts]

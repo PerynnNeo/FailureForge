@@ -41,14 +41,26 @@ def bootstrap(root: Path) -> dict:
     root = root.resolve()
     model_path = root / "models" / "smolvla_libero"
     existing = model_path / "failureforge-bootstrap.json"
-    if existing.exists():
-        result = verify_bootstrap(model_path)
-        print(f"Existing bootstrap verified: {existing}")
-        return result
     package = importlib.util.find_spec("libero")
     if package is None or package.origin is None:
         raise RuntimeError("hf-libero is absent; run scripts/setup_robotics.sh in Linux first")
     libero_root = Path(package.origin).parent / "libero"
+    def connect_packaged_assets(asset_dir):
+        # hf-libero 0.1.4 also resolves arena XML relative to its installed package.
+        target = Path(asset_dir).resolve(strict=True)
+        if not (target / "scenes" / "libero_tabletop_base_style.xml").is_file():
+            raise RuntimeError("The resolved LIBERO snapshot lacks the supported tabletop scene")
+        link = libero_root / "assets"
+        if link.exists() or link.is_symlink():
+            if link.resolve() != target:
+                raise RuntimeError(f"Existing LIBERO package assets differ; preserved unchanged: {link}")
+        else:
+            link.symlink_to(target, target_is_directory=True)
+    if existing.exists():
+        result = verify_bootstrap(model_path)
+        connect_packaged_assets(result["assets"]["path"])
+        print(f"Existing bootstrap verified: {existing}")
+        return result
     config_dir = Path(os.environ.get("LIBERO_CONFIG_PATH", str(root / "environment" / "libero-config"))).resolve()
     paths = {"benchmark_root": libero_root, "assets": root / "data" / "libero-assets",
         "bddl_files": libero_root / "bddl_files", "init_states": libero_root / "init_files",
@@ -71,6 +83,7 @@ def bootstrap(root: Path) -> dict:
     asset_info = api.dataset_info("lerobot/libero-assets")
     snapshot_download("lerobot/libero-assets", repo_type="dataset", revision=asset_info.sha,
                       local_dir=str(paths["assets"]))
+    connect_packaged_assets(paths["assets"])
     snapshot_download(POLICY_REPO, revision=POLICY_REVISION, local_dir=str(model_path))
     for filename in ("config.json", "model.safetensors", "policy_preprocessor.json", "policy_postprocessor.json"):
         if not (model_path / filename).is_file():

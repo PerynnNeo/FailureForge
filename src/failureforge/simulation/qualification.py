@@ -21,8 +21,18 @@ def _scene_probes(runner: LiberoRunner, root: Path, *, state_id: int = 0, seed: 
 
     root.mkdir()
     checks, images = [], []
-    reference, _ = runner._reset(state_id, seed)
+    reset_observation, _ = runner._reset(state_id, seed)
     baseline_state = runner.settled.copy()
+    # The pinned reset returns the last settling step's cached sensor sample.
+    # Acquire the unmodified reference at the same physics instant as the edited
+    # scenes. This independent read never calls _apply_scene or rewrites arrays.
+    runner.sim.forward()
+    raw_reference = runner.raw.env._get_observations(force_update=True)
+    reference = runner._env._format_raw_obs(raw_reference)
+    if not np.array_equal(baseline_state, runner.sim.get_state().flatten()):
+        raise RuntimeError("Acquiring the reference frame changed the settled physics state")
+    cached_deltas = {key: int(np.max(np.abs(reset_observation["pixels"][key].astype(int) - view.astype(int))))
+                     for key, view in reference["pixels"].items()}
     baseline_pixels = {k: v.copy() for k, v in reference["pixels"].items()}
     baseline_policy = runner._policy_observation(runner._environment_observation(reference))
     baseline_policy_images = {k: baseline_policy[k].detach().cpu().numpy().copy()
@@ -68,6 +78,8 @@ def _scene_probes(runner: LiberoRunner, root: Path, *, state_id: int = 0, seed: 
         draw.text((x + 4, y + 6), label, fill="white")
     sheet.save(root / "scene-contact-sheet.png")
     return {"passed": all(c["passed"] for c in checks), "checks": checks, "static_scene_resets": 11,
+            "reference_acquisition": "Forward kinematics and force-update policy sensors on the untouched settled scene",
+            "cached_reset_vs_current_frame_max_rgb_delta": cached_deltas,
             "target_visibility_review": "pending",
             "review_instructions": "Inspect all main/wrist views for the bowl and plate, camera orientation, occlusion, clipping, and meaningful illumination. Automated pixel differences do not establish target visibility."}
 

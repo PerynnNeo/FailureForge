@@ -43,9 +43,12 @@ def make_worker(args, store, artifacts):
 
 
 def parser():
+    from .project_ci import configure as configure_project_ci
+
     root = argparse.ArgumentParser(prog="failureforge", description="Robot-policy failure investigation workbench")
     root.add_argument("--data-dir", default=os.environ.get("FAILUREFORGE_DATA_DIR", "data"))
     sub = root.add_subparsers(dest="command", required=True)
+    configure_project_ci(sub)
     doctor = sub.add_parser("doctor", help="Inspect lightweight runtime readiness; never downloads weights")
     doctor.add_argument("--robotics", action="store_true")
     doctor.add_argument("--model-path", default="models/smolvla_libero")
@@ -76,8 +79,14 @@ def parser():
     export.add_argument("case_id")
     inspect = sub.add_parser("inspect-bundle")
     inspect.add_argument("path", type=Path)
+    project_bundle = sub.add_parser("project-bundle", help="Verify a portable project analysis and optionally execute it again offline")
+    project_bundle.add_argument("path", type=Path)
+    project_bundle.add_argument("--rerun", action="store_true")
     report = sub.add_parser("report")
     report.add_argument("campaign_id")
+    study = sub.add_parser("study-report", help="Compare a declared matrix of existing method/seed campaigns")
+    study.add_argument("--manifest", type=Path, required=True)
+    study.add_argument("--format", choices=["json", "markdown"], default="json")
     rerun = sub.add_parser("rerun-bundle", help="Verify an exported bundle and execute a fresh paired rerun")
     rerun.add_argument("path", type=Path)
     rerun.add_argument("--backend", choices=["synthetic", "libero"], default="libero")
@@ -87,7 +96,8 @@ def parser():
     qualify = sub.add_parser("qualify")
     qualify.add_argument("--model-path", default="models/smolvla_libero")
     qualify.add_argument("--renderer", choices=["egl", "glfw", "osmesa"], default="egl")
-    sub.add_parser("approve-scene-review", help="Record that you inspected the qualification camera images")
+    review = sub.add_parser("approve-scene-review", help="Record that you inspected the qualification camera images")
+    review.add_argument("--reviewer", default="local operator", help="Name of the person or agent who reviewed the recorded views")
     return root
 
 
@@ -95,18 +105,38 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         _main(args)
-    except (ValueError, KeyError, OSError, RuntimeError) as exc:
+    except (ValueError, KeyError, OSError, RuntimeError, sqlite3.Error) as exc:
         print(f"FailureForge: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
 
 def _main(args):
+    if args.command == "project-bundle":
+        from .project_bundle import inspect_project_bundle
+        print_json(inspect_project_bundle(args.path, rerun=args.rerun))
+        return
+    if args.command == "project-ci":
+        from .project_ci import execute
+        report, code = execute(args)
+        print_json(report)
+        if code:
+            raise SystemExit(code)
+        return
     if args.command == "catalog":
         print_json(catalog())
         return
     if args.command == "inspect-bundle":
         result = inspect_bundle(args.path)
         print_json({k: v for k, v in result.items() if k not in ("manifest", "case", "spec")})
+        return
+    if args.command == "study-report":
+        from .study import StudyManifest, study_markdown, study_report
+        manifest = StudyManifest.model_validate_json(args.manifest.read_text(encoding="utf-8-sig"))
+        result = study_report(Path(args.data_dir) / "failureforge.sqlite3", manifest)
+        if args.format == "markdown":
+            print(study_markdown(result))
+        else:
+            print_json(result)
         return
     if args.command == "doctor":
         store, _ = services(args.data_dir)
@@ -143,11 +173,14 @@ def _main(args):
         return
     if args.command == "qualify":
         from .simulation import qualify
-        print_json(qualify(Path(args.data_dir).resolve() / "qualification", model_path=Path(args.model_path), renderer=args.renderer))
+        report = qualify(Path(args.data_dir).resolve() / "qualification", model_path=Path(args.model_path), renderer=args.renderer)
+        print_json(report)
+        if not report["qualified"]:
+            raise SystemExit(1)
         return
     if args.command == "approve-scene-review":
         from .simulation import approve_scene_review
-        print_json(approve_scene_review(Path(args.data_dir).resolve() / "qualification" / "qualification.json"))
+        print_json(approve_scene_review(Path(args.data_dir).resolve() / "qualification" / "qualification.json", reviewer=args.reviewer))
         return
     store, artifacts = services(args.data_dir)
     if args.command == "worker":

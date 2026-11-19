@@ -168,7 +168,7 @@ def test_complete_intake_remains_blocked_and_export_preserves_evidence(tmp_path)
         assert client.get("/api/campaigns").json() == {"items": []}
         catalog = client.get("/api/projects/catalog").json()
         assert catalog["limits"]["asset_bytes"] == ASSET_LIMIT
-        assert all(not template["execution_available"] for template in catalog["robot_templates"])
+        assert [t["id"] for t in catalog["robot_templates"] if t["execution_available"]] == ["two_finger_hand_v1"]
 
 
 def test_measured_claim_without_evidence_does_not_complete_evidence_check(tmp_path):
