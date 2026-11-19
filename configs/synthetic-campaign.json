@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "name": "Software validation campaign",
+  "backend": "synthetic",
+  "method": "sobol_local_mix",
+  "candidate_count": 32,
+  "seed": 1729,
+  "domain": {"main_camera_dx_m": [-0.04, 0.04], "light_scale": [0.7, 1.3]},
+  "state_ids": [0, 1],
+  "confirmation_state_ids": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+}
