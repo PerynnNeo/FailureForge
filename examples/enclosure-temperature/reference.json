@@ -1,0 +1,15 @@
+{
+  "label": "Rod with a 300 K enclosure at the exposed end",
+  "adapter": "thermal_rod",
+  "inputs": {
+    "length_m": 0.1,
+    "area_m2": 0.0001,
+    "conductivity_w_mk": 10,
+    "left_temperature_k": 310,
+    "right_ambient_temperature_k": 300,
+    "right_film_coefficient_w_m2k": 100,
+    "heat_generation_w_m3": 0,
+    "elements": 16,
+    "max_temperature_k": 315
+  }
+}

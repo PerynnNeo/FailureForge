@@ -74,6 +74,12 @@ export const projectGuide: TutorialStep[] = [
     action: 'Describe the job under “What should the design do?” Put a measurable pass rule under “Success criteria” and uncertainties in the notes. Use Save changes to record this revision.',
   },
   {
+    target: 'project-task-phases',
+    title: 'Find operating conditions by task phase',
+    body: 'Walk through what the prototype does, from initial setup to release. Each phase has questions about what could change the outcome.',
+    action: 'Choose a phase and record the conditions an engineer mentions. Identify a test, a measurement to collect, or a limitation of the model for each one.',
+  },
+  {
     target: 'project-files',
     title: 'Prepare your files',
     body: 'If you have a source file, select its purpose to see the accepted formats. A drawing can document geometry, a robot description can describe joints, and a measurement file can record a physical test.',

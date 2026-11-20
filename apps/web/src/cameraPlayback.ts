@@ -1,6 +1,6 @@
 /** Native controls on either video can drive the pair. Only the driver corrects drift. */
 export function synchronizeCameras(first: HTMLVideoElement, second: HTMLVideoElement, onError: () => void,
-  recordedDurations?: readonly [number, number]) {
+  sourceExtents?: readonly [number, number]) {
   let driver = first;
   let connected = true;
   const mirroredSeeks = new Map<HTMLVideoElement, number>();
@@ -8,10 +8,10 @@ export function synchronizeCameras(first: HTMLVideoElement, second: HTMLVideoEle
   const stepping = new Set<HTMLVideoElement>();
   const listeners = new AbortController();
 
-  // Independent captures can be time-compressed by different amounts.
+  // Each clip covers a physical time interval or a distance along a steady field.
   function scale(video: HTMLVideoElement) {
-    return recordedDurations && Number.isFinite(video.duration) && video.duration > 0
-      ? recordedDurations[video === first ? 0 : 1] / video.duration : 1;
+    return sourceExtents && Number.isFinite(video.duration) && video.duration > 0
+      ? sourceExtents[video === first ? 0 : 1] / video.duration : 1;
   }
 
   function relativeRate(source: HTMLVideoElement, other: HTMLVideoElement) {

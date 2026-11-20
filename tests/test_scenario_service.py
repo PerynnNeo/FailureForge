@@ -2,6 +2,7 @@ import hashlib
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from threading import Event
 
 import pytest
@@ -85,6 +86,70 @@ def until_completed(read):
             return value
         time.sleep(0.1)
     pytest.fail("Timed out waiting for the ordinary project worker")
+
+
+def test_thermal_discovery_runs_a_measured_boundary_and_preserves_fan_question(tmp_path):
+    app = create_app(tmp_path)
+    provider = FixtureProvider()
+    provider.available = False
+    app.state.scenarios.provider = provider
+    with TestClient(app) as client:
+        project = checked(client.post("/api/projects", json={
+            "name": "Enclosed component", "entry_stage": "prototype", "analysis_type": "thermal",
+            "goal": "Operate inside a warm enclosure.", "success_criteria": "Peak at most 315 K."}), 201)
+        base = f"/api/projects/{project['id']}"
+        path = base + "/scenarios"
+        fixture = Path(__file__).parents[1] / "apps/web/public/examples/thermal-reference.json"
+        saved = upload(client, base, fixture.name, fixture.read_bytes())
+        rev = {"expected_revision": saved["revision"]}
+        ref, = post(client, path + "/import-reference", {**rev, "asset_id": saved["assets"][0]["id"]},
+                    "rod-import")["ids"]
+        until_completed(lambda: checked(client.get(base + "/analysis/" + ref), 200))
+        task = {**rev, "baseline_run_id": ref, "task": "Compare a warmer enclosure and a fan at 2200 RPM.",
+                "run_supported": True}
+
+        def generate(body, key):
+            receipt = post(client, path + "/generate", body, key)
+            return until_completed(lambda: next(b for b in checked(client.get(path), 200)["batches"] if b["id"] == receipt["id"]))
+
+        pending = generate(task, "fan-only")
+        assert not pending["candidates"] and any("relationship" in q for q in pending["clarifications"])
+        assert any("ambient" in q for q in pending["clarifications"])
+        assert len(checked(client.get(base + "/analysis"), 200)["runs"]) == 1
+
+        conditions = {"ambient_value": 50, "ambient_unit": "°C", "fan_rpm": 2200, "end_film_w_m2k": 250}
+        result = generate({**task, "thermal_change": conditions}, "warm-ambient")
+        assert len(result["candidates"]) == 1 and result["thermal_change"] == conditions
+        assert len(result["clarifications"]) == 1 and "relationship" in result["clarifications"][0]
+        report = path + "/batches/" + result["id"] + "/results"
+        verified = result["candidates"][0]
+        assert verified["review"]["diff"] == {"right_ambient_temperature_k": {"reference": 295, "variant": 323.15}}
+        for run in verified["execution"]["runs"]:
+            until_completed(lambda: checked(client.get(base + "/analysis/" + run), 200))
+        row, = checked(client.get(report), 200)["rows"]
+        assert row["state"] == "failed"
+        assert row["measurement"]["reference_value"] < 315 < row["measurement"]["value"]
+        assert row["measurement"]["limit"] == 315 and row["measurement"]["unit"] == "K"
+        assert "295 to 323.15 K" in row["applied_change"]
+
+        calibrated = {**conditions, "fan_calibration": "Installed end-face measurement, setup A, 2200 RPM: h = 250."}
+        result = generate({**task, "thermal_change": calibrated}, "fan-coefficient")
+        assert not result["clarifications"] and len(result["candidates"]) == 2
+        film = next(c for c in result["candidates"] if c["draft"]["operation_id"] == "thermal.end.film")
+        assert film["review"]["diff"] == {"right_film_coefficient_w_m2k": {"reference": 500, "variant": 250}}
+        assert any(f["value"] == calibrated["fan_calibration"] for f in film["review"]["facts"])
+        assert film["execution"]["runs"][0] == result["candidates"][0]["execution"]["runs"][0]
+        for run in film["execution"]["runs"]:
+            until_completed(lambda: checked(client.get(base + "/analysis/" + run), 200))
+        assert not provider.packets
+        provider.available = True
+        narrative = generate({**task, "task": "The enclosure reaches 330 K.", "run_supported": False}, "warm-prose")
+        card, = narrative["candidates"]
+        preview = checked(client.post(f"{path}/{card['id']}/preview", json={**rev, "confirmed": True}), 200)
+        assert preview["diff"] == {"right_ambient_temperature_k": {"reference": 295, "variant": 330}}
+        assert not provider.packets
+        generate({**task, "task": "Investigate a part vibrating against the wall.", "run_supported": False}, "other-mechanism")
+        assert len(provider.packets) == 1 and provider.packets[0]["baseline"]["run_id"] == ref
 
 
 def test_upload_review_pair_executes_once_and_preserves_project_evidence(tmp_path, monkeypatch):

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { post, request } from './api';
 import { Notice } from './components';
 import { measuredNumber } from './recordedFields';
-import { projectBatchHref } from './campaignHistory';
+import { scenarioComparisonHref } from './campaignHistory';
 import { ScenarioReview } from './ScenarioReview';
 import type { Candidate } from './ScenarioReview';
 import { groupScenarioFamilies } from './scenarioFamilies';
@@ -107,7 +107,8 @@ export function ScenarioBatchResults({ projectId, batchId, generationStatus, can
                 <td><Measurement value={row.measurement}/></td>
                 <td><button type="button" className="project-inline-button" aria-label={'Inspect ' + row.title}
                   onClick={() => open(row.candidate_id)}>Inspect</button>
-                  {row.suite_id && <a className="text-link" href={projectBatchHref(projectId, row.suite_id, row.variant_run_id)}>Run evidence</a>}</td>
+                  {row.suite_id && row.reference_run_id && row.variant_run_id && <a className="text-link"
+                    href={scenarioComparisonHref(projectId, row.suite_id, row.reference_run_id, row.variant_run_id)}>Compare replays</a>}</td>
               </tr>;
             })}
           </tbody>)}

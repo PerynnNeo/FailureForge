@@ -1,0 +1,134 @@
+{
+  "project_id": "project_ef49d1d9990a4e849a45372bc5e5bbff",
+  "review_revision": 3,
+  "provenance": "Demonstration inputs and operator-authored observations entered through the local browser. The timed lift results are simulated measurements.",
+  "original_grid": {
+    "suite_id": "suite_bbdee3c5fa804294b83a43dd2c31f2ed",
+    "revision": 1,
+    "grid": {
+      "planned_cells": 4,
+      "observed_cells": 4,
+      "possible_cells": 4,
+      "unobserved_cells": 0
+    },
+    "phase_submission": null
+  },
+  "phases": [
+    {
+      "id": "ae5f1660-20b4-49a0-86e7-88f44ba12451",
+      "name": "Rise",
+      "question": "What touches, resists or applies force to the tray while it rises?",
+      "conditions": [
+        {
+          "id": "05141025-1185-4ad1-92a6-0aeef3c707fc",
+          "answer": "The guide is wet after washdown when the tray rises.",
+          "subject": "Measure guide resistance",
+          "question": "What touches, resists or applies force to the tray while it rises?",
+          "status": "physically_testable",
+          "reason": "The lift model assumes a frictionless guide. Surface condition can change breakaway and running resistance.",
+          "next_step": "Compare dry and affected guides at the same payload and speed. Measure breakaway force and running drag in newtons in each condition.",
+          "test": null
+        }
+      ]
+    },
+    {
+      "id": "55aa4921-3505-4024-bc09-0a717de17195",
+      "name": "Hold",
+      "question": "When does the press engage, for how long, and what else acts on the tray during the hold?",
+      "conditions": [
+        {
+          "id": "af1644d5-ee62-4d61-ac17-70f4ac0998b5",
+          "answer": "The press timing varies between batches.",
+          "subject": "Check press engagement time",
+          "question": "When does the press engage, for how long, and what else acts on the tray during the hold?",
+          "status": "modeled",
+          "reason": "The timed lift models axial head engagement. For this demonstration use 0.30 kg and 2.5 N for 250 ms.",
+          "next_step": "Compare 500 ms and 1000 ms engagement from lift start, holding force, duration and payload fixed. Inspect arrival and peak hold error.",
+          "test": {
+            "adapter": "packaging_lift_timed_v2",
+            "field": "head_onset_ms",
+            "reference_inputs": {
+              "payload_kg": 0.3,
+              "head_force_n": 2.5,
+              "head_onset_ms": 1000,
+              "head_duration_ms": 250
+            },
+            "changed_value": 500
+          }
+        }
+      ]
+    },
+    {
+      "id": "474df8be-9ff5-408d-816e-68fe51e2bbd6",
+      "name": "Load the tray",
+      "question": "Where does the parcel sit and how is it secured before the lift starts?",
+      "conditions": [
+        {
+          "id": "622bf64e-0639-4c5f-85b1-e7eb8c9199cb",
+          "answer": "An off-center tray can sit against one guide.",
+          "subject": "Review eccentric loading",
+          "question": "Where does the parcel sit and how is it secured before the lift starts?",
+          "status": "outside_model",
+          "reason": "The lift has one vertical degree of freedom and a secured payload. It cannot resolve tray tilt, moments or unequal guide reactions.",
+          "next_step": "Measure lateral offset from the guide centerline and tray tilt under load. A simulated comparison needs rotational motion and contact geometry.",
+          "test": null
+        }
+      ]
+    },
+    {
+      "id": "e834cfc3-4376-4ff4-8930-e8cdf3228ab7",
+      "name": "Release",
+      "question": "How is the tray released and what changes as the next station takes the load?",
+      "conditions": [
+        {
+          "id": "aa8e4947-d579-45ad-acb6-cac7a8f452df",
+          "answer": "The downstream scanner acknowledgement sometimes arrives late.",
+          "subject": "Scanner acknowledgement delay",
+          "question": "How is the tray released and what changes as the next station takes the load?",
+          "status": "awaiting_data",
+          "reason": "We do not have synchronized timestamps for the scanner acknowledgement and the tray-release command.",
+          "next_step": "Timestamp both signals on a common clock and measure the delay distribution over repeated handoffs.",
+          "test": null
+        }
+      ]
+    }
+  ],
+  "timing_test": {
+    "suite_id": "suite_a2c4d89b1ed94801a3fb67f282bd6e36",
+    "revision": 3,
+    "phase_submission": {
+      "phase_id": "55aa4921-3505-4024-bc09-0a717de17195",
+      "condition_id": "af1644d5-ee62-4d61-ac17-70f4ac0998b5"
+    },
+    "runs": [
+      {
+        "run_id": "run_bf34edee1bd74ff3a91de8053e0ad7e8",
+        "evidence_hash": "e6e22b1d3d92a6e02e4ca21cf6364e5c43c4efdafc7c7a300b5bb273e7ab10bf",
+        "inputs": {
+          "head_duration_ms": 250,
+          "head_force_n": 2.5,
+          "head_onset_ms": 1000,
+          "payload_kg": 0.3
+        },
+        "passed": false,
+        "arrival_error_m": 0.005885983475896195,
+        "maximum_hold_error_m": 0.010978680651518274,
+        "limit_m": 0.01
+      },
+      {
+        "run_id": "run_e91367b0efa34c76bc4caaa3fa982d07",
+        "evidence_hash": "b855cef9a993d390c3bfe630c3ed4c602277ab40c90e0ebe19bd5928dbbb81b7",
+        "inputs": {
+          "head_duration_ms": 250,
+          "head_force_n": 2.5,
+          "head_onset_ms": 500,
+          "payload_kg": 0.3
+        },
+        "passed": true,
+        "arrival_error_m": 0.005791676212757779,
+        "maximum_hold_error_m": 0.005887800324532844,
+        "limit_m": 0.01
+      }
+    ]
+  }
+}

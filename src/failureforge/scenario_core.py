@@ -16,6 +16,7 @@ from .project_bundle import evidence as verify_run_evidence
 from .project_runs import project_adapters
 from .project_solver import MODELS, runtime_identity
 from .project_validity import assessment_error
+from . import thermal_scenarios as thermal
 
 
 VERSION = "cpu-discovery-1"
@@ -79,7 +80,7 @@ class Operation:
 
 def _validated(adapter, inputs):
     raw = dict(inputs)
-    if adapter == "structural_beam":
+    if adapter in ("structural_beam", "thermal_rod"):
         raw.setdefault("kind", adapter)
     return MODELS[adapter].model_validate(raw)
 
@@ -207,8 +208,25 @@ def _timing(baseline, draft):
     return reference, {**reference, "head_onset_ms": onset}, measurements
 
 
+def _thermal_boundary(baseline, draft, *, field):
+    reference = baseline["inputs"]
+    target = baseline["thermal_targets"][field]
+    limit = reference.get("max_temperature_k")
+    metric = "Continuous peak temperature and its axial location at steady state"
+    rule = f"Peak temperature ≤ {limit:g} K" if limit is not None else "Measurement only (no maximum temperature specified)"
+    return reference, {**reference, field: target}, [metric, rule]
+
+
+def _thermal_operation(field, identifier, label):
+    return Operation(identifier, "thermal.end_convection", ("thermal_rod",), "thermal_rod", label,
+                     "Use the engineer's absolute boundary value at the right end face. All other inputs remain fixed.",
+                     "Continuous peak temperature and axial position", partial(_thermal_boundary, field=field),
+                     lambda baseline: None if field in baseline.get("thermal_targets", {}) else "Supply the measured boundary change.")
+
+
 OPERATIONS = {
     op.id: op for op in (
+        *(_thermal_operation(field, identifier, label) for field, (identifier, label, _) in thermal.FIELDS.items()),
         _beam_operation("tip_resultant", "Move the load to the free end",
                         "Place the same total transverse force at the free tip, opposite the clamp.", [(1., 1., 1.)]),
         _beam_operation("uniform_resultant", "Spread the load along the span",
@@ -232,7 +250,7 @@ OPERATIONS = {
 }
 
 
-def build_context(project, baseline=None, task=""):
+def build_context(project, baseline=None, task="", thermal_change=None):
     """Project and run are server records. Send only this bounded projection to inference."""
     if len(task) > 2000:
         raise ValueError("Keep the scenario task under 2,000 characters.")
@@ -266,6 +284,8 @@ def build_context(project, baseline=None, task=""):
         fact(f"asset.{a['id']}", a["filename"], f"{a['kind']}. {inspection.get('summary', '')[:140]} {inventory}".strip(),
              f"Uploaded attachment SHA-256 {a['sha256']}")
     allowed = {a["id"] for a in project_adapters(project)}
+    if thermal_change is not None and (not baseline or baseline["adapter"] != "thermal_rod"):
+        raise ValueError("Choose a completed thermal rod reference for thermal boundary comparisons.")
     selected = None
     if baseline is not None:
         if baseline["project_id"] != project["id"] or baseline["project_revision"] != project["revision"]:
@@ -278,11 +298,19 @@ def build_context(project, baseline=None, task=""):
         if adapter not in allowed:
             raise ValueError("This reference adapter is unavailable for the selected prototype.")
         supported = any(adapter in op.adapters for op in OPERATIONS.values())
+        if adapter == "thermal_rod":
+            supported = thermal_change is not None
         # Unsupported adapters may contain nested controller targets or uploaded IDs.
         # Planning needs their identity, not an unrelated controller configuration.
         inputs = _validated(adapter, baseline["inputs"]).model_dump(exclude_none=True) if supported else {}
         selected = {"run_id": baseline["id"], "adapter": adapter, "inputs": inputs,
                     "evidence_hash": baseline["evidence_hash"]}
+        if thermal_change is not None:
+            change = thermal.ThermalChange.model_validate(thermal_change)
+            values, targets, questions = thermal.boundary_facts(change, task, inputs)
+            selected["thermal_targets"] = targets
+            for key, label, value, unit in values:
+                fact("thermal." + key, label, value, "Engineer-supplied scenario input", unit)
         unit_table = binding_units(adapter, project["analysis_type"])
         for field, value in inputs.items():
             if type(value) in (int, float):
@@ -303,14 +331,53 @@ def build_context(project, baseline=None, task=""):
             operations.append(op.public(selected))
     omitted = {key: len(project.get(key, [])) - limit for key, limit in (
         ("assets", 8), ("parameters", 16), ("operating_factors", 6), ("test_plans", 4)) if len(project.get(key, [])) > limit}
+    phases = project.get("task_phases", [])
+    included_conditions = 0
+    for i, phase in enumerate(phases[:4]):
+        fact(f"phase.{i}", phase["name"], phase["question"] or phase["name"], "Saved task phase", limit=160)
+        for j, condition in enumerate(phase["conditions"][:2]):
+            subject = condition.get("subject") or phase["name"]
+            fact(f"phase.{i}.condition.{j}", subject, condition["answer"],
+                 f"Engineer’s {condition['status'].replace('_', ' ')} review: {condition['reason'][:120]}", limit=180)
+            facts[-1]["review_status"] = condition["status"]
+            included_conditions += 1
+    if len(phases) > 4:
+        omitted["task_phases"] = len(phases) - 4
+    remaining_conditions = sum(len(p["conditions"]) for p in phases) - included_conditions
+    if remaining_conditions:
+        omitted["phase_conditions"] = remaining_conditions
     packet = {"version": VERSION, "project_id": project["id"], "revision": project["revision"],
               "stage": project["entry_stage"], "analysis_type": project["analysis_type"],
               "facts": facts, "operations": operations, "baseline": selected,
               "omitted_records": omitted, "excerpted_fact_ids": excerpted}
+    if thermal_change is not None:
+        packet["thermal_change"] = change.model_dump(exclude_none=True)
+        packet["thermal_questions"] = questions
     packet["runtime_hashes"] = {adapter: config_hash(runtime_identity(adapter))
                                 for adapter in sorted({op["execution_adapter"] for op in operations})}
     packet["context_hash"] = config_hash(packet)
     return packet
+
+
+def thermal_batch(packet):
+    baseline = packet["baseline"]
+    facts = {row["id"] for row in packet["facts"]}
+    candidates = []
+    for field, target in baseline["thermal_targets"].items():
+        identifier, label, unit = thermal.FIELDS[field]
+        old = baseline["inputs"][field]
+        refs = [f"baseline.{field}", f"thermal.{field}"]
+        if field == thermal.AMBIENT and "thermal.ambient_description" in facts:
+            refs.append("thermal.ambient_description")
+        if field == thermal.FILM:
+            refs += [name for name in ("thermal.fan_rpm", "thermal.fan_calibration") if name in facts]
+        candidates.append(CandidateDraft(
+            title=f"{label} at {target:g} {unit}", hypothesis=f"Compare the steady temperature profile with {label.lower()} changed from {old:g} to {target:g} {unit}.",
+            operation_id=identifier, fact_refs=refs, assumptions=[
+                "The right end exchanges heat with a uniform external fluid. The sides are insulated and the left temperature is fixed.",
+                "Only this boundary value changes. Geometry, conductivity, heat generation, mesh and acceptance rules come from the reference."],
+            shift_ms=None, missing_capability=None, question=None))
+    return BatchDraft(candidates=candidates, clarifications=packet["thermal_questions"])
 
 
 def compile_candidate(context, draft: CandidateDraft, confirmed=False):
@@ -332,6 +399,11 @@ def compile_candidate(context, draft: CandidateDraft, confirmed=False):
         return finish("invalid", "The saved project context changed. Generate a new review for this revision.")
     if any(ref not in facts for ref in draft.fact_refs):
         return finish("invalid", "The suggestion cites evidence outside the selected project context.")
+    for reviewed in report["facts"]:
+        status = reviewed.get("review_status")
+        if status in ("physically_testable", "outside_model", "awaiting_data"):
+            return finish("needs_information" if status == "awaiting_data" else "needs_capability",
+                          f"The cited condition is still open in Task phases. {reviewed['source']}")
     if draft.missing_capability:
         return finish("needs_capability", "The proposed situation cannot be compiled in full with the registered operations for this reference.")
     if draft.operation_id and op is None:

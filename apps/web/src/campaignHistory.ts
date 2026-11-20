@@ -20,6 +20,9 @@ export const projectBatchHref = (projectId: string, suiteId: string, runId?: str
   `#/projects/${encodeURIComponent(projectId)}/analysis?batch=${encodeURIComponent(suiteId)}` +
   (runId ? '&run=' + encodeURIComponent(runId) : '');
 
+export const scenarioComparisonHref = (projectId: string, suiteId: string, referenceId: string, variantId: string) =>
+  projectBatchHref(projectId, suiteId, variantId) + '&reference=' + encodeURIComponent(referenceId);
+
 export async function readProjectBatches(fetchPage: (offset: number, limit: number) => Promise<ProjectBatchPage>) {
   const batches = new Map<string, ProjectBatch>();
   let offset = 0;

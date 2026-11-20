@@ -41,7 +41,8 @@ export function NewProjectCampaign() {
         </label>
         {selected && <>
           <div className="campaign-project-summary"><p>{selected.goal}</p><span>{analysisOptions.find(item => item.value === selected.analysis_type)?.title ?? label(selected.analysis_type)} · revision {selected.revision}</span></div>
-          <a className="button primary" data-tour="project-campaign-configure" href={projectCampaignSetup(selected.id)}>Configure campaign<Icon name="chevron" size={16}/></a>
+          <div className="analysis-actions"><a className="button primary" data-tour="project-campaign-configure" href={projectCampaignSetup(selected.id)}>Configure campaign<Icon name="chevron" size={16}/></a>
+            <a className="text-link" href={'#/projects/' + encodeURIComponent(selected.id) + '?tab=phases'}>Review task phases</a></div>
         </>}
       </div></section>}
   </>;

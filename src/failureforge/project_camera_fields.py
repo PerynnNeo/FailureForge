@@ -53,7 +53,53 @@ def _cameras(center, size, focus, close_size):
             Camera(focus + np.array([-0.35, -1.60, 0.67])*close_size, focus))
 
 
-def _station_scene(result, inputs, rod):
+def comparison_scale(first, second):
+    """One color domain and one displacement magnification for both saved fields."""
+    adapter = first.get('adapter')
+    if adapter != second.get('adapter') or adapter not in ('thermal_rod', 'structural_beam'):
+        return None
+    bounds, starts, ends, spans, widths, heights = [], [], [], [], [], []
+    for run in (first, second):
+        result = run.get('result') or {}
+        traces = result.get('traces') or {}
+        x = _numbers(traces.get('node_position_m'), (None,))
+        if x is None or not 2 <= len(x) <= 4096 or np.any(np.diff(x) <= 0):
+            return None
+        channel = 'temperature_k' if adapter == 'thermal_rod' else 'displacement_m'
+        values = _numbers(traces.get(channel), (len(x),))
+        if values is None:
+            return None
+        spans.append(float(x[-1] - x[0]))
+        starts.append(float(x[0]))
+        ends.append(float(x[-1]))
+        bounds.extend((float(values.min()), float(values.max())))
+        inputs = result.get('inputs') or run.get('inputs') or {}
+        if adapter == 'thermal_rod':
+            if not _positive(inputs.get('area_m2')):
+                return None
+            widths.append(2*math.sqrt(inputs['area_m2']/math.pi))
+            limit = inputs.get('max_temperature_k')
+            if _positive(limit):
+                bounds.append(limit)
+        else:
+            if not all(_positive(inputs.get(k)) for k in ('width_m', 'height_m')):
+                return None
+            widths.append(inputs['width_m'])
+            heights.append(inputs['height_m'])
+    lo, hi = min(bounds), max(bounds)
+    span = max(ends) - min(starts)
+    scale = {'lo': lo, 'hi': hi, 'center_x': (min(starts) + max(ends))/2, 'center_z': 0.,
+             'overview_size': max(.60*span, max(widths)), 'detail_size': max(.18*span, 1.65*max(widths))}
+    if adapter == 'structural_beam':
+        peak = max(abs(lo), abs(hi))
+        scale['gain'] = max(1., min(10000., .075*min(spans)/peak)) if peak else 1.
+        scale['center_z'] = (lo+hi)*scale['gain']/2
+        scale['overview_size'] = max(scale['overview_size'], (hi-lo)*scale['gain']+max(heights))
+        scale['detail_size'] = max(.18*span, 1.8*max(widths), 3*max(heights))
+    return scale
+
+
+def _station_scene(result, inputs, rod, scale=None, mark_events=True):
     traces = result.get('traces') or {}
     x = _numbers(traces.get('node_position_m'), (None,))
     if x is None or not 2 <= len(x) <= 4096 or np.any(np.diff(x) <= 0):
@@ -63,12 +109,19 @@ def _station_scene(result, inputs, rod):
         return None
     span = x[-1] - x[0]
     lo, hi = float(values.min()), float(values.max())
+    if scale:
+        lo, hi = scale['lo'], scale['hi']
     ids = _sample_indices(values)
     objects, positions, rotations = [], [], []
     if rod:
         if not _positive(inputs.get('area_m2')):
             return None
         radius = math.sqrt(inputs['area_m2']/math.pi)
+        limit = inputs.get('max_temperature_k')
+        above = np.flatnonzero(values > limit) if mark_events and _positive(limit) else []
+        if len(above):
+            # Retain the adjacent samples bracketing the threshold even when reducing a dense mesh.
+            ids = np.unique(np.r_[ids, max(0, above[0]-1), above[0]])
         z = np.zeros_like(x)
         extent = max(0.60*span, 2*radius)
         floor_z = -radius*1.12
@@ -79,17 +132,27 @@ def _station_scene(result, inputs, rod):
             objects.append(Object3D('cylinder', (radius, (end-start)/2), _field_color(values[index], lo, hi)))
             positions.append(((start+end)/2, 0., 0.))
             rotations.append(_ALONG_X)
+        if len(above):
+            objects.append(Object3D('cylinder', (1.13*radius, min(span*.0035, radius*.2)), (.86, .18, .52)))
+            positions.append((x[above[0]], 0., 0.))
+            rotations.append(_ALONG_X)
         objects.append(Object3D('cylinder', (1.075*radius, min(span*0.0025, radius*0.12)), _MARKER))
         rotations.append(_ALONG_X)
         description = ('Steady temperature field from saved simulation nodes. '
                        'A circular section represents the declared area. The gold band scans the span. ')
         description += (f'Blue is {lo:.6g} K and orange is {hi:.6g} K.' if hi > lo else f'Uniform temperature {lo:.6g} K.')
+        if len(above):
+            i = above[0]
+            description += (f' The fixed pink ring marks the first node above {limit:g} K from the left end, '
+                            f'at {x[i]:.7g} m and {values[i]:.7g} K.')
     else:
         width, height = inputs.get('width_m'), inputs.get('height_m')
         if not _positive(width) or not _positive(height):
             return None
         peak = max(abs(lo), abs(hi))
         gain = max(1., min(10000., 0.075*span/peak)) if peak else 1.
+        if scale:
+            gain = scale['gain']
         z = values * gain
         extent = max(0.60*span, width, np.ptp(z)+height)
         floor_z = float(z.min()-max(0.65*height, 0.03*span))
@@ -106,10 +169,13 @@ def _station_scene(result, inputs, rod):
         rotations.append(np.eye(3))
         description = (f'Static beam from saved dimensions and nodal deflections. Displayed deflection is '
                        f'{gain:.4g}× the recorded displacement. The gold band scans the span. '
-                       f'Signed deflection ranges from {1000*lo:.5g} to {1000*hi:.5g} mm.')
+                       f'The color scale spans {1000*lo:.5g} to {1000*hi:.5g} mm of signed deflection.')
     positions.append((x[0], 0., z[0]))
     positions, rotations = np.asarray(positions), np.asarray(rotations)
     center = ((x[0]+x[-1])/2, 0., (z.min()+z.max())/2)
+    if scale:
+        center = (scale['center_x'], 0., scale['center_z'])
+        extent, close_size = scale['overview_size'], scale['detail_size']
 
     def frame(seconds):
         x_scan = x[0] + np.clip(seconds/_SWEEP_SECONDS, 0., 1.)*span
@@ -291,7 +357,10 @@ def field_scene(run, model_bytes=None):
     result = run.get('result') or {}
     adapter = run.get('adapter')
     if adapter in ('thermal_rod', 'structural_beam'):
-        return _station_scene(result, result.get('inputs') or run.get('inputs') or {}, adapter == 'thermal_rod')
+        valid = not (run.get('assessment_error') or run.get('error') or
+                     (result.get('numerical_diagnostics') or {}).get('passed') is False)
+        return _station_scene(result, result.get('inputs') or run.get('inputs') or {}, adapter == 'thermal_rod',
+                              run.get('camera_comparison_scale'), mark_events=valid)
     if adapter == 'cad_inventory':
         return _cad_scene(result, run.get('inputs') or {}, model_bytes)
     if adapter == 'joint_response':

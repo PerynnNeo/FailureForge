@@ -10,6 +10,7 @@ import { Notice } from './components';
 import { CalibrationInspection, SpatialInspection } from './FieldInspection';
 import { materialReadings, measuredNumber, spatialField } from './recordedFields';
 import { ProjectCameraReplay } from './ProjectCameraReplay';
+import { engineeringTracks } from './recordedEventTracks';
 
 function LiftTrace({ result }: { result: Inputs }) {
   const [chosenQuantity, setQuantity] = useState<string | null>(null);
@@ -100,7 +101,7 @@ export function RunVisual({ run, runPath }: { run: RunDetail; runPath: string })
     (run.result.model as Inputs | undefined)?.reference_id === 'two_finger_hand_v1' &&
     run.snapshot?.robot_template !== 'two_finger_hand_v1';
   return <>{referenceHandExample && <Notice><strong>Reference hand example.</strong> This run used the built-in two-finger hand. Its motion and outcome apply to that model.</Notice>}
-    <ProjectCameraReplay key={runPath} runPath={runPath}>
+    <ProjectCameraReplay key={runPath} runPath={runPath} tracks={engineeringTracks(run)}>
       <RecordedVisual run={run} result={run.result} geometryUrl={run.adapter === 'robot_motion' ? `/api${runPath}/replay-geometry` : undefined}/>
     </ProjectCameraReplay>
   </>;

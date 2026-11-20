@@ -28,7 +28,7 @@ const assetFields: Record<string, { kind: string; extension: string; empty?: str
 const editorValues = (inputs: Inputs) => Object.fromEntries(Object.entries(inputs).map(([key, value]) => [key, fieldText(value)]));
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'The request failed.';
 
-function InputControl({ field, draft, update, project }: {
+export function InputControl({ field, draft, update, project }: {
   field: InputField; draft: Record<string, string>; update: (value: string) => void; project: Project;
 }) {
   const { name, schema, type, required } = field;
@@ -268,6 +268,7 @@ export default function ProjectAnalysis({ project, dirty, reload, notify, matrix
         {sweepError && <Notice tone="warning">Sweep options could not load. {sweepError} <button type="button" className="project-inline-button" onClick={refresh}>Retry</button></Notice>}
         {crossedSuite && !savedDesign && <Notice tone={setupError ? 'warning' : undefined}>{setupError || 'Loading saved crossed setup…'}</Notice>}
         {savedDesign && <p>Loaded settings from revision {savedDesign.expected_revision}. New runs use revision {project.revision}.</p>}
+        <a className="text-link" href={'#/projects/' + encodeURIComponent(project.id) + '?tab=phases'}>Review task phases before running this campaign</a>
         {dirty && <Notice>Save the project changes before starting a campaign.</Notice>}
         </div>
       </section>}

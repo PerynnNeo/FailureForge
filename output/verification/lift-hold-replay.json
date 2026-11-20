@@ -1,0 +1,82 @@
+{
+  "checked_at_utc": "2026-11-20T13:20:24.383Z",
+  "workbench_url": "http://127.0.0.1:8000/#/projects/project_ef49d1d9990a4e849a45372bc5e5bbff/analysis?batch=suite_a2c4d89b1ed94801a3fb67f282bd6e36&run=run_bf34edee1bd74ff3a91de8053e0ad7e8",
+  "campaign": "suite_a2c4d89b1ed94801a3fb67f282bd6e36",
+  "workflow": "Selected the passing reference and failing comparison in the workbench, decoded both camera videos, clicked Show event in replay on the failure, and checked both frame readouts against the saved solver samples.",
+  "runs": [
+    {
+      "run_id": "run_e91367b0efa34c76bc4caaa3fa982d07",
+      "evidence_sha256": "b855cef9a993d390c3bfe630c3ed4c602277ab40c90e0ebe19bd5928dbbb81b7",
+      "adapter": "packaging_lift_timed_v2",
+      "inputs": {
+        "head_duration_ms": 250,
+        "head_force_n": 2.5,
+        "head_onset_ms": 500,
+        "payload_kg": 0.3
+      },
+      "passed": true,
+      "hold_window_s": [
+        1,
+        2
+      ],
+      "tolerance_mm": 10,
+      "first_above": null,
+      "preceding": null,
+      "solver_peak_error_mm": 5.887800324532844,
+      "encoded_frames": 48,
+      "decoded_video": {
+        "mediaTime_s": 1.135416,
+        "duration_s": 2,
+        "width": 640,
+        "height": 360,
+        "readyState": 4,
+        "paused": true
+      },
+      "displayed_frame_sample": {
+        "time_s": 1.14,
+        "error_mm": 5.870371590272927
+      },
+      "display": "Reference run\n\nLimit ≤ 10 mm. No recorded hold sample exceeds it.\n\nSolver peak · 5.8878 mm (4.1122 mm within limit).\nCamera frame · 5.87037 mm at 1.14 s"
+    },
+    {
+      "run_id": "run_bf34edee1bd74ff3a91de8053e0ad7e8",
+      "evidence_sha256": "e6e22b1d3d92a6e02e4ca21cf6364e5c43c4efdafc7c7a300b5bb273e7ab10bf",
+      "adapter": "packaging_lift_timed_v2",
+      "inputs": {
+        "head_duration_ms": 250,
+        "head_force_n": 2.5,
+        "head_onset_ms": 1000,
+        "payload_kg": 0.3
+      },
+      "passed": false,
+      "hold_window_s": [
+        1,
+        2
+      ],
+      "tolerance_mm": 10,
+      "first_above": {
+        "time_s": 1.13,
+        "error_mm": 10.03711916198194
+      },
+      "preceding": {
+        "time_s": 1.12,
+        "error_mm": 9.806253958061534
+      },
+      "solver_peak_error_mm": 10.978680651518275,
+      "encoded_frames": 48,
+      "decoded_video": {
+        "mediaTime_s": 1.135416,
+        "duration_s": 2,
+        "width": 640,
+        "height": 360,
+        "readyState": 4,
+        "paused": true
+      },
+      "displayed_frame_sample": {
+        "time_s": 1.14,
+        "error_mm": 10.23485209455266
+      },
+      "display": "Comparison run\n\nLimit ≤ 10 mm. First above-limit hold sample · 10.0371 mm at 1.13 s.\n\nPreceding hold sample · 9.80625 mm at 1.12 s.\nSolver peak · 10.9787 mm (0.978681 mm over limit).\nShow event in replay\nCamera frame · 10.2349 mm at 1.14 s"
+    }
+  ]
+}

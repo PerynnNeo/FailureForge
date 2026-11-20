@@ -1,10 +1,10 @@
 import type { Inputs } from './analysisInputs';
 
-function object(value: unknown): Inputs {
+export function object(value: unknown): Inputs {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Inputs : {};
 }
 
-function numericArray(value: unknown, length?: number): number[] | undefined {
+export function numericArray(value: unknown, length?: number): number[] | undefined {
   if (!Array.isArray(value) || !value.length || !value.every(Number.isFinite)) return undefined;
   return length === undefined || value.length === length ? value : undefined;
 }
@@ -24,6 +24,20 @@ type SpatialField = {
   kind: 'beam' | 'rod'; positions: number[]; values: number[];
   rotation?: number[]; stressLeft?: number[]; stressRight?: number[]; flux?: number[];
 };
+
+/** The station renderer interpolates these linear RGB material colors in two segments. */
+export function fieldColor(value: number, lo: number, hi: number) {
+  const t = hi === lo ? .5 : Math.max(0, Math.min(1, (value - lo) / (hi - lo)));
+  const cold = [.09, .31, .68], middle = [.20, .67, .72], hot = [.94, .37, .08];
+  const [a, b, fraction] = t < .5 ? [cold, middle, t * 2] as const : [middle, hot, t * 2 - 1] as const;
+  return 'rgb(' + a.map((c, i) => Math.round(255 * (c + (b[i] - c) * fraction))).join(', ') + ')';
+}
+
+export function fieldDomain(fields: SpatialField[], limits: unknown[] = []): [number, number] {
+  const extrema = fields.flatMap(field => [Math.min(...field.values), Math.max(...field.values)]);
+  const thresholds = limits.filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0);
+  return [Math.min(...extrema, ...thresholds), Math.max(...extrema, ...thresholds)];
+}
 
 export function spatialField(result: Inputs): SpatialField | null {
   const traces = object(result.traces);

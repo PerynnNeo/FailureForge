@@ -1,0 +1,15 @@
+.engineering-events { margin: 12px 0; padding: 12px 14px; border: 1px solid #d8e0e5; border-radius: 6px; background: white; min-width: 0; }
+.engineering-events header, .event-color-key { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.engineering-events header { justify-content: space-between; }
+.engineering-events h4, .engineering-events p { margin: 0; }
+.engineering-events p { margin-top: 5px; }
+.engineering-events small, .engineering-events > p, .event-color-key { font-size: .82rem; color: var(--muted); }
+.engineering-events svg { display: block; width: 100%; max-height: 265px; margin: 9px 0; overflow: visible; }
+.engineering-events svg text { font: 11px sans-serif; fill: #344c56; }
+.engineering-events .event-limit { paint-order: stroke; stroke: white; stroke-width: 3px; }
+.event-color-key { margin-top: 9px; }
+.event-color-key i { display: block; width: min(30%,170px); height: 9px; border-radius: 2px; background: linear-gradient(to right,rgb(23,79,173),rgb(51,171,184),rgb(240,94,20)); }
+.event-readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%,205px),1fr)); gap: 10px; }
+.event-readouts > div { display: grid; align-content: start; justify-items: start; gap: 3px; }
+.engineering-events > small { display: block; margin-top: 9px; }
+@media (max-width: 650px) { .engineering-events svg text { font-size: 14px; } }

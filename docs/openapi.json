@@ -1143,6 +1143,85 @@
         }
       }
     },
+    "/api/projects/{project}/task-phases/{phase_id}/conditions/{condition_id}/run": {
+      "post": {
+        "tags": [
+          "project analyses"
+        ],
+        "summary": "Run Phase Condition",
+        "operationId": "run_phase_condition_api_projects__project__task_phases__phase_id__conditions__condition_id__run_post",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "phase_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Phase Id"
+            }
+          },
+          {
+            "name": "condition_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Condition Id"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/projects/{project}/analysis-suite/{suite_id}": {
       "get": {
         "tags": [
@@ -2107,6 +2186,256 @@
         }
       }
     },
+    "/api/projects/{project}/analysis/{run}/hardware-trials/predictions": {
+      "get": {
+        "tags": [
+          "hardware trials"
+        ],
+        "summary": "List Predictions",
+        "operationId": "list_predictions_api_projects__project__analysis__run__hardware_trials_predictions_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "hardware trials"
+        ],
+        "summary": "Freeze",
+        "operationId": "freeze_api_projects__project__analysis__run__hardware_trials_predictions_post",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project}/analysis/{run}/hardware-trials/predictions/{identifier}": {
+      "get": {
+        "tags": [
+          "hardware trials"
+        ],
+        "summary": "Get Prediction",
+        "operationId": "get_prediction_api_projects__project__analysis__run__hardware_trials_predictions__identifier__get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          },
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project}/analysis/{run}/hardware-trials/predictions/{identifier}/measurements": {
+      "post": {
+        "tags": [
+          "hardware trials"
+        ],
+        "summary": "Enter Reading",
+        "operationId": "enter_reading_api_projects__project__analysis__run__hardware_trials_predictions__identifier__measurements_post",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          },
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhysicalReading"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/projects/{project}/analysis/{run}/hardware-trials": {
       "get": {
         "tags": [
@@ -2436,6 +2765,193 @@
             "schema": {
               "type": "string",
               "title": "Run"
+            }
+          },
+          {
+            "name": "view",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "main",
+                "detail"
+              ],
+              "type": "string",
+              "title": "View"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "video/mp4": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project}/analysis/{run}/camera-replay/with/{other}": {
+      "get": {
+        "tags": [
+          "project replay"
+        ],
+        "summary": "Describe Comparison",
+        "operationId": "describe_comparison_api_projects__project__analysis__run__camera_replay_with__other__get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          },
+          {
+            "name": "other",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Other"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Replay"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "project replay"
+        ],
+        "summary": "Prepare Comparison",
+        "operationId": "prepare_comparison_api_projects__project__analysis__run__camera_replay_with__other__post",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          },
+          {
+            "name": "other",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Other"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Replay"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{project}/analysis/{run}/camera-replay/with/{other}/{view}.mp4": {
+      "get": {
+        "tags": [
+          "project replay"
+        ],
+        "summary": "Comparison Video",
+        "operationId": "comparison_video_api_projects__project__analysis__run__camera_replay_with__other___view__mp4_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run"
+            }
+          },
+          {
+            "name": "other",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Other"
             }
           },
           {
@@ -3215,6 +3731,54 @@
         "type": "object",
         "title": "CampaignSpec"
       },
+      "ConditionTest": {
+        "properties": {
+          "adapter": {
+            "type": "string",
+            "enum": [
+              "structural_beam",
+              "thermal_rod",
+              "robot_motion",
+              "packaging_lift",
+              "packaging_lift_timed_v2"
+            ],
+            "title": "Adapter"
+          },
+          "field": {
+            "type": "string",
+            "maxLength": 108,
+            "minLength": 1,
+            "title": "Field"
+          },
+          "reference_inputs": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 60,
+            "minProperties": 1,
+            "title": "Reference Inputs"
+          },
+          "changed_value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Changed Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "adapter",
+          "field",
+          "reference_inputs",
+          "changed_value"
+        ],
+        "title": "ConditionTest"
+      },
       "CrossedAxis": {
         "properties": {
           "field": {
@@ -3464,6 +4028,16 @@
             "type": "boolean",
             "title": "Run Supported",
             "default": false
+          },
+          "thermal_change": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThermalChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -3618,6 +4192,256 @@
         ],
         "title": "Parameter"
       },
+      "PhaseCondition": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Id"
+          },
+          "answer": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Answer"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Subject",
+            "default": ""
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 600,
+            "title": "Question",
+            "default": ""
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "modeled",
+              "awaiting_data",
+              "physically_testable",
+              "outside_model"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "next_step": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Next Step"
+          },
+          "test": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConditionTest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "answer",
+          "status",
+          "reason",
+          "next_step"
+        ],
+        "title": "PhaseCondition"
+      },
+      "PhysicalReading": {
+        "properties": {
+          "prototype_id": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Prototype Id"
+          },
+          "trial_id": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Trial Id"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Source"
+          },
+          "condition_record": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Condition Record"
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "published",
+              "new_trial"
+            ],
+            "title": "Source Kind"
+          },
+          "measured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured At"
+          },
+          "independent": {
+            "type": "boolean",
+            "title": "Independent"
+          },
+          "fixture_matches": {
+            "type": "boolean",
+            "title": "Fixture Matches"
+          },
+          "actual_settings": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "propertyNames": {
+              "maxLength": 160,
+              "minLength": 1
+            },
+            "type": "object",
+            "maxProperties": 100,
+            "title": "Actual Settings"
+          },
+          "station_reference": {
+            "type": "string",
+            "enum": [
+              "free_end",
+              "from_origin",
+              "whole_fixture",
+              "unknown"
+            ],
+            "title": "Station Reference"
+          },
+          "station_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station M"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Unit"
+          },
+          "uncertainty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uncertainty"
+          },
+          "uncertainty_basis": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Uncertainty Basis"
+          },
+          "asset_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "prototype_id",
+          "trial_id",
+          "source",
+          "condition_record",
+          "source_kind",
+          "independent",
+          "fixture_matches",
+          "actual_settings",
+          "station_reference",
+          "value",
+          "unit",
+          "uncertainty",
+          "uncertainty_basis"
+        ],
+        "title": "PhysicalReading"
+      },
+      "PredictionRequest": {
+        "properties": {
+          "observable_id": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Observable Id"
+          },
+          "prototype_id": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Prototype Id"
+          },
+          "setup": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 1,
+            "title": "Setup"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "observable_id",
+          "prototype_id",
+          "setup"
+        ],
+        "title": "PredictionRequest"
+      },
       "ProjectSpec": {
         "properties": {
           "name": {
@@ -3713,6 +4537,14 @@
             "type": "array",
             "maxItems": 40,
             "title": "Operating Factors"
+          },
+          "task_phases": {
+            "items": {
+              "$ref": "#/components/schemas/TaskPhase"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Task Phases"
           }
         },
         "additionalProperties": false,
@@ -3865,6 +4697,14 @@
             "maxItems": 40,
             "title": "Operating Factors"
           },
+          "task_phases": {
+            "items": {
+              "$ref": "#/components/schemas/TaskPhase"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Task Phases"
+          },
           "expected_revision": {
             "type": "integer",
             "minimum": 1.0,
@@ -3945,6 +4785,17 @@
               }
             ],
             "title": "Duration S"
+          },
+          "frame_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Count"
           }
         },
         "type": "object",
@@ -4158,6 +5009,44 @@
         ],
         "title": "Sweep"
       },
+      "TaskPhase": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 600,
+            "title": "Question",
+            "default": ""
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/PhaseCondition"
+            },
+            "type": "array",
+            "maxItems": 24,
+            "title": "Conditions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TaskPhase"
+      },
       "TestPlan": {
         "properties": {
           "name": {
@@ -4207,6 +5096,71 @@
           "variation"
         ],
         "title": "TestPlan"
+      },
+      "ThermalChange": {
+        "properties": {
+          "ambient_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ambient Value"
+          },
+          "ambient_unit": {
+            "type": "string",
+            "enum": [
+              "K",
+              "\u00b0C"
+            ],
+            "title": "Ambient Unit",
+            "default": "K"
+          },
+          "end_film_w_m2k": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Film W M2K"
+          },
+          "fan_rpm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fan Rpm"
+          },
+          "fan_calibration": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 400,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fan Calibration"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ThermalChange"
       },
       "ValidationError": {
         "properties": {

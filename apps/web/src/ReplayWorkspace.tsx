@@ -9,6 +9,7 @@ import { CampaignCoverage } from './CampaignCoverage';
 import type { CrossedDesign } from './campaignAxes';
 import { HardwareTrialCheck } from './HardwareTrialCheck';
 import { RunVisual } from './RunVisual';
+import { readStationLink } from './stationLink';
 import './replayWorkspace.css';
 
 type Batch = {
@@ -29,9 +30,12 @@ export default function ReplayWorkspace({ projectId, batchId, runId }: {
   const [runError, setRunError] = useState('');
   const [retry, setRetry] = useState(0);
   const panel = useRef<HTMLElement>(null);
+  const comparisonPanel = useRef<HTMLDetailsElement>(null);
   const [metric, setMetric] = useState('');
   const [onlyFailures, setOnlyFailures] = useState(false);
-  const [compareOpen, setCompareOpen] = useState(false);
+  const stationLink = readStationLink(window.location.hash);
+  const requestedReference = new URLSearchParams(window.location.hash.split('?')[1]).get('reference');
+  const [compareOpen, setCompareOpen] = useState(Boolean(requestedReference));
   useEffect(() => {
     let current = true, timer = 0;
     async function load() {
@@ -81,12 +85,14 @@ export default function ReplayWorkspace({ projectId, batchId, runId }: {
     'tip_sampled_path_length_m', 'validation_rmse_rad'].find(item => metrics.includes(item)) ?? metrics[0];
   const detail = run?.id === selected ? run : null;
   const reference = batch?.runs.find(row => row.reference);
+  const requestedRun = batch?.runs.find(row => row.id === requestedReference && row.id !== selected && row.status === 'completed');
   const failures = batch?.runs.filter(row => verdict(row) === 'Failed') ?? [];
   useEffect(() => {
     if (!batchId || !runId || detail?.id !== runId) return;
-    const frame = requestAnimationFrame(() => panel.current?.scrollIntoView({block:'start'}));
+    if (requestedRun) setCompareOpen(true);
+    const frame = requestAnimationFrame(() => (requestedRun ? comparisonPanel.current : panel.current)?.scrollIntoView({block:'start'}));
     return () => cancelAnimationFrame(frame);
-  }, [batchId, runId, detail?.id]);
+  }, [batchId, runId, detail?.id, requestedRun?.id]);
   const error = listError || runError;
   const outcome = detail?.result?.passed ?? (detail?.result?.summary as Record<string, unknown> | undefined)?.validation_passed;
   function focusReplay() {
@@ -123,11 +129,11 @@ export default function ReplayWorkspace({ projectId, batchId, runId }: {
         <Status value={batch.status}/></header>
       <div className="project-form-stack">
         {reference && <p><strong>Reference condition</strong> <a className="text-link" href={href(reference.id)} onClick={focusReplay}>{coordinateText(reference, batch.field) || reference.label}</a> · {verdict(reference)}</p>}
-        {batch.runs.filter(row => row.status === 'completed').length > 1 && <details className="compare-disclosure"
+        {batch.runs.filter(row => row.status === 'completed').length > 1 && <details ref={comparisonPanel} className="compare-disclosure" open={compareOpen}
           onToggle={event => setCompareOpen(event.currentTarget.open)}>
           <summary>Compare with reference</summary>
-          {compareOpen && <CompareWithReference key={selected} base={base} runs={batch.runs} field={batch.field}
-            reference={reference} selectedId={selected}/>}
+          {compareOpen && <CompareWithReference key={selected + '/' + (requestedRun?.id ?? '')} base={base} runs={batch.runs} field={batch.field}
+            reference={requestedRun ?? reference} selectedId={selected} stationLink={requestedRun ? stationLink ?? undefined : undefined}/>}
         </details>}
         {batch.crossed_design && <a className="text-link" href={'#' + base + '?' + new URLSearchParams({setup: 'campaign', crossed: batchId})}>Reuse crossed setup</a>}
         <CampaignCoverage projectId={projectId} batchId={batchId} status={batch.status}/>

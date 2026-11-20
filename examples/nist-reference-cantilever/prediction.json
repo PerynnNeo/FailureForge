@@ -1,0 +1,50 @@
+{
+  "adapter": "structural_beam",
+  "assumptions": [
+    "Straight, prismatic, rectangular cantilever with a clamped root and no axial load.",
+    "Signed transverse tip force and uniform distributed load act in one bending plane.",
+    "Linear elasticity and small rotations. Deflection above 5% of span flags that approximation.",
+    "Limit checks use continuous closed-form extrema of this fixture; mesh values and their convergence are reported separately.",
+    "Computed surface bending stress requires a separate material allowable for a strength assessment."
+  ],
+  "evidence_hash": "f11306146d23a35b4f66cd27c27863ff7ad64a9b5765ddb13b88dc41c370de09",
+  "fixture": null,
+  "frozen_at": "2026-11-20T13:11:50.282545+00:00",
+  "hash": "0bf36457cba00d595be0b185e228f595152ddbb2df6ad7a5db90461cd9b6c454",
+  "id": "prediction_72849a9eb0b0419592e99a62b310a3ba",
+  "model_inputs": {
+    "convergence_tolerance_m": null,
+    "distributed_load_n_per_m": 0.0,
+    "elements": 16,
+    "height_m": 1.45e-06,
+    "kind": "structural_beam",
+    "length_m": 0.0006,
+    "max_displacement_m": null,
+    "max_surface_stress_pa": null,
+    "stress_convergence_tolerance_pa": null,
+    "tip_force_n": 1e-09,
+    "width_m": 5e-05,
+    "young_modulus_pa": 169800000000.0
+  },
+  "observable": {
+    "id": "tip_stiffness_n_per_m",
+    "label": "Free-end transverse stiffness",
+    "nonnegative": true,
+    "prediction": 0.02995697482711477,
+    "station_m": 0.0006,
+    "station_reference": "free_end",
+    "unit": "N/m",
+    "units": [
+      "N/m",
+      "kN/m",
+      "N/mm"
+    ]
+  },
+  "observable_id": "tip_stiffness_n_per_m",
+  "project_id": "project_f4c31949f41f45ce9f42b8a72befaad4",
+  "project_revision": 2,
+  "prototype_id": "NIST SRM 3461 · W2 30 D · 600 µm",
+  "run_id": "run_1d2d6538c439443c87397a27a8d6a3ba",
+  "settings": {},
+  "setup": "Predict free-end transverse stiffness for the integrated rectangular silicon cantilever on die W2 30 D, 600 µm member. Use nominal width 50 µm, estimated finished thickness 1.45 µm and effective modulus 169.8 GPa from the precursor reference design. Assume the same bending direction, ideal fixed root and a linear small-deflection response. 1 nN is a numerical probe. Compare to the held-out EFB stiffness and absolute uncertainty in NIST SP 260-227, Table 1. No specimen-specific dimensions, material correction or model uncertainty are available."
+}

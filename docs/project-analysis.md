@@ -2,6 +2,24 @@
 
 Start the local API with `failureforge serve` and select a project in the workbench. Each submitted study freezes the project revision, asset references, inputs, and declared checks. The service queues the study and records its solver identity, measurements, and evidence hash on completion. The command-line CI client works with this same API.
 
+## Which changes can discovery run?
+
+| Reference model | Controlled change and units | Held fixed | Observable and decision |
+| --- | --- | --- | --- |
+| Rectangular cantilever | Move a signed transverse load (N) to a registered point, patch or split contact along the span, or remove it | Section, material, clamped support and mesh. Placement preserves total force | Compare continuous maximum deflection (m) and surface bending stress (Pa) with the supplied limits. With no limit, report measurements. A gauge reading uses its own recorded station. |
+| Packaging lift | Shift the start of a nonzero press pulse in whole milliseconds inside the two-second cycle | Pulse force (N), duration (ms), payload (kg), controller and fixture | Check arrival error and the largest hold error against 10 mm, plus the fixture’s travel and speed criteria. The replay marks the first recorded hold sample above tolerance. |
+| End-cooled rod | Change external end-fluid temperature (K or °C) or end-face film coefficient (W/(m²·K)), one per comparison | Geometry, conductivity, left temperature, internal generation, mesh and the other end-boundary setting | Compare the continuous maximum temperature (K) with the supplied limit or report a measurement. The first above-limit camera station has an axial position in metres. |
+
+The teaching-rig pilot exposed a separate measurement choice. Moving the hanger does not determine where an engineer places the dial gauge. For a recorded beam case, choose **Inspect**, select each gauge station, and choose **Open replay at these measurement stations**. The link retains both runs and both positions. [Teaching-rig experiment](../examples/reciprocity-rig/README.md)
+
+## Test a warmer enclosure
+
+Open **Discover scenarios** on a thermal project. Select a completed convective rod reference or open **Import a reference model from JSON** and download the [example rod](../apps/web/public/examples/thermal-reference.json). Upload the file there and choose **Import and run reference**.
+
+Enter “The enclosure reaches 50 °C” and choose **Generate and run test cases**. The example holds the left surface at 300 K while the right-end fluid changes from 295 K to 323.15 K. The recorded continuous peak moves from 300.07 K at 13.46 mm to 318.73 K at 100 mm, crossing the example’s 315 K limit. **Inspect** opens both runs. A phrase such as “the enclosure warms by 10 °C” adds 10 K to the selected reference ambient. The temperature field resolves descriptions with several possible targets.
+
+To test a different cooling condition, enter the end-face film coefficient in W/(m²·K). If the change comes from a fan, enter its RPM, the corresponding coefficient and the source of that relationship for the installed setup. A speed alone leaves an open calibration question. Supplying both ambient and film changes creates two independent cases. The solver predicts equilibrium with insulated side walls. Its right-end heat flux depends on both the coefficient and the temperature difference between the surface and the external fluid. [Convective heat-flux boundary](https://doc.comsol.com/6.3/doc/com.comsol.help.comsol/comsol_ref_heattransfer.30.30.html) · [Heat-transfer coefficient correlations and their inputs](https://doc.comsol.com/6.3/doc/com.comsol.help.heat/heat_ug_theory.07.094.html)
+
 ## Run the first check
 
 **Projects → View replays** opens the saved results for one prototype. **Campaigns → New campaign** starts a batch for any saved project. Choose a suite to group supported cases, a parameter sweep to vary an eligible input, or an operating environment matrix on models that provide one. Open a saved campaign to compare its conditions and play a selected result. [Recorded examples and audit](project-workbench-audit.md)

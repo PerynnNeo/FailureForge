@@ -27,7 +27,8 @@ def test_mesh_references_are_bound_to_the_snapshot(tmp_path):
         _surfaces(model,{"project_id":"p"},[{**asset,"sha256":"changed"}],tmp_path)
 
 
-def test_two_encoded_views_from_new_field(tmp_path):
+@pytest.mark.parametrize("compared", [False, True])
+def test_two_encoded_views_from_new_field(tmp_path, compared):
     if not sys.platform.startswith("linux") or not all(shutil.which(cmd) for cmd in ("ffmpeg","ffprobe")):
         pytest.skip("Requires the Linux camera worker with FFmpeg")
     pytest.importorskip("mujoco")
@@ -36,7 +37,11 @@ def test_two_encoded_views_from_new_field(tmp_path):
     parts = {"snapshot":{"assets":[]}, "adapter":"thermal_rod","runtime":{}, "inputs":{"area_m2":.0006},
              "result":{"traces":{"node_position_m":[0,.012,.061,.09],"temperature_k":[297.,305.,311.,298.]}}}
     record = {**parts,"id":"new","project_id":"fixture","status":"completed","evidence_hash":config_hash(parts)}
+    other_parts = {**parts,"result":{"traces":{"node_position_m":[0,.09],"temperature_k":[305.,323.]}}}
+    other = {**record,**other_parts,"id":"warmer","evidence_hash":config_hash(other_parts)}
     def get(project, run):
+        if (project,run) == ("fixture","warmer"):
+            return other
         if (project,run) != ("fixture","new"):
             from fastapi import HTTPException
             raise HTTPException(404)
@@ -46,6 +51,8 @@ def test_two_encoded_views_from_new_field(tmp_path):
     app.include_router(camera_router(jobs))
     client = TestClient(app)
     path = "/api/projects/fixture/analysis/new/camera-replay"
+    if compared:
+        path += "/with/warmer"
     try:
         assert client.get(path).json()["status"] == "available"
         assert client.post(path).json()["status"] == "rendering"
@@ -58,13 +65,19 @@ def test_two_encoded_views_from_new_field(tmp_path):
             time.sleep(.2)
         assert response["status"] == "ready", response
         assert len(response["views"]) == 2
+        assert response["frame_count"] >= 2
+        assert ("323 K" if compared else "311 K") in response["description"]
+        assert "camera_comparison_scale" not in record
+        assert client.get("/api/projects/fixture/analysis/new/camera-replay/with/missing").status_code == 404
         signatures = []
         for view in response["views"]:
             assert view["url"] == f"{path}/{view['id']}.mp4"
             ranged = client.get(view["url"],headers={"Range":"bytes=0-31"})
             assert ranged.status_code == 206 and len(ranged.content) == 32
             assert client.get(view["url"].replace("fixture","other")).status_code == 404
-            file = jobs.root/record["evidence_hash"]/(view["id"]+".mp4")
+            _, key = jobs._source("fixture","new","warmer" if compared else None)
+            assert (key != record["evidence_hash"]) is compared
+            file = jobs.root/key/(view["id"]+".mp4")
             probe = json.loads(subprocess.check_output(["ffprobe","-v","error","-show_streams","-of","json",str(file)]))
             stream = probe["streams"][0]
             assert (stream["width"],stream["height"],stream["codec_name"]) == (640,360,"h264")

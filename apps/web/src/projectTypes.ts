@@ -14,10 +14,24 @@ export interface ProjectTestPlan {
 export interface OperatingFactor {
   name: string; field: string; unit: string; conditions: string; required_values: number[];
 }
+export type ConditionStatus = 'modeled' | 'awaiting_data' | 'physically_testable' | 'outside_model';
+export interface PhaseTest {
+  adapter: string; field: string; reference_inputs: Record<string, unknown>; changed_value: number;
+}
+export interface PhaseCondition {
+  id: string; answer: string; subject?: string; question?: string; status: ConditionStatus;
+  reason: string; next_step: string; test?: PhaseTest | null;
+}
+export interface TaskPhase {
+  id: string; name: string; question: string; conditions: PhaseCondition[];
+}
+export const conditionStatusLabels: Record<ConditionStatus, string> = {
+  modeled: 'Modeled', awaiting_data: 'Awaiting data', physically_testable: 'Physically testable', outside_model: 'Outside the model',
+};
 export interface ProjectInput {
   name: string; entry_stage: EntryStage; analysis_type: AnalysisType; goal: string;
   success_criteria: string; robot_source: 'custom' | 'supported'; robot_template?: string | null;
-  notes: string; parameters: ProjectParameter[]; test_plans: ProjectTestPlan[]; operating_factors: OperatingFactor[];
+  notes: string; parameters: ProjectParameter[]; test_plans: ProjectTestPlan[]; operating_factors: OperatingFactor[]; task_phases: TaskPhase[];
 }
 export interface ProjectAsset {
   id: string; filename: string; kind: AssetKind; size_bytes: number; sha256: string; download_url: string;
@@ -61,8 +75,8 @@ export const assetKinds: { value: AssetKind; title: string; hint: string }[] = [
   { value: 'scene', title: 'Environment / object', hint: 'Test objects, workspace geometry, and scene configuration.' },
   { value: 'measurements', title: 'Physical measurements', hint: 'Measurements, calibration notes, or recorded hardware behavior.' },
 ];
-export const emptyProject = (): ProjectInput => ({ name: '', entry_stage: 'concept', analysis_type: 'robot_behavior', goal: '', success_criteria: '', robot_source: 'custom', robot_template: null, notes: '', parameters: [], test_plans: [], operating_factors: [] });
+export const emptyProject = (): ProjectInput => ({ name: '', entry_stage: 'concept', analysis_type: 'robot_behavior', goal: '', success_criteria: '', robot_source: 'custom', robot_template: null, notes: '', parameters: [], test_plans: [], operating_factors: [], task_phases: [] });
 export function projectInput(project: Project): ProjectInput {
   const { name, entry_stage, analysis_type, goal, success_criteria, robot_source, robot_template, notes, parameters, test_plans } = project;
-  return { name, entry_stage, analysis_type, goal, success_criteria, robot_source, robot_template, notes, parameters, test_plans, operating_factors: project.operating_factors ?? [] };
+  return { name, entry_stage, analysis_type, goal, success_criteria, robot_source, robot_template, notes, parameters, test_plans, operating_factors: project.operating_factors ?? [], task_phases: project.task_phases ?? [] };
 }

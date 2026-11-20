@@ -101,7 +101,7 @@ export function ScenarioReview({ projectId, revision, candidate, stale, dirty, o
         {execution ? 'Submitted' : stale ? 'Outdated revision' : reviewable && !confirmed ? 'Review required' :
           report ? states[report.state] || label(report.state) : 'Checking setup'}
       </span></div>
-    <details className="scenario-detail" open={!execution}><summary>AI-generated hypothesis</summary>
+    <details className="scenario-detail" open={!execution}><summary>Comparison rationale</summary>
       <p>{draft.hypothesis}</p></details>
     {execution ? <><ScenarioEvidence projectId={projectId} execution={execution}/>
       {candidate.review?.review_note && <div><h5>Engineer’s review note</h5><p className="scenario-saved-note">{candidate.review.review_note}</p></div>}

@@ -1,0 +1,12 @@
+{
+  "label": "NIST W2 30 D, 600 µm cantilever at its free end",
+  "adapter": "structural_beam",
+  "inputs": {
+    "length_m": 0.0006,
+    "width_m": 0.00005,
+    "height_m": 0.00000145,
+    "young_modulus_pa": 169800000000,
+    "tip_force_n": 0.000000001,
+    "elements": 16
+  }
+}

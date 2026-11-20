@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, model_validator
 
 from .contracts import utc_now
 from .persistence import Conflict, Store, new_id
+from .task_phases import TaskPhase, check_phase_assets, validate_task_phases
 
 ASSET_LIMIT = 10 * 1024 * 1024
 INSPECTION_LIMIT = 2 * 1024 * 1024
@@ -87,6 +88,7 @@ class ProjectSpec(IntakeModel):
     parameters: list[Parameter] = Field(default_factory=list, max_length=80)
     test_plans: list[TestPlan] = Field(default_factory=list, max_length=30)
     operating_factors: list[OperatingFactor] = Field(default_factory=list, max_length=40)
+    task_phases: list[TaskPhase] = Field(default_factory=list, max_length=16)
 
     @model_validator(mode="after")
     def consistent_intake(self):
@@ -99,6 +101,7 @@ class ProjectSpec(IntakeModel):
             names = [item.name.casefold() for item in items]
             if len(names) != len(set(names)):
                 raise ValueError(f"Each {label} must have a unique name")
+        validate_task_phases(self)
         return self
 
 
@@ -343,12 +346,17 @@ class ProjectStore:
 
     def create(self, spec: ProjectSpec, key=None):
         identifier, now = new_id("project"), utc_now()
-        request = spec.model_dump(exclude={"operating_factors"} if not spec.operating_factors else set())
+        request = spec.model_dump(exclude={name for name in ("operating_factors", "task_phases") if not getattr(spec, name)})
         with self.store.connection(True) as db:
             if key:
                 previous = self.store._idempotent(db, "project-create", key, request)
                 if previous:
                     return previous
+            if spec.task_phases:
+                try:
+                    check_phase_assets(spec.task_phases, [])
+                except ValueError as exc:
+                    raise HTTPException(422, str(exc)) from exc
             db.execute("INSERT INTO projects VALUES(?,1,?,?,?)", (identifier, spec.model_dump_json(), now, now))
             project = self._remember(db, identifier, "Project created")
             if key:
@@ -361,9 +369,20 @@ class ProjectStore:
 
     def update_in_transaction(self, db, identifier, spec: ProjectUpdate, reason):
         data = spec.model_dump(exclude={"expected_revision"})
-        if "operating_factors" not in spec.model_fields_set:
-            current = Store._required(db, "projects", identifier)
-            data["operating_factors"] = json.loads(current["spec"]).get("operating_factors", [])
+        current = Store._required(db, "projects", identifier)
+        if current["revision"] != spec.expected_revision:
+            raise Conflict("Project changed since it was opened. Reload before saving to avoid losing another update.")
+        saved = json.loads(current["spec"])
+        for name in ("operating_factors", "task_phases"):
+            if name not in spec.model_fields_set:
+                data[name] = saved.get(name, [])
+        if data["task_phases"]:
+            try:
+                merged = spec if "task_phases" in spec.model_fields_set else ProjectSpec.model_validate(data)
+                assets = db.execute("SELECT id,kind,filename FROM project_assets WHERE project_id=?", (identifier,))
+                check_phase_assets(merged.task_phases, assets)
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from exc
         changed = db.execute("UPDATE projects SET revision=revision+1,spec=?,updated_at=? WHERE id=? AND revision=?",
                              (json.dumps(data, allow_nan=False), utc_now(), identifier, spec.expected_revision))
         if not changed.rowcount:

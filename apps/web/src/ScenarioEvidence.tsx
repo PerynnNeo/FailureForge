@@ -61,6 +61,7 @@ export function ScenarioEvidence({ projectId, execution }: { projectId: string; 
         {outcomes.map(name => <tr key={name}><th scope="row">{name}</th>{records.map((record, i) =>
           <td key={i}>{pair[i].assessment_error || pair[i].error ? 'Inconclusive' : resultText(record.outcomes.find(row => row.name === name)?.passed) || '—'}</td>)}</tr>)}
       </tbody></table></div>}
-    <StationComparison reference={pair?.[0]} comparison={pair?.[1]}/>
+    <StationComparison reference={pair?.[0]} comparison={pair?.[1]}
+      batchHref={projectBatchHref(projectId, execution.suite_id, variantId)}/>
   </section>;
 }

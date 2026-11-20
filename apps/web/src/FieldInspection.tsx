@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import type { Inputs } from './analysisInputs';
 import { TraceChart } from './Charts';
-import { beamLoadRegions, materialReadings, measuredNumber, sectionValues, spatialField } from './recordedFields';
+import { beamLoadRegions, fieldColor, materialReadings, measuredNumber, sectionValues, spatialField } from './recordedFields';
 import './fieldInspection.css';
 
 type Field = NonNullable<ReturnType<typeof spatialField>>;
@@ -25,7 +25,8 @@ function SampleControl({ count, index, choose, noun }: { count: number; index: n
   </div>;
 }
 
-export function FieldDrawing({ field, node, inputs }: { field: Field; node: number; inputs: Inputs }) {
+export function FieldDrawing({ field, node, inputs, domain, sharedGain }: { field: Field; node: number; inputs: Inputs;
+  domain?: [number, number]; sharedGain?: number }) {
   const gradient = useId(), hatch = useId();
   const { positions, values } = field;
   const span = positions.at(-1)! - positions[0];
@@ -34,7 +35,7 @@ export function FieldDrawing({ field, node, inputs }: { field: Field; node: numb
   const isBeam = field.kind === 'beam';
   const loads = isBeam ? beamLoadRegions(inputs) : [];
   const amplitude = Math.max(Math.abs(lo), Math.abs(hi));
-  const scale = amplitude > 0 ? 47 / amplitude : 552 / span;
+  const scale = sharedGain !== undefined ? sharedGain * 552 / span : amplitude > 0 ? 47 / amplitude : 552 / span;
   const mag = scale / (552 / span);
   const y = (i: number) => 112 - (isBeam ? values[i] * scale : 0);
   const line = positions.map((x, i) => stationX(x) + ',' + y(i)).join(' ');
@@ -45,8 +46,7 @@ export function FieldDrawing({ field, node, inputs }: { field: Field; node: numb
       <defs>
         <pattern id={hatch} width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 6L6 0" stroke="#668493" strokeWidth="1.2"/></pattern>
         {!isBeam && <linearGradient id={gradient}>{positions.map((x, i) => {
-          const t = hi === lo ? 0.5 : (values[i] - lo) / (hi - lo);
-          return <stop key={i} offset={(x - positions[0]) / span} stopColor={'hsl(' + (215 - t * 198) + ' 69% 53%)'}/>;
+          return <stop key={i} offset={(x - positions[0]) / span} stopColor={fieldColor(values[i], domain?.[0] ?? lo, domain?.[1] ?? hi)}/>;
         })}</linearGradient>}
       </defs>
       <rect width="640" height="210" fill="#f2f6f7"/>

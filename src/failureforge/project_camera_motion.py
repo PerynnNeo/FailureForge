@@ -57,14 +57,14 @@ class _Assembly:
             high = np.maximum(high, (world+radius).max(axis=0))
         return low, high
 
-    def scene(self, camera_at, labels, description, floor_z):
+    def scene(self, camera_at, labels, description, floor_z, colors_at=None):
         positions = np.stack(self.positions, axis=1)
         rotations = np.stack(self.rotations, axis=1)
         elapsed = self.times - self.times[0]
 
         def frame(t):
             index = int(np.clip(np.searchsorted(elapsed, t, side="right")-1, 0, len(elapsed)-1))
-            return Frame(positions[index], rotations[index], camera_at(index))
+            return Frame(positions[index], rotations[index], camera_at(index), colors_at(index) if colors_at else None)
         return Scene(self.objects, float(elapsed[-1]), labels, description, frame, float(floor_z))
 
 
@@ -377,7 +377,7 @@ def _arrow(color, length):
     return Object3D("mesh", (), color, vertices, np.asarray(faces,dtype=int))
 
 
-def _lift(result):
+def _lift(result, mark_events=True):
     series, fixture = result.get("series") or {}, result.get("fixture") or {}
     times = np.asarray(series.get("time_s",[]), dtype=float)
     z = np.asarray(series.get("position_m",[]), dtype=float)
@@ -399,6 +399,7 @@ def _lift(result):
     assembly.add_shape("box", (.085,.018,.009), GRAPHITE, (0,.049,rail_top))
     assembly.add_shape("box", (.013,.012,(rail_top-base)/2), (.34,.39,.40), (0,.061,(rail_top+base)/2))
     moving = np.column_stack((np.zeros(len(z)),np.zeros(len(z)),z))
+    platform = len(assembly.objects)
     assembly.add_shape("box", (.093,.066,.0045), TEAL, moving+[0,-.008,-.0045])
     for x in (-.067,.067):
         assembly.add_shape("cylinder", (.011,.009), GRAPHITE, moving+[x,.049,-.008])
@@ -434,8 +435,20 @@ def _lift(result):
     peak = (result.get("summary") or {}).get("max_hold_error_m")
     if isinstance(peak,(int,float)) and np.isfinite(peak):
         description += f" Maximum height error during the hold was {1000*peak:.2f} mm."
+    start, end = fixture.get("arrival_deadline_s"), fixture.get("end_time_s")
+    colors_at = None
+    if mark_events and all(isinstance(t, (int, float)) and np.isfinite(t) for t in (start, end)) and start < end:
+        above = (times >= start) & (times <= end) & (np.abs(z-target) > tolerance)
+        indices = np.flatnonzero(above)
+        if len(indices):
+            i = indices[0]
+            colors = np.array([obj.color for obj in assembly.objects])
+            colors[platform] = (.86,.18,.52)
+            colors_at = lambda index: colors if above[index] else None
+            description += (f" The platform turns pink at above-limit hold samples. The first is "
+                            f"{times[i]:.6g} s with {1000*abs(z[i]-target):.5g} mm height error.")
     description += " The station hardware, parcel appearance and workbench are illustrative."
-    return assembly.scene(lambda i: (main,detail), ("Workcell overview","Station close-up"),description,floor)
+    return assembly.scene(lambda i: (main,detail), ("Workcell overview","Station close-up"),description,floor,colors_at)
 
 
 def motion_scene(run, model_bytes=None, meshes=None):
@@ -444,7 +457,9 @@ def motion_scene(run, model_bytes=None, meshes=None):
     if not isinstance(result, dict):
         return None
     if run.get("adapter") in ("packaging_lift", "packaging_lift_timed_v2"):
-        return _lift(result)
+        valid = not (run.get('assessment_error') or run.get('error') or
+                     (result.get('numerical_diagnostics') or {}).get('passed') is False)
+        return _lift(result, mark_events=valid)
     if run.get("adapter") == "robot_motion":
         return _robot(result,model_bytes,meshes or {})
     return None

@@ -126,6 +126,17 @@ test('time-compressed videos seek, change rate and hold the last frame by record
   sync.disconnect();
 });
 
+test('station sweeps of unequal-length rods seek to the same physical distance and clamp at the shorter end', () => {
+  const shorter = new Video(), longer = new Video();
+  shorter.duration = longer.duration = 5;
+  const sync = synchronizeCameras(shorter, longer, assert.fail, [.3, .6]);
+  longer.currentTime = 2; // 0.24 m on the longer rod
+  assert.equal(shorter.currentTime, 4); // same 0.24 m on the shorter rod
+  longer.currentTime = 4;
+  assert.equal(shorter.currentTime, 5);
+  sync.disconnect();
+});
+
 test('an unsupported native speed follows user seeks and playback ticks using frames', async () => {
   const first = new Video(), second = new Video();
   const sync = synchronizeCameras(first, second, assert.fail, [12, 1200]);

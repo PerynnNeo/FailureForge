@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { label, request } from './api';
 import type { RunDetail } from './analysisInputs';
 import { Loading, Notice } from './components';
+import { FrozenTrialCheck } from './FrozenTrialCheck';
 
 type Catalog = {metrics: Record<string,unknown>; assets: {id: string; filename: string}[]};
 type Report = {asset_sha256: string; rows: {metric: string; unit: string; prototype_id: string; trial_id: string;
@@ -32,6 +33,8 @@ export function HardwareTrialCheck({projectId, run}: {projectId: string; run: Ru
   if (run.status !== 'completed' || run.assessment_error || !run.evidence_hash) return null;
   return <details onToggle={e => setOpen(e.currentTarget.open)}><summary>Check against a physical trial</summary>
     {open && <div className="project-form-stack">
+      <FrozenTrialCheck key={path} path={path + '/predictions'} assets={catalog?.assets ?? []}/>
+      <details><summary>Compare a CSV against recorded acceptance limits</summary>
       {error && <Notice tone="error">{error} <button type="button" className="project-inline-button" onClick={() => setRetry(n => n + 1)}>Retry</button></Notice>}
       {!error && !catalog && <Loading/>}
       {catalog && (Object.keys(catalog.metrics).length ? <>
@@ -50,7 +53,8 @@ export function HardwareTrialCheck({projectId, run}: {projectId: string; run: Ru
           <td>{fmt(row.residual)}</td><td>{row.agreement}<small>Simulated {row.simulation_verdict} · measured {row.physical_verdict}</small>
             {row.differing_settings.length > 0 && <small>Check {row.differing_settings.map(label).join(', ')}</small>}</td>
         </tr>)}</tbody></table></div><a className="text-link" href={'/api' + path + '/' + encodeURIComponent(asset)} download="hardware-comparison.json">Download comparison and evidence hashes</a></>}
-      </> : <p>This run has no supported numeric acceptance limit for a direct hardware comparison.</p>)}
+      </> : <p>This run has no numeric acceptance limit supported by the CSV template.</p>)}
+      </details>
     </div>}
   </details>;
 }

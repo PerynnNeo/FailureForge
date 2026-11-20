@@ -106,10 +106,18 @@ def test_lift_replays_height_and_switches_force_exactly_at_recorded_sample():
     assert "150 mm" in scene.description and "10 mm" in scene.description
     recorded_peak = f"{1000*result['summary']['max_hold_error_m']:.2f} mm"
     assert "0.5 kg" in scene.description and "2 N" in scene.description and recorded_peak in scene.description
+    times = np.array(result["series"]["time_s"])
+    errors = np.abs(np.array(result["series"]["position_m"]) - result["fixture"]["target_m"])
+    crossing = np.flatnonzero((times >= result["fixture"]["arrival_deadline_s"]) &
+                              (errors > result["fixture"]["error_limit_m"]))[0]
+    assert scene.frame(times[crossing-1]).colors is None
+    np.testing.assert_allclose(scene.frame(times[crossing]).colors[tray], (.86,.18,.52))
+    assert "turns pink" in scene.description
     unloaded = run_packaging_lift(PackagingLift(payload_kg=0,head_force_n=0))
     unloaded_scene = motion_scene({"adapter":"packaging_lift","result":unloaded})
     assert not any(obj.kind == "mesh" for obj in unloaded_scene.objects)
     assert "arrow" not in unloaded_scene.description
+    assert "turns pink" not in unloaded_scene.description
 
 
 def test_model_cameras_use_mounted_optical_axes_motion_and_sensor_aspect():

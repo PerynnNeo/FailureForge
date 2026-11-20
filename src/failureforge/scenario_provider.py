@@ -11,7 +11,7 @@ from pydantic import Field
 
 from .scenario_core import BatchDraft, CandidateDraft, Identifier, ShortText, compile_candidate
 
-PROMPT_VERSION = "scenario-discovery-4.2"
+PROMPT_VERSION = "scenario-discovery-4.3"
 MODEL_DEFAULT = "qwen2.5:3b"
 GENERATE_TIMEOUT = 360
 TARGET_CASES = 5
@@ -27,6 +27,9 @@ the total load for placement experiments; an explicitly advertised unloading ope
 Use shift_ms only for an advertised timing operation, following its description. For unsupported
 physics use null operation_id and name the missing capability. For an ambiguous brief ask a
 specific engineering question. Never invent a property or claim to have measured a result.
+If a physical gauge or sensor is mentioned, distinguish where the input acts from where
+the instrument reads. Ask for missing reference and changed-case sensor locations and the
+quantity directly measured. A dial displacement gauge records displacement.
 Write like an engineer watching someone use this specific prototype. Start each title with
 what an operator, item or machine does during normal use or a plausible mishap. Keep the
 design unchanged for every proposal, including unsupported ones. A redesign is out of scope.
@@ -81,7 +84,9 @@ an uncertain premise, otherwise null. For a temporal slot select a physically me
 signed shift in ms and explain its relationship to the operating phases. Distinct timing settings
 are variations of timing. When useful, include an additional grounded idea that needs unavailable
 physics under untested, and name the missing effect. Ask a short engineering question if the
-task lacks information. Return concise JSON matching the schema; never pad a set with duplicates."""
+task lacks information. When a gauge is present, distinguish the load and sensor locations.
+Ask for missing sensor locations on each case and the directly measured quantity. Return
+concise JSON matching the schema; never pad a set with duplicates."""
 
 
 def _timing_windows(lower, upper, count):

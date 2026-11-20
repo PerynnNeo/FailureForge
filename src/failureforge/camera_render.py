@@ -285,4 +285,4 @@ def render(scene, directory):
     description = scene.description
     if abs(duration-scene.duration_s) > .05:
         description += f" The {duration:g}-second video covers {scene.duration_s:g} seconds of the source timeline."
-    return {"description":description,"duration_s":count/FPS,"labels":list(scene.view_labels)}
+    return {"description":description,"duration_s":count/FPS,"frame_count":count,"labels":list(scene.view_labels)}

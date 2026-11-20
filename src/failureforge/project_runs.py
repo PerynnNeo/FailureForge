@@ -23,6 +23,7 @@ from .project_bindings import binding_catalog, resolve_bindings
 from .project_solver import adapters
 from .project_validity import assessment_error
 from .projects import IntakeModel, ProjectSpec, ProjectUpdate
+from .task_phases import ConditionTest, phase_fields
 
 TIMEOUT = 75
 MAX_SUITE_TESTS = 16
@@ -179,6 +180,10 @@ class ProjectRuns:
                 CREATE INDEX IF NOT EXISTS project_run_suite ON project_runs(project_id,suite_id,ordinal);
                 CREATE TABLE IF NOT EXISTS project_named_suites(
                     suite_id TEXT PRIMARY KEY, label TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS project_phase_tests(
+                    suite_id TEXT PRIMARY KEY REFERENCES project_named_suites(suite_id),
+                    project_id TEXT NOT NULL REFERENCES projects(id), project_revision INTEGER NOT NULL,
+                    phase_id TEXT NOT NULL, condition_id TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS project_crossed_designs(
                     suite_id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id),
                     definition TEXT NOT NULL, created_at TEXT NOT NULL);""")
@@ -272,6 +277,38 @@ class ProjectRuns:
             db.execute("INSERT INTO project_sweeps(suite_id,project_id,definition,created_at) VALUES(?,?,?,?)",
                        (suite_id, project["id"], canonical_json(sweep), now))
         return {"suite_id": suite_id, "ids": ids}
+
+    def submit_phase_condition(self, project_id, phase_id, condition_id, revision, key):
+        # Include the source condition in the immutable receipt and the idempotency request.
+        request = {"phase_id": phase_id, "condition_id": condition_id, "revision": revision}
+        scope = f"phase-test:{project_id}"
+        with self.store.connection(True) as db:
+            previous = self.store._idempotent(db, scope, key, request)
+            if previous:
+                return previous
+            project = self.projects._get(db, project_id)
+            if project["revision"] != revision:
+                raise Conflict("Project changed. Reload the saved condition before running it.")
+            phase = next((p for p in project.get("task_phases", []) if p["id"] == phase_id), None)
+            if phase is None:
+                raise KeyError(phase_id)
+            condition = next((c for c in phase["conditions"] if c["id"] == condition_id), None)
+            if condition is None:
+                raise KeyError(condition_id)
+            if condition["status"] != "modeled" or not condition.get("test"):
+                raise HTTPException(422, "This condition has no configured simulation comparison.")
+            test = ConditionTest.model_validate(condition["test"])
+            reference, changed = test.pair()
+            tests = [ProjectTest(label="Reference condition", adapter=test.adapter, inputs=reference),
+                     ProjectTest(label=f"{test.field} = {test.changed_value}"[:120], adapter=test.adapter, inputs=changed)]
+            receipt = self._enqueue(db, project, tests)
+            title = f"{phase['name']} · {condition.get('subject') or condition['answer']}"
+            db.execute("INSERT INTO project_named_suites VALUES(?,?)", (receipt["suite_id"], title[:120]))
+            db.execute("INSERT INTO project_phase_tests VALUES(?,?,?,?,?)",
+                       (receipt["suite_id"], project_id, revision, phase_id, condition_id))
+            self.store._remember(db, scope, key, request, receipt)
+        self.wake.set()
+        return receipt
 
     def get(self, project, run):
         with self.store.connection() as db:
@@ -473,7 +510,8 @@ def analysis_router(runs):
     @router.get("/analysis")
     def history(project: str):
         record = runs.projects.get(project)
-        catalog = [{**a, **binding_catalog(a["id"], record["analysis_type"])} for a in project_adapters(record)]
+        catalog = [{**a, **binding_catalog(a["id"], record["analysis_type"]), "phase_fields": phase_fields(a["id"])}
+                   for a in project_adapters(record)]
         with runs.store.connection() as db:
             rows = db.execute(f"""SELECT {SUMMARY},
                     CASE WHEN json_extract(result,'$.model.reference_id')='two_finger_hand_v1'
@@ -491,6 +529,12 @@ def analysis_router(runs):
     def run_suite(project: str, spec: Suite, idempotency_key: str | None = Header(None)):
         result = runs.submit(project, spec.expected_revision, spec.tests, idempotency_key,
                              explicit_suite=True, suite_label=spec.label)
+        return {"suite_id": result["suite_id"], "runs": [runs.get(project, i) for i in result["ids"]]}
+
+    @router.post("/task-phases/{phase_id}/conditions/{condition_id}/run", status_code=202)
+    def run_phase_condition(project: str, phase_id: str, condition_id: str, spec: Revision,
+                            idempotency_key: str = Header(min_length=8, max_length=200)):
+        result = runs.submit_phase_condition(project, phase_id, condition_id, spec.expected_revision, idempotency_key)
         return {"suite_id": result["suite_id"], "runs": [runs.get(project, i) for i in result["ids"]]}
 
     @router.get("/analysis-suite/{suite_id}")

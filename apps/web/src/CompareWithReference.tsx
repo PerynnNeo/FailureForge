@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { label, request } from './api';
 import { Icon, Loading, Notice } from './components';
 import type { RunDetail } from './analysisInputs';
 import { RunResult } from './CampaignRunResult';
 import { StationComparison } from './StationComparison';
+import type { StationPairLink } from './stationLink';
+import { EngineeringEvents, useCameraClock } from './EngineeringEvents';
+import { engineeringTracks } from './recordedEventTracks';
 import { synchronizeCameras } from './cameraPlayback';
 import { readMotion } from './motionData';
 import { useCameraReplay, useViewportActive } from './ProjectCameraReplay';
@@ -44,13 +47,14 @@ function recordingDuration(detail: RunDetail | null) {
   return times && times[times.length - 1] - times[0];
 }
 
-function ComparePlayers({ leftPath, rightPath, leftDuration, rightDuration, fixedPair }: {
-  leftPath: string; rightPath: string; leftDuration?: number; rightDuration?: number; fixedPair: boolean;
+function ComparePlayers({ leftPath, rightPath, leftDetail, rightDetail, fixedPair, spatialPair }: {
+  leftPath: string; rightPath: string; leftDetail: RunDetail | null; rightDetail: RunDetail | null;
+  fixedPair: boolean; spatialPair: boolean;
 }) {
   const container = useRef<HTMLElement>(null);
   const visible = useViewportActive(container);
-  const left = useCameraReplay(leftPath + '/camera-replay', visible);
-  const right = useCameraReplay(rightPath + '/camera-replay', visible);
+  const left = useCameraReplay(leftPath + '/camera-replay' + (spatialPair ? '/with/' + rightPath.split('/').at(-1) : ''), visible);
+  const right = useCameraReplay(rightPath + '/camera-replay' + (spatialPair ? '/with/' + leftPath.split('/').at(-1) : ''), visible);
   const leftVideo = useRef<HTMLVideoElement>(null), rightVideo = useRef<HTMLVideoElement>(null);
   const playback = useRef<ReturnType<typeof synchronizeCameras> | null>(null);
   const [playbackError, setPlaybackError] = useState('');
@@ -61,6 +65,17 @@ function ComparePlayers({ leftPath, rightPath, leftDuration, rightDuration, fixe
   const leftState = replayState(left.replay, left.requestError);
   const rightState = replayState(right.replay, right.requestError);
   const synced = leftState.hasFootage && rightState.hasFootage && media.left === 'playable' && media.right === 'playable';
+  const tracks = useMemo(() => [engineeringTracks(leftDetail), engineeringTracks(rightDetail)], [leftDetail, rightDetail]);
+  const leftTime = useCameraClock(leftVideo, leftState.main?.url, media.left === 'playable' && Boolean(tracks[0].length));
+  const rightTime = useCameraClock(rightVideo, rightState.main?.url, media.right === 'playable' && Boolean(tracks[1].length));
+  const leftExtent = spatialPair ? (tracks[0][0] && tracks[0][0].end - tracks[0][0].start) : recordingDuration(leftDetail);
+  const rightExtent = spatialPair ? (tracks[1][0] && tracks[1][0].end - tracks[1][0].start) : recordingDuration(rightDetail);
+  let synchronizationLabel = 'Linked by elapsed video time.';
+  if (leftExtent && rightExtent) {
+    synchronizationLabel = spatialPair ? 'Linked by distance from the start of each saved span.' :
+      'Linked by elapsed time in each recorded run.';
+    if (spatialPair && leftExtent !== rightExtent) synchronizationLabel += ' The shorter span holds its last station.';
+  }
 
   useEffect(() => {
     if (!synced || !leftVideo.current || !rightVideo.current) return;
@@ -68,14 +83,14 @@ function ComparePlayers({ leftPath, rightPath, leftDuration, rightDuration, fixe
     const first = leftVideo.current, second = rightVideo.current;
     const sync = synchronizeCameras(first, second,
       () => setPlaybackError('Synchronized playback was interrupted. Restart both runs to try again.'),
-      leftDuration && rightDuration ? [leftDuration, rightDuration] : undefined);
+      leftExtent && rightExtent ? [leftExtent, rightExtent] : undefined);
     playback.current = sync;
     return () => {
       // Let the decodable side continue if its partner fails during playback.
       sync.disconnect(!(first.error || second.error));
       playback.current = null;
     };
-  }, [synced, leftState.main?.url, rightState.main?.url, leftDuration, rightDuration]);
+  }, [synced, leftState.main?.url, rightState.main?.url, leftExtent, rightExtent]);
 
   const sides: Array<{ key: Side; title: string; state: ReturnType<typeof replayState>;
     ref: typeof leftVideo; canRetry: boolean; retry: () => void }> = [
@@ -101,16 +116,26 @@ function ComparePlayers({ leftPath, rightPath, leftDuration, rightDuration, fixe
         {side.state.hasFootage && <p className="compare-replay-status">{side.state.message}</p>}
       </figure>)}</div>
     {synced && <div className="project-camera-actions">
-      <span>{leftDuration && rightDuration ? 'Linked by elapsed time in each recorded run.' : 'Linked by elapsed video time.'}</span>
+      <span>{synchronizationLabel}</span>
       <button className="project-inline-button" type="button" onClick={() => { setPlaybackError(''); playback.current?.restart(); }}>
         <Icon name="refresh" size={14}/>Restart both runs</button>
     </div>}
     {synced && playbackError && <p role="alert">{playbackError}</p>}
+    <EngineeringEvents sources={sides.map((side, i) => {
+      const replay = i ? right.replay : left.replay;
+      const ready = media[side.key] === 'playable';
+      return {label: side.title, tracks: tracks[i], mediaTime: ready ? (i ? rightTime : leftTime) : undefined,
+        duration: replay?.duration_s, frames: replay?.frame_count,
+        seek: ready ? (seconds: number) => {
+          if (side.ref.current) { side.ref.current.pause(); side.ref.current.currentTime = seconds; }
+        } : undefined};
+    })}/>
   </section>;
 }
 
-export function CompareWithReference({ base, runs, field, reference, selectedId, fixedPair = false }: {
+export function CompareWithReference({ base, runs, field, reference, selectedId, fixedPair = false, stationLink }: {
   base: string; runs: Condition[]; field?: string | null; reference?: Condition; selectedId?: string; fixedPair?: boolean;
+  stationLink?: StationPairLink;
 }) {
   const completed = runs.filter(run => run.status === 'completed');
   const [pair, setPair] = useState(() => defaultPair(runs, reference?.id, selectedId));
@@ -170,9 +195,10 @@ export function CompareWithReference({ base, runs, field, reference, selectedId,
       </div>
 
       <ComparePlayers key={left!.id + '|' + right!.id} leftPath={leftPath} rightPath={rightPath} fixedPair={fixedPair}
-        leftDuration={recordingDuration(leftDetail.detail)} rightDuration={recordingDuration(rightDetail.detail)}/>
+        leftDetail={leftDetail.detail} rightDetail={rightDetail.detail}
+        spatialPair={left!.adapter === right!.adapter && ['thermal_rod', 'structural_beam'].includes(left!.adapter)}/>
 
-      <StationComparison reference={leftDetail.detail} comparison={rightDetail.detail}/>
+      <StationComparison reference={leftDetail.detail} comparison={rightDetail.detail} link={stationLink}/>
 
       <div className="compare-results">
         {left ? <RunResult run={left} detail={leftDetail.detail}/> : <Loading/>}

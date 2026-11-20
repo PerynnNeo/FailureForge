@@ -1,0 +1,37 @@
+.task-phases .project-form-stack { gap: 20px; }
+.task-phases h4, .task-phases h5, .task-phases p, .task-phases dl { margin: 0; }
+.task-phases h4 { color: var(--project-ink); font-size: 1.05rem; }
+.task-phases h5 { color: #253f50; font-size: 1rem; line-height: 1.45; }
+.task-phases summary { cursor: pointer; color: #365568; font-weight: 600; }
+.phase-steps, .phase-starters, .phase-actions, .phase-condition-title, .phase-custom { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.phase-steps button { border: 1px solid #becdd5; background: #fff; border-radius: 5px; text-align: left; padding: 7px 11px; color: #294758; cursor: pointer; font: inherit; }
+.phase-steps button[aria-current=step] { background: #264a5c; color: white; border-color: #264a5c; }
+.phase-steps button small { margin-left: 4px; }
+.phase-custom { align-items: end; margin-top: 12px; }
+.phase-custom label { flex: 1 1 180px; }
+.phase-add[open] > summary, .phase-settings[open] > summary { margin-bottom: 10px; }
+.phase-interview, .phase-suggestions, .phase-records, .phase-questions, .phase-assessment, .phase-model { display: grid; gap: 14px; min-width: 0; }
+.phase-interview header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 15px; align-items: baseline; }
+.phase-settings[open] { flex-basis: 100%; }
+.phase-settings .project-field + .project-field { margin-top: 10px; }
+.phase-question { background: #f2f6f7; border-left: 3px solid #6c99aa; padding: 14px; display: grid; gap: 12px; }
+.phase-questions { padding-top: 8px; gap: 7px; justify-items: start; }
+.phase-questions button { text-align: left; }
+.phase-suggestion, .phase-condition, .phase-assessment { border: 1px solid #d2dee4; border-radius: 6px; background: white; padding: 14px; display: grid; gap: 10px; }
+.phase-suggestion .button, .phase-remove { justify-self: start; }
+.phase-condition-title { justify-content: space-between; align-items: baseline; }
+.phase-status { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: .8rem; color: #455f6b; background: #eef2f3; }
+.phase-status.status-awaiting_data { background: #f7eddd; color: #79531d; }
+.phase-status.status-modeled { background: #e2eee9; color: #245d48; }
+.phase-status.status-physically_testable { background: #e5eef4; color: #315e7b; }
+.phase-condition { overflow-wrap: anywhere; }
+.phase-condition dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; }
+.phase-condition dt, .phase-condition small { color: #4d6472; }
+.phase-condition dd { margin: 0; }
+.phase-quote { border-left: 2px solid #bfd0d8; padding-left: 9px; }
+.phase-model { border: 1px solid #d2dee4; border-radius: 5px; padding: 13px; }
+.phase-model legend { padding: 0 4px; color: #365568; font-weight: 600; }
+.phase-model-inputs { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,190px),1fr)); gap: 12px; border: 0; padding: 0; min-width: 0; }
+.phase-check { color: #365064; font-size: .93rem; }
+.phase-check input { margin-right: 7px; }
+@media(max-width:600px) { .phase-condition dl { grid-template-columns: 1fr; } .phase-condition dt { font-weight: 600; } }

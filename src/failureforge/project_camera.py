@@ -35,6 +35,7 @@ class Replay(BaseModel):
     description: str
     views: list[View] | None = None
     duration_s: float | None = None
+    frame_count: int | None = None
 
 
 def _source_asset(asset_root, run, asset):
@@ -177,17 +178,36 @@ class CameraReplays:
             with self.lock:
                 self.pending.discard(key)
 
-    def describe(self, project, run, enqueue=False):
+    def _source(self, project, run, other):
         record = self.runs.get(project,run)
         if record["status"] != "completed":
-            return {"status":"unavailable","description":"Camera playback requires completed run evidence."}
+            return record, None
         evidence(record)
         key = record["evidence_hash"]
+        if other is not None:
+            from .project_camera_fields import comparison_scale
+            peer = self.runs.get(project,other)
+            if peer["status"] != "completed":
+                return record, None
+            evidence(peer)
+            scale = comparison_scale(record, peer)
+            if scale is None:
+                return record, None
+            record = {**record, "camera_comparison_scale":scale}
+            key = hashlib.sha256((key+json.dumps(scale,sort_keys=True)).encode()).hexdigest()
+        return record, key
+
+    def describe(self, project, run, enqueue=False, other=None):
+        record, key = self._source(project,run,other)
+        if key is None:
+            return {"status":"unavailable","description":"Camera playback requires compatible completed run evidence."}
         manifest = self.root/key/"manifest.json"
         if manifest.is_file():
             info = json.loads(manifest.read_text(encoding="utf-8"))
             if info["status"] == "ready":
                 base = f"/api/projects/{project}/analysis/{run}/camera-replay"
+                if other is not None:
+                    base += f"/with/{other}"
                 info["views"] = [{"id":name,"label":label,"url":f"{base}/{name}.mp4"}
                                  for name,label in zip(("main","detail"),info.pop("labels"),strict=True)]
             return info
@@ -207,12 +227,11 @@ class CameraReplays:
             self.pool.submit(self._publish,record,key)
             return {"status":"rendering","description":"Rendering both cameras from the saved run."}
 
-    def video(self, project, run, view):
-        record = self.runs.get(project,run)
-        if record["status"] != "completed":
+    def video(self, project, run, view, other=None):
+        _, key = self._source(project,run,other)
+        if key is None:
             raise HTTPException(404,"Camera video is unavailable")
-        evidence(record)
-        path = self.root/record["evidence_hash"]/(view+".mp4")
+        path = self.root/key/(view+".mp4")
         if not path.is_file():
             raise HTTPException(404,"Camera video is unavailable")
         return FileResponse(path,media_type="video/mp4",headers={"Cache-Control":"private, no-cache"})
@@ -232,6 +251,18 @@ def camera_router(cameras):
     @router.get("/{view}.mp4",response_class=FileResponse,responses={200:{"content":{"video/mp4":{}}}})
     def video(project: str, run: str, view: Literal["main","detail"]):
         return cameras.video(project,run,view)
+
+    @router.get("/with/{other}",response_model=Replay,response_model_exclude_none=True)
+    def describe_comparison(project: str, run: str, other: str):
+        return cameras.describe(project,run,other=other)
+
+    @router.post("/with/{other}",response_model=Replay,response_model_exclude_none=True)
+    def prepare_comparison(project: str, run: str, other: str):
+        return cameras.describe(project,run,enqueue=True,other=other)
+
+    @router.get("/with/{other}/{view}.mp4",response_class=FileResponse,responses={200:{"content":{"video/mp4":{}}}})
+    def comparison_video(project: str, run: str, other: str, view: Literal["main","detail"]):
+        return cameras.video(project,run,view,other=other)
 
     return router
 

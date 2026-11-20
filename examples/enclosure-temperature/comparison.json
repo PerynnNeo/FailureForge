@@ -1,0 +1,103 @@
+{
+  "project_id": "project_e1e4334665c14257ba629a8826a287bb",
+  "discovery": "discovery_72f1686c0d4845f085c3e866c0e45f63",
+  "fan_clarification": "discovery_4ff8b0acae52430f936acb62ec88363f",
+  "suite_id": "suite_4cfbbad6a49f46a6a6028a21d0f99dd3",
+  "comparison": "http://127.0.0.1:8000/#/projects/project_e1e4334665c14257ba629a8826a287bb/analysis?batch=suite_4cfbbad6a49f46a6a6028a21d0f99dd3&run=run_8b1897cb2a5f42c198c3c6f966a0ee1a&reference=run_e4e2971c516b4c7cbdc398b139e9cca3",
+  "fields": [
+    {
+      "evidence_hash": "8f1a1fb6a7487855c6641cedcc14afee63db2da26f5570424bfca66be9e9ae3b",
+      "id": "run_e4e2971c516b4c7cbdc398b139e9cca3",
+      "inputs": {
+        "area_m2": 0.0001,
+        "conductivity_w_mk": 10,
+        "convergence_tolerance_k": null,
+        "elements": 16,
+        "heat_generation_w_m3": 0,
+        "kind": "thermal_rod",
+        "left_temperature_k": 310,
+        "length_m": 0.1,
+        "max_temperature_k": 315,
+        "right_ambient_temperature_k": 300,
+        "right_film_coefficient_w_m2k": 100
+      },
+      "summary": {
+        "continuous_peak_position_m": 0,
+        "continuous_peak_temperature_k": 310,
+        "generated_heat_w": 0,
+        "heat_balance_residual_w": 0,
+        "left_outward_heat_w": -0.05,
+        "max_nodal_temperature_k": 310,
+        "passed": true,
+        "peak_node_position_m": 0,
+        "right_convective_heat_w": 0.05,
+        "right_outward_heat_w": 0.05,
+        "right_surface_temperature_k": 305
+      },
+      "acceptance": [
+        {
+          "maximum": 315,
+          "measured": 310,
+          "passed": true,
+          "quantity": "continuous_peak_temperature_k"
+        }
+      ]
+    },
+    {
+      "evidence_hash": "43d7c22deb80a53f7da77dc0b24f069fcba14243eeb95a8cb5f9ef4f987051cf",
+      "id": "run_8b1897cb2a5f42c198c3c6f966a0ee1a",
+      "inputs": {
+        "area_m2": 0.0001,
+        "conductivity_w_mk": 10,
+        "convergence_tolerance_k": null,
+        "elements": 16,
+        "heat_generation_w_m3": 0,
+        "kind": "thermal_rod",
+        "left_temperature_k": 310,
+        "length_m": 0.1,
+        "max_temperature_k": 315,
+        "right_ambient_temperature_k": 330,
+        "right_film_coefficient_w_m2k": 100
+      },
+      "summary": {
+        "continuous_peak_position_m": 0.1,
+        "continuous_peak_temperature_k": 320,
+        "generated_heat_w": 0,
+        "heat_balance_residual_w": 0,
+        "left_outward_heat_w": 0.1,
+        "max_nodal_temperature_k": 320,
+        "passed": false,
+        "peak_node_position_m": 0.1,
+        "right_convective_heat_w": -0.1,
+        "right_outward_heat_w": -0.1,
+        "right_surface_temperature_k": 320
+      },
+      "acceptance": [
+        {
+          "maximum": 315,
+          "measured": 320,
+          "passed": false,
+          "quantity": "continuous_peak_temperature_k"
+        }
+      ]
+    }
+  ],
+  "videos": [
+    {
+      "src": "/api/projects/project_e1e4334665c14257ba629a8826a287bb/analysis/run_e4e2971c516b4c7cbdc398b139e9cca3/camera-replay/with/run_8b1897cb2a5f42c198c3c6f966a0ee1a/main.mp4",
+      "duration_s": 5,
+      "current_time_s": 2.635416,
+      "width": 640,
+      "height": 360
+    },
+    {
+      "src": "/api/projects/project_e1e4334665c14257ba629a8826a287bb/analysis/run_8b1897cb2a5f42c198c3c6f966a0ee1a/camera-replay/with/run_e4e2971c516b4c7cbdc398b139e9cca3/main.mp4",
+      "duration_s": 5,
+      "current_time_s": 2.635416,
+      "width": 640,
+      "height": 360
+    }
+  ],
+  "readout": "Reference run\n\nLimit ≤ 315 K. No recorded station exceeds it.\n\nSolver peak · 310 K at 0 m (5 K within limit).\nCamera frame · 307.3438 K at 0.053125 m\nComparison run\n\nLimit ≤ 315 K. First above-limit station · 315.3125 K at 0.053125 m.\n\nPreceding station · 315 K at 0.05 m.\nSolver peak · 320 K at 0.1 m (5 K over limit).\nShow event in replay\nCamera frame · 315.3125 K at 0.053125 m",
+  "page_errors": []
+}

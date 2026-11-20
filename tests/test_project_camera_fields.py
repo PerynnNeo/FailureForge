@@ -1,7 +1,52 @@
 import numpy as np
 import pytest
 
-from failureforge.project_camera_fields import field_scene
+from failureforge.project_camera_fields import comparison_scale, field_scene
+
+
+def test_pair_colors_use_the_same_temperature_even_for_different_ranges_and_limits():
+    def rod(values, limit):
+        return {'adapter': 'thermal_rod', 'inputs': {'area_m2': .0001, 'max_temperature_k': limit},
+                'result': {'traces': {'node_position_m': [0, .1, .2], 'temperature_k': values}}}
+    left, right = rod([293, 310, 300], 315), rod([310, 319, 314], 325)
+    scale = comparison_scale(left, right)
+    assert scale == comparison_scale(right, left)
+    assert (scale['lo'], scale['hi']) == (293, 325)
+    a, b = [field_scene({**run, 'camera_comparison_scale': scale}) for run in (left, right)]
+    assert a.objects[1].color == b.objects[0].color
+    assert a.objects[0].color != b.objects[0].color
+    assert '325 K' in a.description and '325 K' in b.description
+    assert comparison_scale(left, {**right, 'adapter': 'structural_beam'}) is None
+
+
+def test_beam_pair_has_one_displacement_gain():
+    def beam(tip):
+        return {'adapter': 'structural_beam', 'inputs': {'width_m': .05, 'height_m': .01}, 'result': {
+                'traces': {'node_position_m': [0, .5], 'displacement_m': [0, tip]}}}
+    left, right = beam(-.001), beam(-.003)
+    scale = comparison_scale(left, right)
+    a, b = [field_scene({**run, 'camera_comparison_scale': scale}) for run in (left, right)]
+    assert b.frame(b.duration_s).positions[-1, 2] == pytest.approx(3 * a.frame(a.duration_s).positions[-1, 2])
+    right['result']['traces']['node_position_m'][-1] = 1.
+    scale = comparison_scale(left, right)
+    a, b = [field_scene({**run, 'camera_comparison_scale': scale}) for run in (left, right)]
+    for ca, cb in zip(a.frame(0).cameras, b.frame(0).cameras):
+        np.testing.assert_allclose(ca.eye, cb.eye)
+        np.testing.assert_allclose(ca.target, cb.target)
+
+
+def test_threshold_ring_is_fixed_on_first_strictly_above_node_in_dense_field():
+    x = np.linspace(0, .7, 201)
+    temperature = [310] * len(x)
+    temperature[60:64] = [315., 315., 315.2, 318.]
+    result = {'inputs': {'area_m2': .0001, 'max_temperature_k': 315},
+              'traces': {'node_position_m': x.tolist(), 'temperature_k': temperature}}
+    scene = field_scene({'adapter':'thermal_rod', 'result':result})
+    assert 'first node above 315 K' in scene.description
+    assert scene.frame(0).positions[-2,0] == scene.frame(scene.duration_s).positions[-2,0] == x[62]
+    assert scene.frame(scene.duration_s).positions[-1,0] == x[-1]
+    scene = field_scene({'adapter':'thermal_rod', 'result':result, 'assessment_error':'invalid'})
+    assert 'pink ring' not in scene.description
 
 
 def test_thermal_views_track_recorded_spatial_stations_and_keep_steady_field_fixed():

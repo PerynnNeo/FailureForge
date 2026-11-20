@@ -152,6 +152,21 @@ def _coverage(meta, rows, report):
     return campaign_coverage(meta, records, declared or [], axes)
 
 
+def _phase_review(db, project, suite_id, revision):
+    row = db.execute(
+        """SELECT p.revision, json_extract(p.spec,'$.task_phases') current_phases,
+                  json_extract(h.snapshot,'$.task_phases') campaign_phases
+           FROM projects p LEFT JOIN project_revisions h ON h.project_id=p.id AND h.revision=?
+           WHERE p.id=?""", (revision, project)).fetchone()
+    submission = db.execute(
+        """SELECT phase_id,condition_id FROM project_phase_tests
+           WHERE project_id=? AND suite_id=? AND project_revision=?""",
+        (project, suite_id, revision)).fetchone()
+    return {"current_revision": row["revision"], "current_phases": json.loads(row["current_phases"] or "[]"),
+            "campaign_revision": revision, "campaign_phases": json.loads(row["campaign_phases"]) if row["campaign_phases"] else None,
+            "submitted_condition": dict(submission) if submission else None}
+
+
 def campaign_router(runs):
     router = APIRouter(prefix="/api/project-campaigns", tags=["project campaigns"])
 
@@ -198,7 +213,8 @@ def campaign_router(runs):
         with runs.store.connection() as db:
             db.execute("BEGIN")
             meta, rows, report = _campaign_records(db, project, suite_id, coverage=True)
-        return _coverage(meta, rows, report)
+            phases = _phase_review(db, project, suite_id, meta["project_revision"])
+        return {**_coverage(meta, rows, report), "phase_review": phases}
 
     @router.post("/{project}/crossed", status_code=202)
     def submit_crossed(project: str, spec: CrossedCampaign, idempotency_key: str | None = Header(None)):

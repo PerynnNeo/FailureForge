@@ -13,3 +13,11 @@
 .recorded-result .motion-replay > * {order:2;}
 .recorded-result .motion-replay > header {order:0;}
 .recorded-result .motion-replay > .motion-controls {order:1; border-top:0; border-bottom:1px solid var(--motion-border);}
+.campaign-phase-review {display:grid; gap:12px; min-width:0; overflow-wrap:anywhere;}
+.campaign-phase-list {display:grid; gap:16px; min-width:0;}
+.campaign-phase-list section {border-left:2px solid #c5d6dd; padding-left:14px;}
+.campaign-phase-list h5 {font-size:1rem;}
+.campaign-phase-list ul {padding-left:1.2rem;}
+.campaign-phase-list li {margin-top:10px;}
+.campaign-phase-list li p {margin-top:4px;}
+.phase-answer-status {color:var(--muted); font-size:.85rem; margin-left:.5rem;}

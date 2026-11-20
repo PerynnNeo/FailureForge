@@ -157,7 +157,10 @@ def evaluate_trials(stream, run, metrics):
 
 
 def hardware_trial_router(runs):
+    from .frozen_trials import frozen_trial_router
+
     router = APIRouter(prefix="/api/projects/{project}/analysis/{run}/hardware-trials", tags=["hardware trials"])
+    router.include_router(frozen_trial_router(runs))
 
     def inputs(project, run):
         record = runs.get(project, run)

@@ -1,0 +1,15 @@
+{
+  "label": "Enclosed rod with end cooling",
+  "adapter": "thermal_rod",
+  "inputs": {
+    "length_m": 0.1,
+    "area_m2": 0.0004,
+    "conductivity_w_mk": 15,
+    "left_temperature_k": 300,
+    "right_ambient_temperature_k": 295,
+    "right_film_coefficient_w_m2k": 500,
+    "heat_generation_w_m3": 12000,
+    "elements": 16,
+    "max_temperature_k": 315
+  }
+}

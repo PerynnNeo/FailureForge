@@ -3,12 +3,14 @@ import type { ReactNode, RefObject } from 'react';
 import { post, request } from './api';
 import { Icon } from './components';
 import { synchronizeCameras } from './cameraPlayback';
+import { EngineeringEvents, useCameraClock } from './EngineeringEvents';
+import type { EventTrack } from './recordedEventTracks';
 import './projectCameraReplay.css';
 
 export type View = { id: 'main' | 'detail'; label: string; url: string };
 export type Replay = {
   status: 'ready' | 'available' | 'rendering' | 'unavailable' | 'failed';
-  description: string; views?: View[]; duration_s?: number;
+  description: string; views?: View[]; duration_s?: number; frame_count?: number;
 };
 
 const inFlight = new Map<string, Promise<Replay>>();
@@ -21,11 +23,13 @@ function replayRequest(path: string, render = false) {
   return pending;
 }
 
-function CameraPair({ main, detail }: { main: View; detail: View }) {
+function CameraPair({ main, detail, replay, tracks }: { main: View; detail: View; replay: Replay; tracks: EventTrack[] }) {
   const first = useRef<HTMLVideoElement>(null), second = useRef<HTMLVideoElement>(null);
   const playback = useRef<ReturnType<typeof synchronizeCameras> | null>(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const mediaTime = useCameraClock(first, main.url + attempt, loaded && Boolean(tracks.length));
   useEffect(() => {
     if (!first.current || !second.current) return;
     const sync = synchronizeCameras(first.current, second.current, () => setError('The browser could not play both camera views.'));
@@ -40,12 +44,16 @@ function CameraPair({ main, detail }: { main: View; detail: View }) {
     <div className="project-camera-pair">{[main, detail].map((view, index) =>
       <figure key={view.id}><figcaption>{view.label}</figcaption>
         <video key={view.url + attempt} ref={index ? second : first} src={view.url} aria-label={view.label + ' camera replay'}
-          controls playsInline muted preload="auto" onError={() => failed(view)}/>
+          controls playsInline muted preload="auto" onLoadedData={() => { if (!index) setLoaded(true); }} onError={() => failed(view)}/>
       </figure>)}</div>
     <div className="project-camera-actions"><span>Playback is synchronized across both views.</span>
       <button className="project-inline-button" type="button" disabled={Boolean(error)} onClick={() => playback.current?.restart()}><Icon name="refresh" size={14}/>Restart both views</button>
     </div>
     {error && <p role="alert">{error} <button type="button" className="project-inline-button" onClick={() => { setError(''); setAttempt(n => n + 1); }}>Retry playback</button></p>}
+    <EngineeringEvents sources={[{label: 'Selected run', tracks, frames: replay.frame_count, duration: replay.duration_s,
+      mediaTime: loaded ? mediaTime : undefined, seek: loaded && !error ? seconds => {
+        if (first.current) { first.current.pause(); first.current.currentTime = seconds; }
+      } : undefined}]}/>
   </>;
 }
 
@@ -105,7 +113,7 @@ export function useViewportActive(ref: RefObject<HTMLElement | null>): boolean {
   return visible;
 }
 
-export function ProjectCameraReplay({ runPath, children }: { runPath: string; children: ReactNode }) {
+export function ProjectCameraReplay({ runPath, tracks, children }: { runPath: string; tracks: EventTrack[]; children: ReactNode }) {
   const path = runPath + '/camera-replay';
   const container = useRef<HTMLElement>(null);
   const visible = useViewportActive(container);
@@ -121,7 +129,8 @@ export function ProjectCameraReplay({ runPath, children }: { runPath: string; ch
       <h4>{ready ? 'Reconstructed camera replay' : 'Camera replay'}</h4>
       <p className="project-camera-status" role="status">{requestError || replay?.description || 'Checking camera views for this run…'}</p>
       {failed && <button type="button" className="project-inline-button" onClick={retry}>Retry camera replay</button>}
-      {ready && main && detail && <CameraPair main={main} detail={detail}/>}
+      {ready && main && detail ? <CameraPair main={main} detail={detail} tracks={tracks} replay={replay!}/> :
+        <EngineeringEvents sources={[{label: 'Selected run', tracks}]}/>}
     </section>
     {unavailable || failed ? children : <details className="analysis-disclosure project-camera-details"
       onToggle={event => setInspect(event.currentTarget.open)}>

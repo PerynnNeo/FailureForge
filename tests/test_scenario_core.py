@@ -7,6 +7,61 @@ from failureforge.contracts import config_hash
 from failureforge.project_runs import ProjectTest
 from failureforge.project_solver import run_job
 from failureforge.scenario_core import BatchDraft, CandidateDraft, TIMED_LIFT, build_context, compile_candidate
+from failureforge.scenario_core import thermal_batch
+from failureforge.thermal_scenarios import AMBIENT, FILM, ThermalChange, boundary_facts
+
+
+@pytest.mark.parametrize("task, target", [
+    ("The enclosure reaches 330 K.", 330),
+    ("The right-end ambient temperature rises to 45 °C.", 318.15),
+    ("The enclosure warms by 12 °C.", 312),
+    ("The enclosure cools by 3 K.", 297),
+    ("The enclosure is 12 °C warmer than the reference.", 312),
+    ("Enclosure reaches 300–330 K.", None),
+    ("The enclosure reaches 330 K or 350 K.", None),
+    ("The enclosure reaches 330 K or 350.", None),
+    ("The enclosure reaches 330 K in 5 seconds.", None),
+    ("The enclosure is 12 °C warmer than the room.", None),
+    ("The thermal limit is 315 K.", None),
+    ("The maximum permitted ambient is 315 K.", None),
+    ("The enclosure never reaches 330 K.", None),
+    ("The enclosure reaches 22 °F.", None),
+    ("The enclosure reaches -15 K.", None),
+    ("The enclosure repeats an earlier warm-up.", None),
+])
+def test_described_ambient_preserves_unit_subject_and_absolute_or_relative_meaning(task, target):
+    p = project("thermal")
+    inputs = {"length_m": .1, "area_m2": .001, "conductivity_w_mk": 15, "left_temperature_k": 310.,
+              AMBIENT: 300., FILM: 100.}
+    packet = build_context(p, reference(p, "thermal_rod", inputs), task, {})
+    batch = thermal_batch(packet)
+    if target is None:
+        assert batch.clarifications and not batch.candidates
+    else:
+        card, = batch.candidates
+        assert not batch.clarifications
+        plan = compile_candidate(packet, card, confirmed=True)
+        assert plan["diff"] == {AMBIENT: {"reference": 300., "variant": pytest.approx(target)}}
+        assert "Measurement only" in plan["observables"][1]
+        assert any(f["id"] == "thermal.ambient_description" for f in plan["facts"])
+
+
+@pytest.mark.parametrize("reference, change, expected", [
+    ({"right_temperature_k": 310}, {"ambient_value": 325}, "fixes the right surface temperature"),
+    ({AMBIENT: 300, FILM: 0}, {"ambient_value": 325}, "insulated"),
+    ({AMBIENT: 300, FILM: 150}, {"ambient_value": 300}, "already the reference"),
+    ({AMBIENT: 300, FILM: 150}, {"fan_rpm": 2000}, "relationship"),
+    ({AMBIENT: 300, FILM: 150}, {"fan_rpm": 2000, "end_film_w_m2k": 100}, "relationship"),
+])
+def test_thermal_comparison_requires_an_effective_change_with_applicable_data(reference, change, expected):
+    _, targets, questions = boundary_facts(ThermalChange(**change), "", reference)
+    assert not targets and any(expected in question for question in questions)
+
+
+def test_conflicting_structured_and_described_boundary_points_require_resolution():
+    change = ThermalChange(ambient_value=320, fan_rpm=1200, end_film_w_m2k=40, fan_calibration="Installed end-face measurement at 1200 RPM.")
+    _, targets, questions = boundary_facts(change, "The enclosure reaches 330 K and the fan runs at 2,000 RPM.", {AMBIENT: 300, FILM: 100})
+    assert not targets and len(questions) == 2 and all("differs" in q for q in questions)
 
 
 def project(analysis="structural"):
@@ -174,6 +229,22 @@ def test_beam_without_limit_compiles_an_observation_without_inventing_a_rule():
     for role in ("reference", "variant"):
         assert "max_displacement_m" not in compiled[role]["inputs"]
         assert "max_surface_stress_pa" not in compiled[role]["inputs"]
+
+
+def test_open_phase_conditions_inform_discovery_without_becoming_executable_solver_facts():
+    p = project()
+    p["task_phases"] = [{"name": "Measure", "question": "Where does the gauge touch?",
+                         "conditions": [{"answer": "The probe shifts sideways.", "status": state,
+                                         "reason": "Probe alignment requires a bench measurement."}
+                                        for state in ("physically_testable", "awaiting_data", "outside_model")]}]
+    packet = build_context(p, reference(p, "structural_beam", beam()))
+    assert packet["omitted_records"]["phase_conditions"] == 1
+    assert next(row for row in packet["facts"] if row["id"] == "phase.0")["value"] == "Where does the gauge touch?"
+    for i, state in enumerate(("needs_capability", "needs_information")):
+        card = draft(fact_refs=["project.goal", f"phase.0.condition.{i}"])
+        review = compile_candidate(packet, card, confirmed=True)
+        assert review["state"] == state and review["variant"] is None
+        assert "Probe alignment" in review["reason"]
 
 
 def test_planning_with_opaque_upload_cannot_execute_or_claim_material():

@@ -3,6 +3,7 @@ from .artifacts import ArtifactError
 from .contracts import config_hash
 from .project_bundle import evidence
 from .project_validity import assessment_error
+from .thermal_scenarios import FIELDS
 
 
 def applied_change(report):
@@ -26,6 +27,11 @@ def applied_change(report):
         return ", ".join(loads) or "External applied load removed (0 N)"
     if variant["adapter"] == "packaging_lift_timed_v2":
         return f"Press starts at {inputs['head_onset_ms']} ms and lasts {inputs['head_duration_ms']} ms"
+    if variant["adapter"] == "thermal_rod":
+        for field, (_, name, unit) in FIELDS.items():
+            if field in report["diff"]:
+                delta = report["diff"][field]
+                return f"{name} from {delta['reference']:g} to {delta['variant']:g} {unit}"
     return label
 
 
@@ -41,6 +47,7 @@ def _measurement(reference, variant):
         name, scale, unit = {
             "continuous_max_abs_displacement_m": ("Maximum deflection", 1000, "mm"),
             "continuous_max_surface_stress_pa": ("Maximum bending stress", 1e-6, "MPa"),
+            "continuous_peak_temperature_k": ("Continuous peak temperature", 1, "K"),
         }.get(key, (key.replace("_", " "), 1, ""))
         old = before.get(key)
         return {"name": name, "unit": unit, "value": check["measured"] * scale,
@@ -55,6 +62,9 @@ def _measurement(reference, variant):
     if not checks and key in summary and key in before:
         return {"name": "Maximum deflection", "unit": "mm", "value": summary[key] * 1000,
                 "reference_value": before[key] * 1000, "limit": None}
+    if not checks and "continuous_peak_temperature_k" in summary and "continuous_peak_temperature_k" in before:
+        return {"name": "Continuous peak temperature", "unit": "K", "value": summary["continuous_peak_temperature_k"],
+                "reference_value": before["continuous_peak_temperature_k"], "limit": None}
     return None
 
 

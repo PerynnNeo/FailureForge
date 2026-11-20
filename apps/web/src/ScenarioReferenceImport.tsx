@@ -14,7 +14,8 @@ export function ScenarioReferenceImport({ project, disabled, onSaved, onRun }: {
   const assets = project.assets.filter(asset => asset.kind === 'requirements' && asset.filename.toLowerCase().endsWith('.json') && asset.size_bytes <= 65536);
   const base = `/projects/${encodeURIComponent(project.id)}`;
   const isBeam = project.analysis_type === 'structural';
-  if (!isBeam && project.robot_template !== 'packaging_lift_v1') return null;
+  const isThermal = project.analysis_type === 'thermal';
+  if (!isBeam && !isThermal && project.robot_template !== 'packaging_lift_v1') return null;
 
   async function submit() {
     setError(''); setBusy(true);
@@ -46,6 +47,7 @@ export function ScenarioReferenceImport({ project, disabled, onSaved, onRun }: {
   return <details className="scenario-import"><summary>Import a reference model from JSON</summary>
     <p>Choose a JSON file up to 64 KiB containing the solver’s <code>adapter</code> and <code>inputs</code>. Importing saves the file and runs its reference case on the CPU.</p>
     {isBeam && <a className="text-link" download href="/examples/beam-reference.json">Download example beam JSON</a>}
+    {isThermal && <a className="text-link" download href="/examples/thermal-reference.json">Download example thermal rod JSON</a>}
     <fieldset disabled={disabled || busy} className="scenario-import-fields">
       {assets.length > 0 && <label className="project-field"><span>Saved JSON file</span>
         <select value={assetId} onChange={event => setAssetId(event.target.value)}>

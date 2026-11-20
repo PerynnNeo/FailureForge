@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { label, request } from './api';
 import { Loading, Notice } from './components';
 import type { OperatingFactor } from './projectTypes';
+import { CampaignPhaseReview } from './CampaignPhaseReview';
+import type { PhaseReview } from './CampaignPhaseReview';
 
 type Group = {
   adapter: string;
@@ -17,17 +19,18 @@ const levels = (values: number[]) => values.length ? values.join(', ') : '—';
 
 export function CampaignCoverage({projectId, batchId, status}: {projectId: string; batchId: string; status: string}) {
   const [open, setOpen] = useState(false);
-  const [groups, setGroups] = useState<Group[]>();
+  const [report, setReport] = useState<{groups: Group[]; phase_review: PhaseReview}>();
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (!open) return;
     let current = true, timer = 0;
+    setReport(undefined);
     async function load() {
       try {
         const path = '/project-campaigns/' + encodeURIComponent(projectId) + '/' + encodeURIComponent(batchId) + '/coverage';
-        const data = await request<{groups: Group[]}>(path);
-        if (current) { setGroups(data.groups); setError(''); }
+        const data = await request<{groups: Group[]; phase_review: PhaseReview}>(path);
+        if (current) { setReport(data); setError(''); }
       } catch (e) { if (current) setError((e as Error).message); }
       if (current && status === 'running') timer = window.setTimeout(load, 3000);
     }
@@ -38,8 +41,8 @@ export function CampaignCoverage({projectId, batchId, status}: {projectId: strin
     <summary>Operating-condition coverage</summary>
     {open && <div className="project-form-stack">
       {error && <Notice tone="error">{error} <button className="project-inline-button" onClick={() => setRetry(i => i+1)}>Retry</button></Notice>}
-      {!error && !groups && <Loading/>}
-      {groups?.map(group => <section key={group.adapter}><h4>{label(group.adapter)}</h4>
+      {!error && !report && <Loading/>}
+      {report?.groups.map(group => <section key={group.adapter}><h4>{label(group.adapter)}</h4>
         <p>{group.counts.passed} passed · {group.counts.failed} failed · {group.counts.measurement_only} measurement only · {group.counts.pending} pending · {group.counts.blocked} without valid evidence</p>
         {group.conflicting_repeat_runs?.length > 0 && <Notice tone="warning">{group.conflicting_repeat_runs.length} runs have conflicting verdicts at repeated settings. These runs cannot establish which input changed the outcome.</Notice>}
         {group.grid.possible_cells !== null && <p><strong>{group.grid.observed_cells} of {group.grid.possible_cells} combinations observed</strong> across the listed campaign levels. Intermediate values and other deployment conditions require separate tests.</p>}
@@ -59,6 +62,7 @@ export function CampaignCoverage({projectId, batchId, status}: {projectId: strin
             <td>{label(f.status)}</td><td>{levels(f.required_values)}</td><td>{f.untested_values === null ? 'Check units' : f.required_values.length === 0 ? 'No levels specified' : f.untested_values.length ? levels(f.untested_values) : 'All listed levels observed'}</td></tr>)}</tbody>
         </table></div></> : <p>No site requirements were declared on this run revision. Add operating factors in the project’s Parameters tab before the next campaign.</p>}
       </section>)}
+      {report?.phase_review && <CampaignPhaseReview review={report.phase_review} projectId={projectId}/>}
     </div>}
   </details>;
 }

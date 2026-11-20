@@ -81,9 +81,11 @@ def test_ambient_temperature_and_internal_heating_execute_as_a_complete_cross(tm
               "right_film_coefficient_w_m2k": 500, "heat_generation_w_m3": 0, "max_temperature_k": 315}
     del inputs["right_temperature_k"]
     with TestClient(create_app(tmp_path)) as client:
-        owner = client.post("/api/projects", json={**PROJECT, "analysis_type": "thermal",
+        warmup = {"id": "warmup", "name": "Warm up", "question": "What touches the rod before heating?", "conditions": []}
+        project = {**PROJECT, "analysis_type": "thermal", "task_phases": [warmup],
             "operating_factors": [{"name": "Ambient", "field": "right_ambient_temperature_k",
-                                  "unit": "K", "required_values": [300, 320, 340]}]}).json()["id"]
+                                  "unit": "K", "required_values": [300, 320, 340]}]}
+        owner = client.post("/api/projects", json=project).json()["id"]
         path = "/api/project-campaigns/" + owner
         submit = client.post(path + "/crossed", json={"adapter": "thermal_rod", "expected_revision": 1,
             "label": "Ambient and generated heat", "inputs": inputs,
@@ -100,3 +102,19 @@ def test_ambient_temperature_and_internal_heating_execute_as_a_complete_cross(tm
         assert group["grid"] == {"planned_cells": 4, "observed_cells": 4, "possible_cells": 4, "unobserved_cells": 0}
         assert group["counts"]["passed"] > 0 and group["counts"]["failed"] > 0 and group["matched_change"]
         assert group["declared_factors"][0]["untested_values"] == [320]
+        # Updating the engineer's operating review after the grid ran must keep both
+        # its original unanswered phase and the open physical test visible.
+        condition = {"id": "vent", "answer": "A loading door changes the air speed",
+                     "status": "physically_testable", "reason": "Local airflow is unknown",
+                     "next_step": "Measure airspeed at the end face during a door cycle"}
+        update = client.post("/api/projects/" + owner, json={**project, "expected_revision": 1,
+            "task_phases": [{**warmup, "conditions": [condition]}]})
+        assert update.status_code == 200, update.text
+        coverage = client.get(url).json()
+        assert coverage["groups"] == [group]
+        review = coverage["phase_review"]
+        assert review["current_revision"] == 2 and review["campaign_revision"] == 1
+        assert review["campaign_phases"] == [warmup]
+        current, = review["current_phases"][0]["conditions"]
+        assert all(current[key] == value for key, value in condition.items())
+        assert review["submitted_condition"] is None

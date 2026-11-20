@@ -330,6 +330,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project}/task-phases/{phase_id}/conditions/{condition_id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Phase Condition */
+        post: operations["run_phase_condition_api_projects__project__task_phases__phase_id__conditions__condition_id__run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{project}/analysis-suite/{suite_id}": {
         parameters: {
             query?: never;
@@ -621,6 +638,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project}/analysis/{run}/hardware-trials/predictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Predictions */
+        get: operations["list_predictions_api_projects__project__analysis__run__hardware_trials_predictions_get"];
+        put?: never;
+        /** Freeze */
+        post: operations["freeze_api_projects__project__analysis__run__hardware_trials_predictions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project}/analysis/{run}/hardware-trials/predictions/{identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Prediction */
+        get: operations["get_prediction_api_projects__project__analysis__run__hardware_trials_predictions__identifier__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project}/analysis/{run}/hardware-trials/predictions/{identifier}/measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enter Reading */
+        post: operations["enter_reading_api_projects__project__analysis__run__hardware_trials_predictions__identifier__measurements_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{project}/analysis/{run}/hardware-trials": {
         parameters: {
             query?: never;
@@ -716,6 +785,41 @@ export interface paths {
         };
         /** Video */
         get: operations["video_api_projects__project__analysis__run__camera_replay__view__mp4_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project}/analysis/{run}/camera-replay/with/{other}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Describe Comparison */
+        get: operations["describe_comparison_api_projects__project__analysis__run__camera_replay_with__other__get"];
+        put?: never;
+        /** Prepare Comparison */
+        post: operations["prepare_comparison_api_projects__project__analysis__run__camera_replay_with__other__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project}/analysis/{run}/camera-replay/with/{other}/{view}.mp4": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Comparison Video */
+        get: operations["comparison_video_api_projects__project__analysis__run__camera_replay_with__other___view__mp4_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1043,6 +1147,22 @@ export interface components {
             /** Confirmation State Ids */
             confirmation_state_ids?: number[];
         };
+        /** ConditionTest */
+        ConditionTest: {
+            /**
+             * Adapter
+             * @enum {string}
+             */
+            adapter: "structural_beam" | "thermal_rod" | "robot_motion" | "packaging_lift" | "packaging_lift_timed_v2";
+            /** Field */
+            field: string;
+            /** Reference Inputs */
+            reference_inputs: {
+                [key: string]: unknown;
+            };
+            /** Changed Value */
+            changed_value: number;
+        };
         /** CrossedAxis */
         CrossedAxis: {
             /** Field */
@@ -1144,6 +1264,7 @@ export interface components {
              * @default false
              */
             run_supported: boolean;
+            thermal_change?: components["schemas"]["ThermalChange"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1205,6 +1326,85 @@ export interface components {
              */
             evidence: string;
         };
+        /** PhaseCondition */
+        PhaseCondition: {
+            /** Id */
+            id: string;
+            /** Answer */
+            answer: string;
+            /**
+             * Subject
+             * @default
+             */
+            subject: string;
+            /**
+             * Question
+             * @default
+             */
+            question: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "modeled" | "awaiting_data" | "physically_testable" | "outside_model";
+            /** Reason */
+            reason: string;
+            /** Next Step */
+            next_step: string;
+            test?: components["schemas"]["ConditionTest"] | null;
+        };
+        /** PhysicalReading */
+        PhysicalReading: {
+            /** Prototype Id */
+            prototype_id: string;
+            /** Trial Id */
+            trial_id: string;
+            /** Source */
+            source: string;
+            /** Condition Record */
+            condition_record: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "published" | "new_trial";
+            /** Measured At */
+            measured_at?: string | null;
+            /** Independent */
+            independent: boolean;
+            /** Fixture Matches */
+            fixture_matches: boolean;
+            /** Actual Settings */
+            actual_settings: {
+                [key: string]: number;
+            };
+            /**
+             * Station Reference
+             * @enum {string}
+             */
+            station_reference: "free_end" | "from_origin" | "whole_fixture" | "unknown";
+            /** Station M */
+            station_m?: number | null;
+            /** Value */
+            value: number;
+            /** Unit */
+            unit: string;
+            /** Uncertainty */
+            uncertainty: number | null;
+            /** Uncertainty Basis */
+            uncertainty_basis: string;
+            /** Asset Id */
+            asset_id?: string | null;
+        };
+        /** PredictionRequest */
+        PredictionRequest: {
+            /** Observable Id */
+            observable_id: string;
+            /** Prototype Id */
+            prototype_id: string;
+            /** Setup */
+            setup: string;
+        };
         /** ProjectSpec */
         ProjectSpec: {
             /** Name */
@@ -1242,6 +1442,8 @@ export interface components {
             test_plans?: components["schemas"]["TestPlan"][];
             /** Operating Factors */
             operating_factors?: components["schemas"]["OperatingFactor"][];
+            /** Task Phases */
+            task_phases?: components["schemas"]["TaskPhase"][];
         };
         /** ProjectTest */
         ProjectTest: {
@@ -1295,6 +1497,8 @@ export interface components {
             test_plans?: components["schemas"]["TestPlan"][];
             /** Operating Factors */
             operating_factors?: components["schemas"]["OperatingFactor"][];
+            /** Task Phases */
+            task_phases?: components["schemas"]["TaskPhase"][];
             /** Expected Revision */
             expected_revision: number;
         };
@@ -1318,6 +1522,8 @@ export interface components {
             views?: components["schemas"]["View"][] | null;
             /** Duration S */
             duration_s?: number | null;
+            /** Frame Count */
+            frame_count?: number | null;
         };
         /** RerunRequest */
         RerunRequest: {
@@ -1390,6 +1596,20 @@ export interface components {
             /** Values */
             values: number[];
         };
+        /** TaskPhase */
+        TaskPhase: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Question
+             * @default
+             */
+            question: string;
+            /** Conditions */
+            conditions?: components["schemas"]["PhaseCondition"][];
+        };
         /** TestPlan */
         TestPlan: {
             /** Name */
@@ -1402,6 +1622,23 @@ export interface components {
             variation: string;
             /** Timeout Seconds */
             timeout_seconds?: number | null;
+        };
+        /** ThermalChange */
+        ThermalChange: {
+            /** Ambient Value */
+            ambient_value?: number | null;
+            /**
+             * Ambient Unit
+             * @default K
+             * @enum {string}
+             */
+            ambient_unit: "K" | "°C";
+            /** End Film W M2K */
+            end_film_w_m2k?: number | null;
+            /** Fan Rpm */
+            fan_rpm?: number | null;
+            /** Fan Calibration */
+            fan_calibration?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2159,6 +2396,45 @@ export interface operations {
             };
         };
     };
+    run_phase_condition_api_projects__project__task_phases__phase_id__conditions__condition_id__run_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+            };
+            path: {
+                project: string;
+                phase_id: string;
+                condition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Revision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     suite_detail_api_projects__project__analysis_suite__suite_id__get: {
         parameters: {
             query?: never;
@@ -2783,6 +3059,148 @@ export interface operations {
             };
         };
     };
+    list_predictions_api_projects__project__analysis__run__hardware_trials_predictions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                run: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freeze_api_projects__project__analysis__run__hardware_trials_predictions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+            };
+            path: {
+                project: string;
+                run: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_prediction_api_projects__project__analysis__run__hardware_trials_predictions__identifier__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                run: string;
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enter_reading_api_projects__project__analysis__run__hardware_trials_predictions__identifier__measurements_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+            };
+            path: {
+                project: string;
+                run: string;
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhysicalReading"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     available_api_projects__project__analysis__run__hardware_trials_get: {
         parameters: {
             query?: never;
@@ -2983,6 +3401,106 @@ export interface operations {
             path: {
                 project: string;
                 run: string;
+                view: "main" | "detail";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp4": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    describe_comparison_api_projects__project__analysis__run__camera_replay_with__other__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                run: string;
+                other: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Replay"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prepare_comparison_api_projects__project__analysis__run__camera_replay_with__other__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                run: string;
+                other: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Replay"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    comparison_video_api_projects__project__analysis__run__camera_replay_with__other___view__mp4_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                run: string;
+                other: string;
                 view: "main" | "detail";
             };
             cookie?: never;

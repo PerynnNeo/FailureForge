@@ -17,7 +17,8 @@ from .persistence import Conflict, new_id
 from .project_runs import MAX_SUITE_TESTS, ProjectTest, Revision, project_adapters
 from .project_solver import MODELS
 from .projects import IntakeModel
-from .scenario_core import OPERATIONS, CandidateDraft, build_context, compile_candidate
+from .scenario_core import OPERATIONS, CandidateDraft, build_context, compile_candidate, thermal_batch
+from . import thermal_scenarios as thermal
 from .scenario_provider import GENERATE_TIMEOUT, PROMPT_VERSION, TARGET_CASES, LocalProvider, ProviderError
 from .scenario_results import applied_change, recorded_outcome, verified_run
 
@@ -26,6 +27,7 @@ class Generate(Revision):
     task: str = Field(default="", max_length=2000)
     baseline_run_id: str | None = Field(default=None, min_length=1, max_length=100)
     run_supported: bool = Field(default=False, strict=True)
+    thermal_change: thermal.ThermalChange | None = None
 
 
 class Review(Revision):
@@ -42,7 +44,7 @@ class ReferenceImport(Revision):
 
 
 class ReferenceFile(IntakeModel):
-    adapter: Literal["structural_beam", "packaging_lift", "packaging_lift_timed_v2"]
+    adapter: Literal["structural_beam", "thermal_rod", "packaging_lift", "packaging_lift_timed_v2"]
     inputs: dict
     label: str | None = Field(default=None, min_length=1, max_length=120)
 
@@ -107,10 +109,13 @@ class ScenarioService:
             raise Conflict("The project changed. Reload its current revision before continuing.")
         return project
 
-    def _context(self, db, project, baseline_id, task):
+    def _context(self, db, project, baseline_id, task, thermal_change=None, infer_thermal=False):
         baseline = self.runs.get_in_transaction(db, project["id"], baseline_id) if baseline_id else None
+        if (infer_thermal and thermal_change is None and baseline and baseline["adapter"] == "thermal_rod"
+                and thermal.thermal_intent(task)):
+            thermal_change = {}
         try:
-            packet = build_context(project, baseline, task=task)
+            packet = build_context(project, baseline, task=task, thermal_change=thermal_change)
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         # An imported definition has a traceable origin even when other JSON files exist.
@@ -127,12 +132,13 @@ class ScenarioService:
 
     @staticmethod
     def _batch(db, project_id, batch_id):
-        row = db.execute("""SELECT id,revision,task,baseline_run_id,model,digest,prompt_version,
+        row = db.execute("""SELECT id,revision,task,baseline_run_id,model,digest,prompt_version,context,
                             status,error,clarifications,usage,created_at,run_supported,target,execution_error FROM scenario_batches
                             WHERE id=? AND project_id=?""", (batch_id, project_id)).fetchone()
         if row is None:
             raise KeyError(batch_id)
         result = dict(row)
+        result["thermal_change"] = json.loads(result.pop("context")).get("thermal_change")
         result["run_supported"] = bool(row["run_supported"])
         result["clarifications"] = json.loads(row["clarifications"])
         result["usage"] = json.loads(row["usage"]) if row["usage"] else {}
@@ -156,19 +162,25 @@ class ScenarioService:
 
     def generate(self, project_id, body, key):
         scope, request = "scenario-generate:" + project_id, body.model_dump()
+        if body.thermal_change is None:
+            request.pop("thermal_change")
         if not body.run_supported:
             request.pop("run_supported")  # Retain the original request hash for existing retries.
         elif not body.baseline_run_id:
             raise HTTPException(422, "Choose a completed reference before requesting automatic tests.")
-        provider = self.provider.status()
+        provider = self.provider.status() if body.thermal_change is None else None
         with self.store.connection(True) as db:
             previous = self.store._idempotent(db, scope, key, request)
             if previous:
                 return self._batch(db, project_id, previous["id"])
             project = self._project(db, project_id, body.expected_revision)
-            if not provider["available"]:
+            packet = self._context(db, project, body.baseline_run_id, body.task, body.thermal_change, infer_thermal=True)
+            if "thermal_change" in packet:
+                model, digest, version, target = thermal.MODEL, config_hash(thermal.VERSION), thermal.VERSION, None
+            elif not provider["available"]:
                 raise HTTPException(503, provider["detail"])
-            packet = self._context(db, project, body.baseline_run_id, body.task)
+            else:
+                model, digest, version, target = provider["model"], provider["digest"], PROMPT_VERSION, TARGET_CASES
             pending = db.execute("SELECT COUNT(*) FROM scenario_batches WHERE status IN ('queued','running')").fetchone()[0]
             if pending >= 5:
                 raise HTTPException(429, "Five generations are already pending. Wait for one to finish.")
@@ -176,8 +188,7 @@ class ScenarioService:
             db.execute("""INSERT INTO scenario_batches(id,project_id,revision,task,baseline_run_id,context,
                           model,digest,prompt_version,status,created_at,run_supported,target) VALUES(?,?,?,?,?,?,?,?,?,'queued',?,?,?)""",
                        (batch_id, project_id, body.expected_revision, body.task, body.baseline_run_id,
-                        canonical_json(packet), provider["model"], provider["digest"], PROMPT_VERSION, utc_now(),
-                        int(body.run_supported), TARGET_CASES))
+                        canonical_json(packet), model, digest, version, utc_now(), int(body.run_supported), target))
             self.store._remember(db, scope, key, request, {"id": batch_id})
             batch = self._batch(db, project_id, batch_id)
         self.wake.set()
@@ -205,7 +216,10 @@ class ScenarioService:
     def _run(self, row, lease):
         packet = json.loads(row["context"])
         try:
-            batch, usage = self.provider.generate(packet, row["digest"])
+            if "thermal_change" in packet:
+                batch, usage = thermal_batch(packet), {}
+            else:
+                batch, usage = self.provider.generate(packet, row["digest"])
             error, candidates, seen = None, [], set()
             for draft in batch.candidates:
                 report = compile_candidate(packet, draft)
@@ -267,7 +281,7 @@ class ScenarioService:
             raise Conflict("This suggestion belongs to an older project revision. Generate a new batch.")
         if row["dismissed"]:
             raise Conflict("This suggestion was dismissed.")
-        packet = self._context(db, project, row["baseline_run_id"], row["task"])
+        packet = self._context(db, project, row["baseline_run_id"], row["task"], json.loads(row["context"]).get("thermal_change"))
         if json.loads(row["context"])["context_hash"] != packet["context_hash"]:
             raise Conflict("The source context or available operations changed. Generate a fresh batch.")
         return project, compile_candidate(packet, CandidateDraft.model_validate_json(row["draft"]), body.confirmed)
@@ -287,7 +301,7 @@ class ScenarioService:
     def _current_packet(self, db, project, batch):
         if project["revision"] != batch["revision"]:
             raise Conflict("The project changed. Generate a batch against its current reference.")
-        packet = self._context(db, project, batch["baseline_run_id"], batch["task"])
+        packet = self._context(db, project, batch["baseline_run_id"], batch["task"], json.loads(batch["context"]).get("thermal_change"))
         if json.loads(batch["context"])["context_hash"] != packet["context_hash"]:
             raise Conflict("The reference or simulator capabilities changed. Generate a fresh batch.")
         return packet
@@ -444,7 +458,7 @@ class ScenarioService:
                 if ref.adapter not in {a["id"] for a in project_adapters(project)}:
                     raise ValueError("This reference model is unavailable for the selected project.")
                 inputs = ref.inputs.copy()
-                if ref.adapter == "structural_beam":
+                if ref.adapter in ("structural_beam", "thermal_rod"):
                     inputs.setdefault("kind", ref.adapter)
                 model = MODELS[ref.adapter].model_validate(inputs)
             except Conflict:
