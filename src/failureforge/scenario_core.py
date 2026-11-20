@@ -117,7 +117,7 @@ def _beam_placement(baseline, draft, *, layout):
     if model.max_surface_stress_pa is not None:
         measurements.append(f"Maximum surface bending stress ≤ {model.max_surface_stress_pa:g} Pa")
     if not measurements:
-        raise NeedsInformation("Set a deflection or stress limit in Analysis and complete a reference run.")
+        measurements.append("Compare maximum absolute deflection (mm) across both runs. No acceptance limit supplied.")
     reference = model.model_dump(exclude_none=True)
     variant = {**reference, "tip_force_n": 0., "distributed_load_n_per_m": 0.}
     for key in ("face_pressure_pa", "span_loads"):

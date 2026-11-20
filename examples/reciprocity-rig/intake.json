@@ -1,0 +1,6 @@
+{
+  "name": "Aluminum cantilever teaching rig",
+  "goal": "A benchtop apparatus demonstrates static bending. A hanger applies a transverse weight to a clamped aluminum beam. A movable dial gauge reads vertical movement.",
+  "success_criteria": "Report displacement in millimetres for each arrangement. This teaching experiment specifies no allowable deflection or safety rating.",
+  "task": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end."
+}

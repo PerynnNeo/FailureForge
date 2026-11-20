@@ -163,8 +163,17 @@ def test_baseline_evidence_and_compilation_are_project_scoped():
     assert compile_candidate(packet, draft(operation_id="invented.operation"), True)["state"] == "invalid"
     blocked = compile_candidate(packet, draft(missing_capability="Requires measured impact/contact dynamics."), True)
     assert blocked["state"] == "needs_capability" and blocked["variant"] is None
-    no_rule = build_context(p, reference(p, "structural_beam", beam(max_displacement_m=None)))
-    assert compile_candidate(no_rule, draft(), True)["state"] == "needs_information"
+
+
+def test_beam_without_limit_compiles_an_observation_without_inventing_a_rule():
+    p = project()
+    packet = build_context(p, reference(p, "structural_beam", beam(max_displacement_m=None)))
+    compiled = compile_candidate(packet, draft(), confirmed=True)
+    assert compiled["state"] == "ready"
+    assert compiled["observables"] == ["Compare maximum absolute deflection (mm) across both runs. No acceptance limit supplied."]
+    for role in ("reference", "variant"):
+        assert "max_displacement_m" not in compiled[role]["inputs"]
+        assert "max_surface_stress_pa" not in compiled[role]["inputs"]
 
 
 def test_planning_with_opaque_upload_cannot_execute_or_claim_material():

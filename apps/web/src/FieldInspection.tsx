@@ -25,7 +25,7 @@ function SampleControl({ count, index, choose, noun }: { count: number; index: n
   </div>;
 }
 
-function FieldDrawing({ field, node, inputs }: { field: Field; node: number; inputs: Inputs }) {
+export function FieldDrawing({ field, node, inputs }: { field: Field; node: number; inputs: Inputs }) {
   const gradient = useId(), hatch = useId();
   const { positions, values } = field;
   const span = positions.at(-1)! - positions[0];

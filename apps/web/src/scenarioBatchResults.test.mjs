@@ -8,6 +8,8 @@ test('pending solver cases keep polling after generation completes; blocked case
   assert.equal(coverageText(report), '2 of 5 proposed cases assessed · Target 5 cases');
   assert.equal(reportInProgress({ ...report, counts: { ...report.counts, pending: 0 } }), false);
   assert.equal(coverageText({ ...report, target: null }), '2 of 3 submitted cases assessed');
+  assert.equal(coverageText({ ...report, counts: { ...report.counts, measurement_only: 1 } }),
+    '3 of 5 proposed cases returned measurements · 2 with a pass/fail verdict');
   assert.equal(verdictLabel('invalid'), 'Invalid setup');
   assert.equal(verdictLabel('failed'), 'Failed');
   assert.equal(verdictLabel('inconclusive'), 'Inconclusive');

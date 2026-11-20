@@ -1,4 +1,8 @@
 .field-inspection { display: grid; gap: 12px; min-width: 0; }
+.station-comparison { border-top: 1px solid #d1dde2; padding-top: 14px; margin-top: 12px; }
+.station-reading { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.station-reading summary { cursor: pointer; }
+.station-reading details[open] > label { margin-top: 8px; }
 .field-inspection h4 { margin: 0; color: #243e4d; font-size: 1.05rem; }
 .field-inspection-figure { margin: 0; min-width: 0; }
 .field-inspection-figure svg { display: block; width: 100%; max-height: 300px; border: 1px solid #d1dde2; border-radius: 6px; background: #f2f6f7; }

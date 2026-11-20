@@ -61,10 +61,10 @@ def checked(response, code):
     return response.json()
 
 
-def project(client):
+def project(client, success_criteria="Deflection within 0.1 mm."):
     return checked(client.post("/api/projects", json={
         "name": "Inspection tray", "entry_stage": "prototype", "analysis_type": "structural",
-        "goal": "Help an operator position a part accurately.", "success_criteria": "Deflection within 0.1 mm."}), 201)
+        "goal": "Help an operator position a part accurately.", "success_criteria": success_criteria}), 201)
 
 
 def upload(client, base, name, content):
@@ -196,10 +196,11 @@ def test_planning_without_a_reference_and_provider_availability(tmp_path):
         assert not checked(client.get(base + "/analysis"), 200)["runs"]
 
 
-def _beam_reference(client):
-    base = "/api/projects/" + project(client)["id"]
+def _beam_reference(client, *, limit=0.0001):
+    criteria = "Compare deflections across load positions." if limit is None else "Deflection within 0.1 mm."
+    base = "/api/projects/" + project(client, criteria)["id"]
     data = {"adapter": "structural_beam", "inputs": {"length_m": 0.2, "width_m": 0.02, "height_m": 0.01,
-            "young_modulus_pa": 70e9, "distributed_load_n_per_m": 25, "max_displacement_m": 0.0001}}
+            "young_modulus_pa": 70e9, "distributed_load_n_per_m": 25, "max_displacement_m": limit}}
     p = upload(client, base, "shelf.json", json.dumps(data).encode())
     rev = {"expected_revision": p["revision"]}
     receipt = post(client, base + "/scenarios/import-reference", {**rev, "asset_id": p["assets"][0]["id"]}, "reference-run")
@@ -250,6 +251,41 @@ def test_batch_runs_every_distinct_supported_case_once_and_reports_evidence(tmp_
             db.execute("UPDATE project_runs SET evidence_hash='bad' WHERE id=?", (rows[0]["reference_run_id"],))
         invalid = checked(client.get(group + "/results"), 200)
         assert invalid["counts"]["assessed"] == 0 and invalid["counts"]["inconclusive"] == len(rows)
+
+
+def test_measurement_only_batch_returns_both_displacements_without_a_verdict(tmp_path):
+    app = create_app(tmp_path)
+    app.state.scenarios.provider = FixtureProvider()
+    with TestClient(app) as client:
+        base, rev, run_id = _beam_reference(client, limit=None)
+        scope = base + "/scenarios"
+        request = {**rev, "baseline_run_id": run_id, "task": "Move the load to the free end.", "run_supported": True}
+        batch_id = post(client, scope + "/generate", request, "compare-deflections")["id"]
+        until_completed(lambda: checked(client.get(scope), 200)["batches"][0])
+        report_url = scope + "/batches/" + batch_id + "/results"
+        row, = (r for r in checked(client.get(report_url), 200)["rows"] if r["variant_run_id"])
+        for run in (row["reference_run_id"], row["variant_run_id"]):
+            until_completed(lambda: checked(client.get(base + "/analysis/" + run), 200))
+        report = checked(client.get(report_url), 200)
+        assert report["counts"]["measurement_only"] == 1
+        assert report["counts"]["passed"] == report["counts"]["failed"] == report["counts"]["inconclusive"] == 0
+        measured, = (r for r in report["rows"] if r["state"] == "measurement_only")
+        assert measured["measurement"] == {
+            "name": "Maximum deflection", "unit": "mm", "limit": None,
+            "reference_value": pytest.approx(0.042857142857), "value": pytest.approx(0.114285714286),
+        }
+
+
+@pytest.mark.parametrize("invalid", [{"summary": {"within_small_deflection_screen": False}},
+                                     {"numerical_diagnostics": {"passed": False}}])
+def test_failed_validity_checks_never_become_measurement_only(invalid):
+    result = {"summary": {"continuous_max_abs_displacement_m": 0.0001}, "passed": None}
+    run = {"result": result, "runtime": {}, "status": "completed", "adapter": "structural_beam",
+           "error": None, "assessment_error": None, "evidence_hash": "checked"}
+    failed = {**run, "result": {**result, **invalid}}
+    for pair in ((run, failed), (failed, run)):
+        state, _, metric = recorded_outcome(*pair)
+        assert state == "inconclusive" and metric is None
 
 
 def test_auto_run_rechecks_revision_after_local_inference(tmp_path):

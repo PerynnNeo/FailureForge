@@ -1,0 +1,86 @@
+{
+  "prototype": "Aluminum cantilever teaching rig with movable load hanger and dial gauge",
+  "checklist_source": "Rig builders' published procedure, section 5, figure 7 and table 2, https://peer.asee.org/effective-use-of-an-undergraduate-research-fellowship-for-design-and-manufacture-of-tools-to-assist-in-teaching-strength-of-materials.pdf",
+  "lock": {
+    "sha256": "126b65481ea222a11a11bc9c36b8bcd059199d9e0301634a298794a8be58af68",
+    "frozen_at": "2026-11-20T12:23:31.341016+00:00"
+  },
+  "batch_id": "discovery_592c659e80ae4c0d90bae845d65d5e16",
+  "generated_batch_started_at": "2026-11-20T12:27:54.960240+00:00",
+  "model": "qwen2.5:3b",
+  "digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+  "prompt_version": "scenario-discovery-4.1",
+  "candidate_pass_attribution": "First response, repair and registry-guided refinement are not distinguished in the saved candidate records.",
+  "candidates": [
+    {
+      "candidate_id": "scenario_478a1f8e0a8d402789b1dd68a9864c8e",
+      "title": "What if the students place the hanger at the clamp instead of at the free end?",
+      "operation_id": null,
+      "fact_refs": [
+        "task",
+        "baseline.length_m",
+        "baseline.width_m",
+        "baseline.height_m",
+        "baseline.young_modulus_pa",
+        "baseline.tip_force_n",
+        "baseline.distributed_load_n_per_m",
+        "baseline.elements",
+        "baseline.adapter"
+      ],
+      "state": "needs_information"
+    }
+  ],
+  "task": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end.",
+  "baseline_run_id": "run_f80fcc90466f4f229af9d4b2360967e1",
+  "reviewer": "Codex, retrospective comparison of the frozen builders' checklist with the original completed batch",
+  "condition_count": 4,
+  "coverage": {
+    "simulated": 0,
+    "proposed": 0,
+    "related": 1,
+    "clarification_only": 0,
+    "missed": 3
+  },
+  "conditions": [
+    {
+      "id": "load-at-b-read-c",
+      "description": "Hang the nominal test weight at B (half span) and read displacement at C (the free end).",
+      "review_reason": "The intake supplied the free-end load and described the clamped support. The proposal introduced a different hanger location. It chose the clamp rather than the prescribed half span and omitted the dial reading at the free end. No comparison ran.",
+      "candidate_id": "scenario_478a1f8e0a8d402789b1dd68a9864c8e",
+      "quote": "change the load application point from the free end to the clamp",
+      "origin": "unprompted",
+      "candidate_state": "needs_information",
+      "candidate_compiled": false,
+      "candidate_reason": "What is the expected change in the maximum deflection or surface bending stress if the hanger is placed at the clamp instead of the free end? Provide a calculation based on the provided facts and the beam's properties.",
+      "coverage": "related"
+    },
+    {
+      "id": "load-at-c-read-b",
+      "description": "Use the same weight at C, move the gauge to B and compare that reading with the first. Comparing two tip readings does not establish reciprocity.",
+      "review_reason": "The free-end weight was already the supplied reference. The batch never proposed keeping that weight at the tip, moving the gauge to half span, or comparing the two reciprocal readings.",
+      "candidate_id": null,
+      "coverage": "missed"
+    },
+    {
+      "id": "gauge-alignment",
+      "description": "Keep the dial probe perpendicular to the beam and on its longitudinal centerline at each gauge position.",
+      "review_reason": "Neither the candidate nor its clarification addressed the dial probe's direction or contact on the beam centerline.",
+      "candidate_id": null,
+      "coverage": "missed"
+    },
+    {
+      "id": "gauge-preload",
+      "description": "Set the gauge bracket to give approximately 1 mm of initial probe compression.",
+      "review_reason": "Neither the candidate nor its clarification addressed the initial compression of the dial probe.",
+      "candidate_id": null,
+      "coverage": "missed"
+    }
+  ],
+  "unmatched_candidates": [],
+  "interventions": [
+    "The evaluator transcribed the rig builders' published procedure into a four-condition checklist before intake. No live operator of this rig took part.",
+    "The operator translated the published dimensions and load into SI units for the structural beam reference. The equivalent square section preserves the reported second moment of area. The operator selected a nominal aluminum modulus of 70 GPa consistent with the authors' theoretical displacement.",
+    "The operator entered the task and requested displacement measurements. The source gives no numerical acceptance limit for this teaching exercise.",
+    "After the first model response was truncated, the operator retried the same task on the same reference and project revision. The original failed attempt is retained in initial-batch.json and initial-results.json. No pilot-specific code was needed to submit the reference or task through the workbench."
+  ]
+}

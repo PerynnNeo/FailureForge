@@ -1,0 +1,670 @@
+{
+  "id": "discovery_b6bf030970ac4aeda09274db8cbe187b",
+  "revision": 2,
+  "task": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end.",
+  "baseline_run_id": "run_f80fcc90466f4f229af9d4b2360967e1",
+  "model": "qwen2.5:3b",
+  "digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+  "prompt_version": "scenario-discovery-4.2",
+  "status": "completed",
+  "error": null,
+  "clarifications": [
+    "What specific observations should the students make to ensure the beam is perfectly vertical and horizontal at each setup point?"
+  ],
+  "usage": {
+    "attempts": 1,
+    "output_tokens": 1008,
+    "prompt_tokens": 1725,
+    "runnable_cases": 6
+  },
+  "created_at": "2026-11-20T12:32:24.093880+00:00",
+  "run_supported": true,
+  "target": 5,
+  "execution_error": null,
+  "candidates": [
+    {
+      "id": "scenario_2b3a76b4014048fa9708f3bf32578fe7",
+      "draft": {
+        "title": "Uniform Load Span",
+        "hypothesis": "The students spread the same total transverse force evenly along the full span of the aluminum beam. This setup will result in a uniform distribution of stress across the beam, leading to a consistent maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at each point along the span, allowing a",
+        "operation_id": "beam.load.uniform_resultant",
+        "fact_refs": [
+          "task",
+          "project.success_criteria"
+        ],
+        "assumptions": [
+          "The students will not introduce any additional forces or displacements outside the setup."
+        ],
+        "missing_capability": null,
+        "question": null,
+        "shift_ms": null
+      },
+      "dismissed": false,
+      "review": {
+        "approval_mode": "batch",
+        "confirmed_at": "2026-11-20T12:33:12.021059+00:00",
+        "diff": {
+          "distributed_load_n_per_m": {
+            "reference": 0,
+            "variant": 11.566666666666668
+          },
+          "tip_force_n": {
+            "reference": 3.47,
+            "variant": 0
+          }
+        },
+        "facts": [
+          {
+            "id": "task",
+            "label": "Operating situation",
+            "source": "User-supplied discovery task",
+            "unit": "",
+            "value": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end."
+          },
+          {
+            "id": "project.success_criteria",
+            "label": "Success criteria",
+            "source": "Saved project requirement",
+            "unit": "",
+            "value": "Report displacement in millimetres for each arrangement. This teaching experiment specifies no allowable deflection or safety rating."
+          }
+        ],
+        "family_key": "beam.load_placement",
+        "fingerprint": "4cdc6bad4e58dc223eae865256f9483525d0d34ce39606857b9087994ccd5362",
+        "instance_hash": "3f5808b7ec17fd51804cc901b7bc40771f3b53c55b9255e597d3e06aac1e94ca",
+        "observables": [
+          "Compare maximum absolute deflection (mm) across both runs. No acceptance limit supplied."
+        ],
+        "reason": "The selected model supports this reviewed comparison.",
+        "reference": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "tip_force_n": 3.47,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Reference condition"
+        },
+        "review_note": "",
+        "state": "ready",
+        "variant": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 11.566666666666668,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "tip_force_n": 0,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Spread the load along the span"
+        }
+      },
+      "family_key": "beam.load_placement",
+      "execution": {
+        "runs": [
+          "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+          "run_21fac604cc0d46e48dc1ab10c7cfa77a"
+        ],
+        "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36"
+      }
+    },
+    {
+      "id": "scenario_4b3fc60596c14a01adbf9ca1940ecd7e",
+      "draft": {
+        "title": "Concentrated Load at Midspan",
+        "hypothesis": "The students place the same total force at one point halfway between the clamp and the free tip. This setup will result in a concentrated load at midspan, leading to a maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at midspan, allowing a",
+        "operation_id": "beam.load.midspan_point",
+        "fact_refs": [
+          "task",
+          "project.success_criteria"
+        ],
+        "assumptions": [
+          "The students will ensure the beam is perfectly vertical and horizontal at midspan."
+        ],
+        "missing_capability": null,
+        "question": null,
+        "shift_ms": null
+      },
+      "dismissed": false,
+      "review": {
+        "approval_mode": "batch",
+        "confirmed_at": "2026-11-20T12:33:12.021186+00:00",
+        "diff": {
+          "span_loads": {
+            "reference": null,
+            "variant": [
+              {
+                "end_fraction": 0.5,
+                "force_n": 3.47,
+                "start_fraction": 0.5
+              }
+            ]
+          },
+          "tip_force_n": {
+            "reference": 3.47,
+            "variant": 0
+          }
+        },
+        "facts": [
+          {
+            "id": "task",
+            "label": "Operating situation",
+            "source": "User-supplied discovery task",
+            "unit": "",
+            "value": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end."
+          },
+          {
+            "id": "project.success_criteria",
+            "label": "Success criteria",
+            "source": "Saved project requirement",
+            "unit": "",
+            "value": "Report displacement in millimetres for each arrangement. This teaching experiment specifies no allowable deflection or safety rating."
+          }
+        ],
+        "family_key": "beam.load_placement",
+        "fingerprint": "91c266abd26755d2ec693012897b45736174731e02b9a8c4226d61b445089ee5",
+        "instance_hash": "bce544ae7d705b3bb7e00c4664395a32e3261d9edaf8c7f121ca6e890c2c864f",
+        "observables": [
+          "Compare maximum absolute deflection (mm) across both runs. No acceptance limit supplied."
+        ],
+        "reason": "The selected model supports this reviewed comparison.",
+        "reference": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "tip_force_n": 3.47,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Reference condition"
+        },
+        "review_note": "",
+        "state": "ready",
+        "variant": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "span_loads": [
+              {
+                "end_fraction": 0.5,
+                "force_n": 3.47,
+                "start_fraction": 0.5
+              }
+            ],
+            "tip_force_n": 0,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Concentrate the load at midspan"
+        }
+      },
+      "family_key": "beam.load_placement",
+      "execution": {
+        "runs": [
+          "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+          "run_fcc9acb9bbc4423f9f5fea1b0595c4f3"
+        ],
+        "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36"
+      }
+    },
+    {
+      "id": "scenario_e7d4ab3ae35740e9aaec8a6f50196273",
+      "draft": {
+        "title": "Uniform Load Inner Half",
+        "hypothesis": "The students spread the same total force uniformly over the inner half, from the clamp to midspan. This setup will result in a uniform load on the inner half of the beam, leading to a consistent maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at each point along the inner half, allowing a",
+        "operation_id": "beam.load.inner_half_patch",
+        "fact_refs": [
+          "task",
+          "project.success_criteria"
+        ],
+        "assumptions": [
+          "The students will ensure the beam is perfectly vertical and horizontal along the inner half."
+        ],
+        "missing_capability": null,
+        "question": null,
+        "shift_ms": null
+      },
+      "dismissed": false,
+      "review": {
+        "approval_mode": "batch",
+        "confirmed_at": "2026-11-20T12:33:12.021219+00:00",
+        "diff": {
+          "span_loads": {
+            "reference": null,
+            "variant": [
+              {
+                "end_fraction": 0.5,
+                "force_n": 3.47,
+                "start_fraction": 0
+              }
+            ]
+          },
+          "tip_force_n": {
+            "reference": 3.47,
+            "variant": 0
+          }
+        },
+        "facts": [
+          {
+            "id": "task",
+            "label": "Operating situation",
+            "source": "User-supplied discovery task",
+            "unit": "",
+            "value": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end."
+          },
+          {
+            "id": "project.success_criteria",
+            "label": "Success criteria",
+            "source": "Saved project requirement",
+            "unit": "",
+            "value": "Report displacement in millimetres for each arrangement. This teaching experiment specifies no allowable deflection or safety rating."
+          }
+        ],
+        "family_key": "beam.load_placement",
+        "fingerprint": "ab736b874ee92fd26bdf9e8c9f207bc7caca3d96d537719d15b08945f1b44221",
+        "instance_hash": "4f5021464cedcfaea99d23c277ce0678a2b46c7f9bab822def2bc30273e9a141",
+        "observables": [
+          "Compare maximum absolute deflection (mm) across both runs. No acceptance limit supplied."
+        ],
+        "reason": "The selected model supports this reviewed comparison.",
+        "reference": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "tip_force_n": 3.47,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Reference condition"
+        },
+        "review_note": "",
+        "state": "ready",
+        "variant": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "span_loads": [
+              {
+                "end_fraction": 0.5,
+                "force_n": 3.47,
+                "start_fraction": 0
+              }
+            ],
+            "tip_force_n": 0,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Load the half nearest the clamp"
+        }
+      },
+      "family_key": "beam.load_placement",
+      "execution": {
+        "runs": [
+          "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+          "run_0a242e01f0c14d1ea08ea84db00ab987"
+        ],
+        "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36"
+      }
+    },
+    {
+      "id": "scenario_a8bd427b6c9b4a5cad820e899fa608ab",
+      "draft": {
+        "title": "Uniform Load Outer Half",
+        "hypothesis": "The students spread the same total force uniformly over the outer half, from midspan to the free end. This setup will result in a uniform load on the outer half of the beam, leading to a consistent maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at each point along the outer half,allowing",
+        "operation_id": "beam.load.outer_half_patch",
+        "fact_refs": [
+          "task",
+          "project.success_criteria"
+        ],
+        "assumptions": [
+          "The students will ensure the beam is perfectly vertical and horizontal along the outer half."
+        ],
+        "missing_capability": null,
+        "question": null,
+        "shift_ms": null
+      },
+      "dismissed": false,
+      "review": {
+        "approval_mode": "batch",
+        "confirmed_at": "2026-11-20T12:33:12.021242+00:00",
+        "diff": {
+          "span_loads": {
+            "reference": null,
+            "variant": [
+              {
+                "end_fraction": 1,
+                "force_n": 3.47,
+                "start_fraction": 0.5
+              }
+            ]
+          },
+          "tip_force_n": {
+            "reference": 3.47,
+            "variant": 0
+          }
+        },
+        "facts": [
+          {
+            "id": "task",
+            "label": "Operating situation",
+            "source": "User-supplied discovery task",
+            "unit": "",
+            "value": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end."
+          },
+          {
+            "id": "project.success_criteria",
+            "label": "Success criteria",
+            "source": "Saved project requirement",
+            "unit": "",
+            "value": "Report displacement in millimetres for each arrangement. This teaching experiment specifies no allowable deflection or safety rating."
+          }
+        ],
+        "family_key": "beam.load_placement",
+        "fingerprint": "4de055f09f86567189cd99625494c4fe91af34c216f52dab988ca791b875cf50",
+        "instance_hash": "f432889336441c537e99bc76278df45871af006a39cc321e38aa321e6cb9ada5",
+        "observables": [
+          "Compare maximum absolute deflection (mm) across both runs. No acceptance limit supplied."
+        ],
+        "reason": "The selected model supports this reviewed comparison.",
+        "reference": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "tip_force_n": 3.47,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Reference condition"
+        },
+        "review_note": "",
+        "state": "ready",
+        "variant": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "span_loads": [
+              {
+                "end_fraction": 1,
+                "force_n": 3.47,
+                "start_fraction": 0.5
+              }
+            ],
+            "tip_force_n": 0,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Load the half nearest the free end"
+        }
+      },
+      "family_key": "beam.load_placement",
+      "execution": {
+        "runs": [
+          "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+          "run_d9e050fd23f840f49fc28ba78e6295dc"
+        ],
+        "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36"
+      }
+    },
+    {
+      "id": "scenario_aaf91a7802054306b193fcdbb1c2124b",
+      "draft": {
+        "title": "Two Contacts at Midpoints",
+        "hypothesis": "The students place two localized contacts, at one-quarter and three-quarters of the span from the clamp, each carrying half the same total force. This setup will result in a concentrated load at two points, leading to a maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at each contact point",
+        "operation_id": "beam.load.two_contacts",
+        "fact_refs": [
+          "task",
+          "project.success_criteria"
+        ],
+        "assumptions": [
+          "The students will ensure the beam is perfectly vertical and horizontal at both contact points."
+        ],
+        "missing_capability": null,
+        "question": null,
+        "shift_ms": null
+      },
+      "dismissed": false,
+      "review": {
+        "approval_mode": "batch",
+        "confirmed_at": "2026-11-20T12:33:12.021263+00:00",
+        "diff": {
+          "span_loads": {
+            "reference": null,
+            "variant": [
+              {
+                "end_fraction": 0.25,
+                "force_n": 1.735,
+                "start_fraction": 0.25
+              },
+              {
+                "end_fraction": 0.75,
+                "force_n": 1.735,
+                "start_fraction": 0.75
+              }
+            ]
+          },
+          "tip_force_n": {
+            "reference": 3.47,
+            "variant": 0
+          }
+        },
+        "facts": [
+          {
+            "id": "task",
+            "label": "Operating situation",
+            "source": "User-supplied discovery task",
+            "unit": "",
+            "value": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end."
+          },
+          {
+            "id": "project.success_criteria",
+            "label": "Success criteria",
+            "source": "Saved project requirement",
+            "unit": "",
+            "value": "Report displacement in millimetres for each arrangement. This teaching experiment specifies no allowable deflection or safety rating."
+          }
+        ],
+        "family_key": "beam.load_placement",
+        "fingerprint": "5cbc1a91f72d0413755c725f7572612809843c31390f2c0ef8498a2ca336d331",
+        "instance_hash": "5965c4d9a55243de9d0f7c47fb3de09021668247f71b43df6ba112ddea9d110d",
+        "observables": [
+          "Compare maximum absolute deflection (mm) across both runs. No acceptance limit supplied."
+        ],
+        "reason": "The selected model supports this reviewed comparison.",
+        "reference": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "tip_force_n": 3.47,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Reference condition"
+        },
+        "review_note": "",
+        "state": "ready",
+        "variant": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "span_loads": [
+              {
+                "end_fraction": 0.25,
+                "force_n": 1.735,
+                "start_fraction": 0.25
+              },
+              {
+                "end_fraction": 0.75,
+                "force_n": 1.735,
+                "start_fraction": 0.75
+              }
+            ],
+            "tip_force_n": 0,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Split the load across two contacts"
+        }
+      },
+      "family_key": "beam.load_placement",
+      "execution": {
+        "runs": [
+          "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+          "run_a5c9a9b89d2946e69e8810a56e60a260"
+        ],
+        "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36"
+      }
+    },
+    {
+      "id": "scenario_11b85319319541229e485e3d70efc4ea",
+      "draft": {
+        "title": "Remove Applied Loads",
+        "hypothesis": "The students remove all applied transverse loads and measure the static unloaded equilibrium after pickup. This setup will result in the beam returning to its unloaded equilibrium, allowing the students to measure the static deflection. The dial gauge will register the displacement at the midpoint of the beam, allowing a",
+        "operation_id": "beam.load.remove_applied",
+        "fact_refs": [
+          "task",
+          "project.success_criteria"
+        ],
+        "assumptions": [
+          "The students will ensure the beam is perfectly vertical and horizontal during the removal process."
+        ],
+        "missing_capability": null,
+        "question": null,
+        "shift_ms": null
+      },
+      "dismissed": false,
+      "review": {
+        "approval_mode": "batch",
+        "confirmed_at": "2026-11-20T12:33:12.021287+00:00",
+        "diff": {
+          "tip_force_n": {
+            "reference": 3.47,
+            "variant": 0
+          }
+        },
+        "facts": [
+          {
+            "id": "task",
+            "label": "Operating situation",
+            "source": "User-supplied discovery task",
+            "unit": "",
+            "value": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end."
+          },
+          {
+            "id": "project.success_criteria",
+            "label": "Success criteria",
+            "source": "Saved project requirement",
+            "unit": "",
+            "value": "Report displacement in millimetres for each arrangement. This teaching experiment specifies no allowable deflection or safety rating."
+          }
+        ],
+        "family_key": "beam.payload_removal",
+        "fingerprint": "7394b2ee438a4fec6dc1b3dcdd3d3893ab6ed75eba6e7fb43e635626f2bb886a",
+        "instance_hash": "b5cb189be948351adf537509b2308b1ce653174e98e7f68f4ca3a949515f5677",
+        "observables": [
+          "Compare maximum absolute deflection (mm) across both runs. No acceptance limit supplied."
+        ],
+        "reason": "The selected model supports this reviewed comparison.",
+        "reference": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "tip_force_n": 3.47,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Reference condition"
+        },
+        "review_note": "",
+        "state": "ready",
+        "variant": {
+          "adapter": "structural_beam",
+          "inputs": {
+            "distributed_load_n_per_m": 0,
+            "elements": 16,
+            "height_m": 0.008980388667236168,
+            "kind": "structural_beam",
+            "length_m": 0.3,
+            "tip_force_n": 0,
+            "width_m": 0.008980388667236168,
+            "young_modulus_pa": 70000000000
+          },
+          "label": "Remove the external load"
+        }
+      },
+      "family_key": "beam.payload_removal",
+      "execution": {
+        "runs": [
+          "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+          "run_708c8904e7d44c6a85a2057f675fa340"
+        ],
+        "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36"
+      }
+    },
+    {
+      "id": "scenario_e6bcf8c35d4847d59a4610134e8c4962",
+      "draft": {
+        "title": "Missing Effect",
+        "hypothesis": "The students will observe the transient rebound and permanent deformation of the beam after the removal of applied loads. This setup will result in the beam returning to its unloaded equilibrium, allowing the students to measure the static deflection. The dial gauge will register the displacement at the midpoint of the beam, allowing a",
+        "operation_id": null,
+        "fact_refs": [
+          "task",
+          "project.success_criteria"
+        ],
+        "assumptions": [
+          "The students will ensure the beam is perfectly vertical and horizontal during the removal process and observe the effects of transient rebound and any"
+        ],
+        "missing_capability": "permanent deformation",
+        "question": null,
+        "shift_ms": null
+      },
+      "dismissed": false,
+      "review": null,
+      "family_key": null,
+      "execution": null
+    }
+  ]
+}

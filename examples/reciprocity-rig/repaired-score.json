@@ -1,0 +1,176 @@
+{
+  "prototype": "Aluminum cantilever teaching rig with movable load hanger and dial gauge",
+  "checklist_source": "Rig builders' published procedure, section 5, figure 7 and table 2, https://peer.asee.org/effective-use-of-an-undergraduate-research-fellowship-for-design-and-manufacture-of-tools-to-assist-in-teaching-strength-of-materials.pdf",
+  "lock": {
+    "sha256": "126b65481ea222a11a11bc9c36b8bcd059199d9e0301634a298794a8be58af68",
+    "frozen_at": "2026-11-20T12:23:31.341016+00:00"
+  },
+  "batch_id": "discovery_b6bf030970ac4aeda09274db8cbe187b",
+  "generated_batch_started_at": "2026-11-20T12:32:24.093880+00:00",
+  "model": "qwen2.5:3b",
+  "digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+  "prompt_version": "scenario-discovery-4.2",
+  "candidate_pass_attribution": "First response, repair and registry-guided refinement are not distinguished in the saved candidate records.",
+  "candidates": [
+    {
+      "candidate_id": "scenario_2b3a76b4014048fa9708f3bf32578fe7",
+      "title": "Uniform Load Span",
+      "operation_id": "beam.load.uniform_resultant",
+      "fact_refs": [
+        "task",
+        "project.success_criteria"
+      ],
+      "state": "measurement_only"
+    },
+    {
+      "candidate_id": "scenario_4b3fc60596c14a01adbf9ca1940ecd7e",
+      "title": "Concentrated Load at Midspan",
+      "operation_id": "beam.load.midspan_point",
+      "fact_refs": [
+        "task",
+        "project.success_criteria"
+      ],
+      "state": "measurement_only"
+    },
+    {
+      "candidate_id": "scenario_e7d4ab3ae35740e9aaec8a6f50196273",
+      "title": "Uniform Load Inner Half",
+      "operation_id": "beam.load.inner_half_patch",
+      "fact_refs": [
+        "task",
+        "project.success_criteria"
+      ],
+      "state": "measurement_only"
+    },
+    {
+      "candidate_id": "scenario_a8bd427b6c9b4a5cad820e899fa608ab",
+      "title": "Uniform Load Outer Half",
+      "operation_id": "beam.load.outer_half_patch",
+      "fact_refs": [
+        "task",
+        "project.success_criteria"
+      ],
+      "state": "measurement_only"
+    },
+    {
+      "candidate_id": "scenario_aaf91a7802054306b193fcdbb1c2124b",
+      "title": "Two Contacts at Midpoints",
+      "operation_id": "beam.load.two_contacts",
+      "fact_refs": [
+        "task",
+        "project.success_criteria"
+      ],
+      "state": "measurement_only"
+    },
+    {
+      "candidate_id": "scenario_11b85319319541229e485e3d70efc4ea",
+      "title": "Remove Applied Loads",
+      "operation_id": "beam.load.remove_applied",
+      "fact_refs": [
+        "task",
+        "project.success_criteria"
+      ],
+      "state": "measurement_only"
+    },
+    {
+      "candidate_id": "scenario_e6bcf8c35d4847d59a4610134e8c4962",
+      "title": "Missing Effect",
+      "operation_id": null,
+      "fact_refs": [
+        "task",
+        "project.success_criteria"
+      ],
+      "state": "needs_capability"
+    }
+  ],
+  "task": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end.",
+  "baseline_run_id": "run_f80fcc90466f4f229af9d4b2360967e1",
+  "reviewer": "Codex, retrospective comparison of the frozen builders' checklist with the separate post-repair batch",
+  "condition_count": 4,
+  "coverage": {
+    "simulated": 1,
+    "proposed": 0,
+    "related": 1,
+    "clarification_only": 0,
+    "missed": 2
+  },
+  "conditions": [
+    {
+      "id": "load-at-b-read-c",
+      "description": "Hang the nominal test weight at B (half span) and read displacement at C (the free end).",
+      "review_reason": "Credit for the numerical condition only. The saved controls move the same 3.47 N point load from the free end to half span. The solver reports 0.2572318134 mm maximum deflection. For this cantilever with a single transverse point load, displacement magnitude increases to the free end, so the maximum equals the required tip reading. The model selected a registered midspan load operation. Its draft incorrectly predicts a midspan gauge reading, and the run includes no gauge-position control.",
+      "candidate_id": "scenario_4b3fc60596c14a01adbf9ca1940ecd7e",
+      "quote": "The students place the same total force at one point halfway between the clamp and the free tip.",
+      "origin": "unprompted",
+      "candidate_state": "measurement_only",
+      "candidate_compiled": true,
+      "candidate_reason": "Measurements were recorded without an overall acceptance verdict.",
+      "coverage": "simulated",
+      "controls": {
+        "reference": {
+          "tip_force_n": 3.47
+        },
+        "variant": {
+          "tip_force_n": 0,
+          "span_loads": [
+            {
+              "start_fraction": 0.5,
+              "end_fraction": 0.5,
+              "force_n": 3.47
+            }
+          ]
+        }
+      },
+      "reference_run_id": "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+      "variant_run_id": "run_fcc9acb9bbc4423f9f5fea1b0595c4f3",
+      "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36",
+      "measurement": {
+        "name": "Maximum deflection",
+        "unit": "mm",
+        "value": 0.2572318133895624,
+        "reference_value": 0.8231418028466,
+        "limit": null
+      }
+    },
+    {
+      "id": "load-at-c-read-b",
+      "description": "Use the same weight at C, move the gauge to B and compare that reading with the first. Comparing two tip readings does not establish reciprocity.",
+      "review_reason": "The prose mentions the correct gauge location but under the half-span load. The supplied tip-load reference reports its maximum at the tip (0.8231418028 mm). Neither side reports a gauge reading selected at half span under the full tip load, and the batch never compares the two reciprocal readings.",
+      "candidate_id": "scenario_4b3fc60596c14a01adbf9ca1940ecd7e",
+      "quote": "The dial gauge will register the displacement at midspan",
+      "origin": "unprompted",
+      "candidate_state": "measurement_only",
+      "candidate_compiled": true,
+      "candidate_reason": "Measurements were recorded without an overall acceptance verdict.",
+      "coverage": "related"
+    },
+    {
+      "id": "gauge-alignment",
+      "description": "Keep the dial probe perpendicular to the beam and on its longitudinal centerline at each gauge position.",
+      "review_reason": "A clarification asks about the beam being vertical and horizontal. It does not ask whether the probe is perpendicular to the beam or contacts the longitudinal centerline.",
+      "candidate_id": null,
+      "coverage": "missed"
+    },
+    {
+      "id": "gauge-preload",
+      "description": "Set the gauge bracket to give approximately 1 mm of initial probe compression.",
+      "review_reason": "No proposal or clarification addresses the gauge bracket setting or the initial 1 mm of probe compression.",
+      "candidate_id": null,
+      "coverage": "missed"
+    }
+  ],
+  "unmatched_candidates": [
+    "scenario_2b3a76b4014048fa9708f3bf32578fe7",
+    "scenario_e7d4ab3ae35740e9aaec8a6f50196273",
+    "scenario_a8bd427b6c9b4a5cad820e899fa608ab",
+    "scenario_aaf91a7802054306b193fcdbb1c2124b",
+    "scenario_11b85319319541229e485e3d70efc4ea",
+    "scenario_e6bcf8c35d4847d59a4610134e8c4962"
+  ],
+  "interventions": [
+    "The evaluator transcribed the rig builders' published procedure into a four-condition checklist before intake. No live operator of this rig took part.",
+    "The operator mapped the source to SI units using an equivalent square section that preserves the reported second moment of area and a nominal aluminum modulus of 70 GPa. The teaching experiment gives no numerical acceptance limit.",
+    "The operator resubmitted the ordinary brief and selected the original reference after repairs to the shared discovery workflow. The cold attempt and original completed retry are retained separately.",
+    "The reviewer identified where the reported global maximum occurs for this cantilever under a downward point force. No gauge-location selection was executed by the scenario batch."
+  ]
+}

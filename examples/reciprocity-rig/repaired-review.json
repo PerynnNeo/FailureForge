@@ -1,0 +1,50 @@
+{
+  "reviewer": "Codex, retrospective comparison of the frozen builders' checklist with the separate post-repair batch",
+  "interventions": [
+    "The evaluator transcribed the rig builders' published procedure into a four-condition checklist before intake. No live operator of this rig took part.",
+    "The operator mapped the source to SI units using an equivalent square section that preserves the reported second moment of area and a nominal aluminum modulus of 70 GPa. The teaching experiment gives no numerical acceptance limit.",
+    "The operator resubmitted the ordinary brief and selected the original reference after repairs to the shared discovery workflow. The cold attempt and original completed retry are retained separately.",
+    "The reviewer identified where the reported global maximum occurs for this cantilever under a downward point force. No gauge-location selection was executed by the scenario batch."
+  ],
+  "conditions": [
+    {
+      "id": "load-at-b-read-c",
+      "candidate_id": "scenario_4b3fc60596c14a01adbf9ca1940ecd7e",
+      "match": "equivalent",
+      "quote": "The students place the same total force at one point halfway between the clamp and the free tip.",
+      "origin": "unprompted",
+      "reason": "Credit for the numerical condition only. The saved controls move the same 3.47 N point load from the free end to half span. The solver reports 0.2572318134 mm maximum deflection. For this cantilever with a single transverse point load, displacement magnitude increases to the free end, so the maximum equals the required tip reading. The model selected a registered midspan load operation. Its draft incorrectly predicts a midspan gauge reading, and the run includes no gauge-position control.",
+      "controls": {
+        "reference": {"tip_force_n": 3.47},
+        "variant": {
+          "tip_force_n": 0,
+          "span_loads": [{"start_fraction": 0.5, "end_fraction": 0.5, "force_n": 3.47}]
+        }
+      }
+    },
+    {
+      "id": "load-at-c-read-b",
+      "candidate_id": "scenario_4b3fc60596c14a01adbf9ca1940ecd7e",
+      "match": "related",
+      "quote": "The dial gauge will register the displacement at midspan",
+      "origin": "unprompted",
+      "reason": "The prose mentions the correct gauge location but under the half-span load. The supplied tip-load reference reports its maximum at the tip (0.8231418028 mm). Neither side reports a gauge reading selected at half span under the full tip load, and the batch never compares the two reciprocal readings."
+    },
+    {
+      "id": "gauge-alignment",
+      "candidate_id": null,
+      "reason": "A clarification asks about the beam being vertical and horizontal. It does not ask whether the probe is perpendicular to the beam or contacts the longitudinal centerline."
+    },
+    {
+      "id": "gauge-preload",
+      "candidate_id": null,
+      "reason": "No proposal or clarification addresses the gauge bracket setting or the initial 1 mm of probe compression."
+    }
+  ],
+  "wording_findings": [
+    "Several drafts say a dial gauge can measure surface bending stress. The gauge in this experiment reads displacement.",
+    "Uniform Load Span predicts uniform stress and gauge readings along the full span. The bending moment varies along a cantilever under a uniform load, and the saved scalar is maximum deflection.",
+    "Two Contacts at Midpoints applies 1.735 N each at 25% and 75% of the span. The title alone does not identify those positions.",
+    "Several hypotheses end mid-sentence. The Missing Effect card predicts rebound and permanent deformation without measured evidence; the result records needs_capability and no run."
+  ]
+}

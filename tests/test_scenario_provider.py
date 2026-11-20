@@ -121,7 +121,8 @@ def test_offline_loopback_status_closes_connection(monkeypatch, provider):
 
 @pytest.mark.parametrize(("responses", "error"), [
     ([reply("[]"), reply("{}")], "schema validation twice"),
-    ([reply("{}", done_reason="length")], "stopped before finishing"),
+    ([reply("{}", done_reason="length"), reply("{}", done_reason="length")], "stopped before finishing"),
+    ([reply("{}", done_reason="length", model="different-model")], "different model"),
     ([reply("{}", done=False)], "stopped before finishing"),
     ([reply("{}", model="different-model")], "different model"),
     ([reply("{}", remote_host="remote")], "different model"),
@@ -198,18 +199,18 @@ def test_refinement_transport_failure_preserves_first_batch_and_marks_token_tota
     assert usage == {"attempts": 2, "prompt_tokens": None, "output_tokens": None, "refinement": "unavailable"}
 
 
-def test_executable_first_batch_and_unusable_reference_each_use_only_one_call(monkeypatch, provider, packet):
+def test_executable_first_batch_and_unloaded_reference_each_use_only_one_call(monkeypatch, provider, packet):
     executable = card("beam.load.tip_resultant")
     calls = local_ollama(monkeypatch, provider, [card_reply([executable])])
     batch, usage = provider.generate(packet, "model-sha")
     assert batch.candidates[0].model_dump() == executable
     assert usage["attempts"] == sum(path == "/api/chat" for path, _ in calls) == 1
-    no_requirement = copy.deepcopy(packet)
-    del no_requirement["baseline"]["inputs"]["max_displacement_m"]
-    del no_requirement["context_hash"]
-    no_requirement["context_hash"] = config_hash(no_requirement)
+    unloaded = copy.deepcopy(packet)
+    unloaded["baseline"]["inputs"]["distributed_load_n_per_m"] = 0
+    del unloaded["context_hash"]
+    unloaded["context_hash"] = config_hash(unloaded)
     calls = local_ollama(monkeypatch, provider, [card_reply([card()])])
-    _, usage = provider.generate(no_requirement, "model-sha")
+    _, usage = provider.generate(unloaded, "model-sha")
     assert usage["attempts"] == sum(path == "/api/chat" for path, _ in calls) == 1
 
 
@@ -220,6 +221,54 @@ def narrative(title, fact="baseline.length_m", **extra):
 
 def suite_reply(cases, untested=(), clarifications=()):
     return reply(json.dumps({"cases": cases, "untested": list(untested), "clarifications": list(clarifications)}))
+
+
+@pytest.mark.parametrize("fixture", ["packet", "beam_packet"])
+def test_truncation_retries_with_bounded_output_and_preserves_all_feasible_choices(
+        monkeypatch, provider, request, fixture):
+    context = request.getfixturevalue(fixture)
+    first = card_reply([card(title="Discard even parseable truncated content")])
+    first["done_reason"] = "length"
+    accepted = card(context["operations"][-1]["id"], title="The operator changes the load position")
+    calls = local_ollama(monkeypatch, provider, [first, card_reply([accepted])])
+    batch, usage = provider.generate(context, "model-sha")
+    assert [c.model_dump() for c in batch.candidates] == [accepted]
+    assert usage == {"attempts": 2, "prompt_tokens": 400, "output_tokens": 80,
+                     "retry_reason": "output_token_limit", "runnable_cases": 1}
+    original, retry = [body for path, body in calls if path == "/api/chat"]
+    schema = retry["format"]
+    assert schema != original["format"] and schema["properties"]["candidates"]["maxItems"] == 2
+    assert set(schema["$defs"]["CompactCandidate"]["properties"]["operation_id"]["enum"]) == {
+        *(op["id"] for op in context["operations"]), None}
+    assert "Discard even parseable" not in json.dumps(retry["messages"])
+
+
+@pytest.mark.parametrize("second", [
+    card_reply([card(), card(), card()]), card_reply([card("invented.operation")]),
+    card_reply([card(fact_refs=["task", "made.up"])]), reply("{", done_reason="length"),
+    reply("{}", model="replaced-model")
+])
+def test_invalid_truncation_retry_keeps_usage_and_returns_no_rows(monkeypatch, provider, beam_packet, second):
+    calls = local_ollama(monkeypatch, provider, [reply("{", done_reason="length"), second])
+    with pytest.raises(ProviderError) as failed:
+        provider.generate(beam_packet, "model-sha")
+    assert [path for path, _ in calls].count("/api/chat") == 2
+    assert failed.value.usage["attempts"] == 2 and failed.value.usage["retry_reason"] == "output_token_limit"
+
+
+def test_model_tag_replaced_between_chat_and_validation_discards_retry(monkeypatch, provider, packet):
+    calls = local_ollama(monkeypatch, provider, [reply("{", done_reason="length"), card_reply([card()])])
+    transport = provider._request
+
+    def model_replaced(path, *args, **kwargs):
+        result = transport(path, *args, **kwargs)
+        if path == "/api/tags" and sum(p == "/api/chat" for p, _ in calls) == 2:
+            result["models"][0]["digest"] = "other-sha"
+        return result
+
+    monkeypatch.setattr(provider, "_request", model_replaced)
+    with pytest.raises(ProviderError, match="identity changed"):
+        provider.generate(packet, "model-sha")
 
 
 def test_registry_driven_generation_returns_five_distinct_measurable_cases(monkeypatch, provider, beam_packet):

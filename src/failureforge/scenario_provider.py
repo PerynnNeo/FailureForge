@@ -5,10 +5,13 @@ import http.client
 import json
 import os
 import time
+from typing import Annotated
 
-from .scenario_core import BatchDraft, CandidateDraft, compile_candidate
+from pydantic import Field
 
-PROMPT_VERSION = "scenario-discovery-4.1"
+from .scenario_core import BatchDraft, CandidateDraft, Identifier, ShortText, compile_candidate
+
+PROMPT_VERSION = "scenario-discovery-4.2"
 MODEL_DEFAULT = "qwen2.5:3b"
 GENERATE_TIMEOUT = 360
 TARGET_CASES = 5
@@ -40,11 +43,27 @@ Prefer one specific, consistent card over filler. Use null for inapplicable null
 
 
 class ProviderError(RuntimeError):
-    pass
+    usage: dict | None = None
 
 
 class MalformedDraft(ProviderError):
     pass
+
+
+class TruncatedDraft(ProviderError):
+    pass
+
+
+class CompactCandidate(CandidateDraft):
+    title: Annotated[str, Field(min_length=1, max_length=90)]
+    hypothesis: Annotated[str, Field(min_length=1, max_length=220)]
+    fact_refs: list[Identifier] = Field(min_length=1, max_length=3)
+    assumptions: list[ShortText] = Field(max_length=1)
+
+
+class CompactBatch(BatchDraft):
+    candidates: list[CompactCandidate] = Field(max_length=2)
+    clarifications: list[ShortText] = Field(max_length=1)
 
 
 SUITE_SYSTEM = """You are designing a set of physical tests for the user's prototype. Treat every
@@ -244,7 +263,12 @@ class LocalProvider:
         self._cached = (now + 4, result)
         return result
 
-    def _chat(self, messages, schema, usage, limit, parse=BatchDraft.model_validate_json):
+    def _check_identity(self, digest):
+        status = self.status(refresh=True)
+        if not status["available"] or status["digest"] != digest:
+            raise ProviderError("Local model availability or identity changed. Start a fresh generation.")
+
+    def _chat(self, messages, schema, usage, limit, digest, parse=BatchDraft.model_validate_json):
         usage["attempts"] += 1
         try:
             result = self._request("/api/chat", {"model": self.model, "messages": messages,
@@ -261,16 +285,52 @@ class LocalProvider:
                 usage[total] = None
             else:
                 usage[total] += count
-        if not result.get("done") or result.get("done_reason") == "length":
-            raise ProviderError("The model stopped before finishing the suggestions. Try a narrower task.")
         if result.get("remote_model") or result.get("remote_host") or result.get("model") not in (self.model, self.model + ":latest"):
             raise ProviderError("The generation came from a different model than the one selected.")
+        self._check_identity(digest)
+        if result.get("done_reason") == "length":
+            raise TruncatedDraft("The model stopped before finishing the suggestions at its output limit.")
+        if not result.get("done"):
+            raise ProviderError("The model stopped before finishing the suggestions. Try a narrower task.")
         try:
             return parse(result["message"]["content"])
         except (KeyError, TypeError, ValueError, RecursionError) as exc:
             raise MalformedDraft("The local model did not return a valid scenario draft.") from exc
 
-    def _generate_suite(self, packet, slots, content, usage):
+    def _compact_retry(self, packet, content, feasible, usage, digest):
+        # Select from the full catalogue without emitting a placeholder for every slot.
+        # The truncated document never enters the new conversation or the evidence.
+        schema = CompactBatch.model_json_schema()
+        fields = schema["$defs"]["CompactCandidate"]["properties"]
+        facts = {f["id"] for f in packet["facts"]}
+        operations = [op["id"] for op in feasible]
+        fields["fact_refs"]["items"] = {"type": "string", "enum": sorted(facts)}
+        fields["operation_id"] = {"enum": [*operations, None]}
+        messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": content},
+                    {"role": "user", "content": "The output budget allows at most two short cases. Select the most "
+                     "relevant distinct changes for this task, or ask one clarification. Use one short sentence per "
+                     "hypothesis. Cite the task or project goal and available supporting facts. Complete the JSON."}]
+        usage["retry_reason"] = "output_token_limit"
+        try:
+            batch = self._chat(messages, schema, usage, 1400, digest, CompactBatch.model_validate_json)
+            runnable = set()
+            for card in batch.candidates:
+                if not facts.issuperset(card.fact_refs) or not {"task", "project.goal"}.intersection(card.fact_refs):
+                    raise MalformedDraft("The compact retry cited missing or unrelated project evidence.")
+                if card.operation_id is not None and card.operation_id not in operations:
+                    raise MalformedDraft("The compact retry proposed an unavailable operation.")
+                plan = compile_candidate(packet, card)
+                if plan["state"] == "invalid":
+                    raise MalformedDraft("The compact retry proposed invalid controls.")
+                if plan["instance_hash"]:
+                    runnable.add(plan["instance_hash"])
+        except ProviderError as exc:
+            exc.usage = dict(usage)
+            raise
+        usage["runnable_cases"] = len(runnable)
+        return batch, usage
+
+    def _generate_suite(self, packet, slots, content, usage, digest, feasible):
         runnable = {}
         planning = {}
         questions = []
@@ -289,7 +349,13 @@ class LocalProvider:
                 messages.append({"role": "user", "content": "Consider only the remaining slots. Describe additional distinct comparisons justified by the task. A slot may be null if irrelevant. Do not repeat previously selected controls."})
             schema = _suite_schema(offered, packet)
             try:
-                batch = self._chat(messages, schema, usage, 1550, lambda raw: _read_suite(raw, offered, packet))
+                batch = self._chat(messages, schema, usage, 1550, digest, lambda raw: _read_suite(raw, offered, packet))
+            except TruncatedDraft:
+                if attempt == 0:
+                    return self._compact_retry(packet, content, feasible, usage, digest)
+                if not (runnable or planning or questions):
+                    raise
+                break
             except MalformedDraft as exc:
                 if attempt == 0:
                     repair = True
@@ -323,9 +389,7 @@ class LocalProvider:
         return BatchDraft(candidates=candidates, clarifications=questions), usage
 
     def generate(self, packet, digest):
-        status = self.status(refresh=True)
-        if not status["available"] or status["digest"] != digest:
-            raise ProviderError("Local model availability or identity changed. Start a fresh generation.")
+        self._check_identity(digest)
         # Selecting concrete IDs in the grammar helps small CPU models cite real records.
         schema = BatchDraft.model_json_schema()
         fields = schema["$defs"]["CandidateDraft"]["properties"]
@@ -348,13 +412,15 @@ class LocalProvider:
         feasible = _feasible_operations(packet)
         slots = _case_slots(feasible)
         if len(slots) > 1:
-            return self._generate_suite(packet, slots, content, usage)
+            return self._generate_suite(packet, slots, content, usage, digest, feasible)
         try:
-            batch = self._chat(messages, schema, usage, 1400)
+            batch = self._chat(messages, schema, usage, 1400, digest)
+        except TruncatedDraft:
+            return self._compact_retry(packet, content, feasible, usage, digest)
         except MalformedDraft:
             messages.append({"role": "user", "content": "Regenerate the complete JSON. Use every required field, exact IDs, correct types and bounded concise strings."})
             try:
-                return self._chat(messages, schema, usage, 1400), usage
+                return self._chat(messages, schema, usage, 1400, digest), usage
             except MalformedDraft as exc:
                 raise ProviderError("Local model output failed scenario schema validation twice.") from exc
 
@@ -375,7 +441,7 @@ class LocalProvider:
             "missing_capability when the operation fully represents it. If no operation is relevant, return an empty "
             "candidates list and one useful clarification. Never introduce equipment or people to justify a test."})
         try:
-            refinement = self._chat(messages, schema, usage, 700)
+            refinement = self._chat(messages, schema, usage, 700, digest)
         except ProviderError:
             usage["refinement"] = "unavailable"
             return batch, usage

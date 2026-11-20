@@ -1,0 +1,39 @@
+{
+  "verified_at_utc": "2026-11-20T12:35:33Z",
+  "verifier": "python -m failureforge project-bundle <bundle> --rerun",
+  "environment": "FailureForge-2404 WSL, /opt/failureforge/.venv",
+  "network_isolation": "Both verifier processes and their solver subprocesses ran inside fresh Linux network namespaces using unshare --net. Only the down loopback interface was present.",
+  "measurement_source": "Tip displacement comes from the fresh solver summary. Gauge displacement is the reported node in the archived field whose full result hash matched the fresh solver output.",
+  "bundles": [
+    {
+      "filename": "tip-load.zip",
+      "bundle_sha256": "d14b7f94772dc8fc73c983baf6b218ad1f40d408332431de783cf001c7e3f9c7",
+      "run_id": "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+      "evidence_hash": "71a141a791c288d2ecf056255f0574d302e3aa85269878e2715470cc614ae8c1",
+      "verified": true,
+      "same_runtime_identity": true,
+      "exact_result_match": true,
+      "passed": null,
+      "tip_displacement_m": 0.000823141802826655,
+      "load_station_mm": 300,
+      "gauge_station_mm": 150,
+      "gauge_node_index": 16,
+      "gauge_displacement_mm": 0.25723181338279083
+    },
+    {
+      "filename": "midpoint-load.zip",
+      "bundle_sha256": "d8cd7bf2bf8e6c17284108cba96f2fedb8c64f8b0c46a71bfd19b0a75ec848f4",
+      "run_id": "run_fcc9acb9bbc4423f9f5fea1b0595c4f3",
+      "evidence_hash": "5a1fcd3023a6e94ab3668cc3ee68b0aec65dcb04e3392cf40d6fc071244cb1de",
+      "verified": true,
+      "same_runtime_identity": true,
+      "exact_result_match": true,
+      "passed": null,
+      "tip_displacement_m": 0.00025723181338281923,
+      "load_station_mm": 150,
+      "gauge_station_mm": 300,
+      "gauge_node_index": 32,
+      "gauge_displacement_mm": 0.25723181338281925
+    }
+  ]
+}

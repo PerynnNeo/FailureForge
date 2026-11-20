@@ -1,0 +1,12 @@
+{
+  "label": "Single hanger at the free end",
+  "adapter": "structural_beam",
+  "inputs": {
+    "length_m": 0.30,
+    "width_m": 0.008980388667236168,
+    "height_m": 0.008980388667236168,
+    "young_modulus_pa": 70000000000,
+    "tip_force_n": 3.47,
+    "elements": 16
+  }
+}

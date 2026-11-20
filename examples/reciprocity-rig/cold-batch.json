@@ -1,0 +1,49 @@
+{
+  "id": "discovery_592c659e80ae4c0d90bae845d65d5e16",
+  "revision": 2,
+  "task": "Students set up a hanger and dial gauge on this aluminum beam. Which changes to how they use the apparatus could affect the measured displacement? Compare with the single weight at the free end.",
+  "baseline_run_id": "run_f80fcc90466f4f229af9d4b2360967e1",
+  "model": "qwen2.5:3b",
+  "digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+  "prompt_version": "scenario-discovery-4.1",
+  "status": "completed",
+  "error": null,
+  "clarifications": [
+    "Does the beam's uniform cross-section and material properties remain unchanged when the hanger is placed at the clamp?"
+  ],
+  "created_at": "2026-11-20T12:27:54.960240+00:00",
+  "run_supported": true,
+  "target": 5,
+  "execution_error": null,
+  "candidates": [
+    {
+      "id": "scenario_478a1f8e0a8d402789b1dd68a9864c8e",
+      "draft": {
+        "title": "What if the students place the hanger at the clamp instead of at the free end?",
+        "hypothesis": "The students could change the load application point from the free end to the clamp, altering the distribution of forces and potentially the measured displacement.",
+        "operation_id": null,
+        "fact_refs": [
+          "task",
+          "baseline.length_m",
+          "baseline.width_m",
+          "baseline.height_m",
+          "baseline.young_modulus_pa",
+          "baseline.tip_force_n",
+          "baseline.distributed_load_n_per_m",
+          "baseline.elements",
+          "baseline.adapter"
+        ],
+        "assumptions": [
+          "The students are following the task instructions and using the provided reference model."
+        ],
+        "missing_capability": null,
+        "question": "What is the expected change in the maximum deflection or surface bending stress if the hanger is placed at the clamp instead of the free end? Provide a calculation based on the provided facts and the beam's properties.",
+        "shift_ms": null
+      },
+      "dismissed": false,
+      "review": null,
+      "family_key": null,
+      "execution": null
+    }
+  ]
+}

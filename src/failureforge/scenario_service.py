@@ -128,13 +128,14 @@ class ScenarioService:
     @staticmethod
     def _batch(db, project_id, batch_id):
         row = db.execute("""SELECT id,revision,task,baseline_run_id,model,digest,prompt_version,
-                            status,error,clarifications,created_at,run_supported,target,execution_error FROM scenario_batches
+                            status,error,clarifications,usage,created_at,run_supported,target,execution_error FROM scenario_batches
                             WHERE id=? AND project_id=?""", (batch_id, project_id)).fetchone()
         if row is None:
             raise KeyError(batch_id)
         result = dict(row)
         result["run_supported"] = bool(row["run_supported"])
         result["clarifications"] = json.loads(row["clarifications"])
+        result["usage"] = json.loads(row["usage"]) if row["usage"] else {}
         result["candidates"] = []
         for c in db.execute("SELECT * FROM scenario_candidates WHERE batch_id=? ORDER BY rowid", (batch_id,)):
             draft = json.loads(c["draft"])
@@ -215,7 +216,7 @@ class ScenarioService:
                 candidates.append(draft.model_dump_json())
             clarifications = batch.clarifications
         except ProviderError as exc:
-            error, candidates, clarifications, usage = str(exc), [], [], {}
+            error, candidates, clarifications, usage = str(exc), [], [], exc.usage or {}
         except Exception:
             logging.getLogger(__name__).exception("Scenario generation failed for batch %s", row["id"])
             error, candidates, clarifications, usage = "Scenario generation could not be completed.", [], [], {}

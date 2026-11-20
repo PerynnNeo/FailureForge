@@ -1,0 +1,10 @@
+{
+  "prototype": "Aluminum cantilever teaching rig with movable load hanger and dial gauge",
+  "checklist_source": "Rig builders' published procedure, section 5, figure 7 and table 2, https://peer.asee.org/effective-use-of-an-undergraduate-research-fellowship-for-design-and-manufacture-of-tools-to-assist-in-teaching-strength-of-materials.pdf",
+  "conditions": [
+    {"id": "load-at-b-read-c", "description": "Hang the nominal test weight at B (half span) and read displacement at C (the free end)."},
+    {"id": "load-at-c-read-b", "description": "Use the same weight at C, move the gauge to B and compare that reading with the first. Comparing two tip readings does not establish reciprocity."},
+    {"id": "gauge-alignment", "description": "Keep the dial probe perpendicular to the beam and on its longitudinal centerline at each gauge position."},
+    {"id": "gauge-preload", "description": "Set the gauge bracket to give approximately 1 mm of initial probe compression."}
+  ]
+}

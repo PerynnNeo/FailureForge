@@ -39,6 +39,8 @@ For frontend hot reload, run `npm run dev` in `apps/web` while the API runs on p
 
 ### Discover scenarios on CPU
 
+The [aluminum teaching-rig pilot](examples/reciprocity-rig/README.md) follows a published prototype from the project wizard to simulated camera footage and a comparison with two bench measurements. It includes the original failed attempt and an independent checklist of conditions the product missed.
+
 Open a saved project and choose **Discover scenarios**. Describe what the design does and choose a completed reference from its current revision. For a structural design, **Import reference JSON** accepts a requirements file containing an adapter and SI inputs. Import runs those exact inputs and preserves the file digest. The [example shelf definition](apps/web/public/examples/beam-reference.json) is editable. A brief alone can generate questions and planning suggestions.
 
 The planner calls a local Ollama service on loopback, using CPU inference. Install a local model with `ollama pull qwen2.5:3b`. On Windows, `.\scripts\start_scenario_laptop.ps1` starts the model server and workbench, including when this workspace has a portable runtime under `vendor/ollama`. To use a different installed model or local port set `FAILUREFORGE_SCENARIO_MODEL` or `FAILUREFORGE_OLLAMA_PORT` before launch. The existing CPU analyses also work when the model is offline. [Ollama for Windows](https://docs.ollama.com/windows)

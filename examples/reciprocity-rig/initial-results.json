@@ -1,0 +1,19 @@
+{
+  "batch_id": "discovery_4acb9639bf2e496bb8f81753bc0d4fd1",
+  "target": 5,
+  "generation_status": "error",
+  "run_supported": true,
+  "execution_error": null,
+  "rows": [],
+  "counts": {
+    "proposed": 0,
+    "submitted": 0,
+    "assessed": 0,
+    "passed": 0,
+    "failed": 0,
+    "measurement_only": 0,
+    "inconclusive": 0,
+    "pending": 0,
+    "blocked": 0
+  }
+}

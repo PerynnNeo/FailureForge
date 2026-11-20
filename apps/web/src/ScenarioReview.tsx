@@ -87,7 +87,7 @@ export function ScenarioReview({ projectId, revision, candidate, stale, dirty, o
             <tbody>{Object.entries(report.diff).map(([key, values]) => <tr key={key}><th scope="row">{label(key)}</th>
               <td>{fieldText(values.reference) || 'Unset'}</td><td>{fieldText(values.variant) || 'Unset'}</td></tr>)}</tbody>
           </table></div>
-          {report.observables.length > 0 && <div><h5>Pass rules</h5><ul className="scenario-list">
+          {report.observables.length > 0 && <div><h5>Measurements and limits</h5><ul className="scenario-list">
             {report.observables.map(rule => <li key={rule}>{rule}</li>)}</ul></div>}
           <details className="scenario-detail"><summary>Complete solver inputs</summary>
             <h5>Reference</h5><pre>{JSON.stringify(report.reference, null, 2)}</pre>
@@ -101,7 +101,8 @@ export function ScenarioReview({ projectId, revision, candidate, stale, dirty, o
         {execution ? 'Submitted' : stale ? 'Outdated revision' : reviewable && !confirmed ? 'Review required' :
           report ? states[report.state] || label(report.state) : 'Checking setup'}
       </span></div>
-    <p>{draft.hypothesis}</p>
+    <details className="scenario-detail" open={!execution}><summary>AI-generated hypothesis</summary>
+      <p>{draft.hypothesis}</p></details>
     {execution ? <><ScenarioEvidence projectId={projectId} execution={execution}/>
       {candidate.review?.review_note && <div><h5>Engineer’s review note</h5><p className="scenario-saved-note">{candidate.review.review_note}</p></div>}
       <details className="scenario-detail"><summary>{batchExecution ? 'Test setup and supporting facts' : 'Approved test and supporting facts'}</summary>

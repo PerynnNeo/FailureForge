@@ -20,6 +20,16 @@ type DiscoveryPage = {
 const active = (status: string) => status === 'queued' || status === 'running';
 const describe = (failure: unknown) => failure instanceof Error ? failure.message : 'The request failed.';
 
+function downloadBatch(batch: ScenarioBatch) {
+  const file = new Blob([JSON.stringify(batch, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'batch.json';
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export default function ProjectScenarios({ project, dirty, onProjectSaved, reloadProject }: {
   project: Project; dirty: boolean; onProjectSaved: (project: Project) => void; reloadProject: () => Promise<void>;
 }) {
@@ -162,6 +172,12 @@ export default function ProjectScenarios({ project, dirty, onProjectSaved, reloa
         <ScenarioBatchResults key={batch.id} projectId={project.id} batchId={batch.id} generationStatus={batch.status}
           candidates={batch.candidates} revision={project.revision} dirty={dirty} stale={stale} refresh={refresh}
           onChange={reload} clarify={clarify}/>
+        {!active(batch.status) && <div className="scenario-actions" role="group" aria-label="Download this scenario batch">
+          <button type="button" className="button secondary" onClick={() => downloadBatch(batch)}>
+            <Icon name="download" size={15}/>Download proposals (JSON)</button>
+          <a className="button secondary" href={'/api' + base + '/scenarios/batches/' + encodeURIComponent(batch.id) + '/results'}
+            download="results.json"><Icon name="download" size={15}/>Download results (JSON)</a>
+        </div>}
         {batch.clarifications.length > 0 && <div><h4>Information to clarify</h4><ul className="scenario-questions">
           {batch.clarifications.map((item, i) => <li key={i}>{item} <button type="button" className="project-inline-button" onClick={() => clarify(item)}>Answer in task description</button></li>)}</ul></div>}
       </div></section>}

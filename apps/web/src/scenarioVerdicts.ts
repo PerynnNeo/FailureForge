@@ -25,6 +25,9 @@ export function reportInProgress(report: BatchReport) {
 
 export function coverageText(report: BatchReport) {
   const { assessed, submitted } = report.counts;
+  if (report.counts.measurement_only) {
+    return `${assessed + report.counts.measurement_only} of ${report.counts.proposed} proposed cases returned measurements · ${assessed} with a pass/fail verdict`;
+  }
   if (!report.target) return `${assessed} of ${submitted} submitted cases assessed`;
   return `${assessed} of ${report.counts.proposed} proposed cases assessed · Target ${report.target} cases`;
 }

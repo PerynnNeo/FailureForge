@@ -1,0 +1,44 @@
+{
+  "project_id": "project_b8ca8096a69441bf908c5aa8368400d9",
+  "batch_id": "discovery_b6bf030970ac4aeda09274db8cbe187b",
+  "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36",
+  "live_comparison": "http://127.0.0.1:8000/#/projects/project_b8ca8096a69441bf908c5aa8368400d9/analysis?batch=suite_8dcb4876ad5949b788c66ff24ede3d36&run=run_fcc9acb9bbc4423f9f5fea1b0595c4f3",
+  "pair_source": "discovery",
+  "inspected_at": "2026-11-20T12:37:38.266Z",
+  "observations": [
+    {
+      "load_station_mm": 300,
+      "gauge_station_mm": 150,
+      "deflection_mm": 0.1969,
+      "simulated_deflection_mm": 0.25723181338279083,
+      "residual_mm": 0.06033181338279084,
+      "run_id": "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+      "evidence_hash": "71a141a791c288d2ecf056255f0574d302e3aa85269878e2715470cc614ae8c1"
+    },
+    {
+      "load_station_mm": 150,
+      "gauge_station_mm": 300,
+      "deflection_mm": 0.20638,
+      "simulated_deflection_mm": 0.25723181338281925,
+      "residual_mm": 0.050851813382819244,
+      "run_id": "run_fcc9acb9bbc4423f9f5fea1b0595c4f3",
+      "evidence_hash": "5a1fcd3023a6e94ab3668cc3ee68b0aec65dcb04e3392cf40d6fc071244cb1de"
+    }
+  ],
+  "cameras": [
+    {
+      "src": "http://127.0.0.1:8000/api/projects/project_b8ca8096a69441bf908c5aa8368400d9/analysis/run_8f22e35f3b3d48fca09ed62a9d0c950a/camera-replay/main.mp4",
+      "duration": 5,
+      "width": 640,
+      "height": 360,
+      "bytes": 41668
+    },
+    {
+      "src": "http://127.0.0.1:8000/api/projects/project_b8ca8096a69441bf908c5aa8368400d9/analysis/run_fcc9acb9bbc4423f9f5fea1b0595c4f3/camera-replay/main.mp4",
+      "duration": 5,
+      "width": 640,
+      "height": 360,
+      "bytes": 41672
+    }
+  ]
+}

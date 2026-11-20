@@ -3,6 +3,7 @@ import { label, request } from './api';
 import { Icon, Loading, Notice } from './components';
 import type { RunDetail } from './analysisInputs';
 import { RunResult } from './CampaignRunResult';
+import { StationComparison } from './StationComparison';
 import { synchronizeCameras } from './cameraPlayback';
 import { readMotion } from './motionData';
 import { useCameraReplay, useViewportActive } from './ProjectCameraReplay';
@@ -170,6 +171,8 @@ export function CompareWithReference({ base, runs, field, reference, selectedId,
 
       <ComparePlayers key={left!.id + '|' + right!.id} leftPath={leftPath} rightPath={rightPath} fixedPair={fixedPair}
         leftDuration={recordingDuration(leftDetail.detail)} rightDuration={recordingDuration(rightDetail.detail)}/>
+
+      <StationComparison reference={leftDetail.detail} comparison={rightDetail.detail}/>
 
       <div className="compare-results">
         {left ? <RunResult run={left} detail={leftDetail.detail}/> : <Loading/>}

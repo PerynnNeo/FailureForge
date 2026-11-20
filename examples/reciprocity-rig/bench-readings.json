@@ -1,0 +1,12 @@
+{
+  "source": "https://peer.asee.org/19479",
+  "location": "Finley and Ghorashi (2013), section 5, Table 2, printed page 23.465.13",
+  "reference_frame": "Stations measured from the clamped end. Values are displacement magnitudes.",
+  "force_n": 3.47,
+  "readings": [
+    {"load_station_mm": 300, "gauge_station_mm": 150, "deflection_mm": 0.1969},
+    {"load_station_mm": 150, "gauge_station_mm": 300, "deflection_mm": 0.20638}
+  ],
+  "absolute_uncertainty_mm": null,
+  "notes": "Table 2 supplies the force. The narrative rounds or reports it as 3.48 N. The authors give no measurement uncertainty or allowable deflection. A printed percentage in the table is inconsistent with the two displayed readings; this pilot compares the readings directly."
+}

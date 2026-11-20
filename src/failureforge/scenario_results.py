@@ -2,6 +2,7 @@
 from .artifacts import ArtifactError
 from .contracts import config_hash
 from .project_bundle import evidence
+from .project_validity import assessment_error
 
 
 def applied_change(report):
@@ -50,6 +51,10 @@ def _measurement(reference, variant):
         return {"name": "Arrival error" if arrival_failed else "Maximum hold error",
                 "value": summary[key] * 1000, "reference_value": before[key] * 1000, "unit": "mm",
                 "limit": summary["error_limit_m"] * 1000}
+    key = "continuous_max_abs_displacement_m"
+    if not checks and key in summary and key in before:
+        return {"name": "Maximum deflection", "unit": "mm", "value": summary[key] * 1000,
+                "reference_value": before[key] * 1000, "limit": None}
     return None
 
 
@@ -76,7 +81,7 @@ def recorded_outcome(reference, variant, expected_runtime=None):
         if row["status"] in ("queued", "running"):
             results.append(None)
             continue
-        problem = row["error"] or row["assessment_error"]
+        problem = row["error"] or row["assessment_error"] or assessment_error(result)
         if row["status"] != "completed" or not result or not row["evidence_hash"] or problem:
             return "inconclusive", f"{role}: {problem or row['status'] + ' without assessable evidence'}", None
         results.append(result)
@@ -91,5 +96,7 @@ def recorded_outcome(reference, variant, expected_runtime=None):
     metric = _measurement(left, right)
     verdict = right.get("passed")
     if verdict is None:
+        if metric is None:
+            return "inconclusive", "The two runs have no comparable recorded measurement.", None
         return "measurement_only", "Measurements were recorded without an overall acceptance verdict.", metric
     return ("passed" if verdict else "failed"), "Recorded solver verdict for this what-if.", metric

@@ -1,0 +1,168 @@
+{
+  "batch_id": "discovery_b6bf030970ac4aeda09274db8cbe187b",
+  "target": 5,
+  "generation_status": "completed",
+  "run_supported": true,
+  "execution_error": null,
+  "rows": [
+    {
+      "candidate_id": "scenario_2b3a76b4014048fa9708f3bf32578fe7",
+      "title": "Uniform Load Span",
+      "hypothesis": "The students spread the same total transverse force evenly along the full span of the aluminum beam. This setup will result in a uniform distribution of stress across the beam, leading to a consistent maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at each point along the span, allowing a",
+      "family_key": "beam.load_placement",
+      "assumptions": [
+        "The students will not introduce any additional forces or displacements outside the setup."
+      ],
+      "state": "measurement_only",
+      "reason": "Measurements were recorded without an overall acceptance verdict.",
+      "reference_run_id": "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+      "variant_run_id": "run_21fac604cc0d46e48dc1ab10c7cfa77a",
+      "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36",
+      "measurement": {
+        "name": "Maximum deflection",
+        "unit": "mm",
+        "value": 0.308678176067475,
+        "reference_value": 0.8231418028466,
+        "limit": null
+      },
+      "applied_change": "11.5667 N/m across full span"
+    },
+    {
+      "candidate_id": "scenario_4b3fc60596c14a01adbf9ca1940ecd7e",
+      "title": "Concentrated Load at Midspan",
+      "hypothesis": "The students place the same total force at one point halfway between the clamp and the free tip. This setup will result in a concentrated load at midspan, leading to a maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at midspan, allowing a",
+      "family_key": "beam.load_placement",
+      "assumptions": [
+        "The students will ensure the beam is perfectly vertical and horizontal at midspan."
+      ],
+      "state": "measurement_only",
+      "reason": "Measurements were recorded without an overall acceptance verdict.",
+      "reference_run_id": "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+      "variant_run_id": "run_fcc9acb9bbc4423f9f5fea1b0595c4f3",
+      "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36",
+      "measurement": {
+        "name": "Maximum deflection",
+        "unit": "mm",
+        "value": 0.2572318133895624,
+        "reference_value": 0.8231418028466,
+        "limit": null
+      },
+      "applied_change": "3.47 N at 50% of span"
+    },
+    {
+      "candidate_id": "scenario_e7d4ab3ae35740e9aaec8a6f50196273",
+      "title": "Uniform Load Inner Half",
+      "hypothesis": "The students spread the same total force uniformly over the inner half, from the clamp to midspan. This setup will result in a uniform load on the inner half of the beam, leading to a consistent maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at each point along the inner half, allowing a",
+      "family_key": "beam.load_placement",
+      "assumptions": [
+        "The students will ensure the beam is perfectly vertical and horizontal along the inner half."
+      ],
+      "state": "measurement_only",
+      "reason": "Measurements were recorded without an overall acceptance verdict.",
+      "reference_run_id": "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+      "variant_run_id": "run_0a242e01f0c14d1ea08ea84db00ab987",
+      "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36",
+      "measurement": {
+        "name": "Maximum deflection",
+        "unit": "mm",
+        "value": 0.09003113468634687,
+        "reference_value": 0.8231418028466,
+        "limit": null
+      },
+      "applied_change": "3.47 N over 0–50% of span"
+    },
+    {
+      "candidate_id": "scenario_a8bd427b6c9b4a5cad820e899fa608ab",
+      "title": "Uniform Load Outer Half",
+      "hypothesis": "The students spread the same total force uniformly over the outer half, from midspan to the free end. This setup will result in a uniform load on the outer half of the beam, leading to a consistent maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at each point along the outer half,allowing",
+      "family_key": "beam.load_placement",
+      "assumptions": [
+        "The students will ensure the beam is perfectly vertical and horizontal along the outer half."
+      ],
+      "state": "measurement_only",
+      "reason": "Measurements were recorded without an overall acceptance verdict.",
+      "reference_run_id": "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+      "variant_run_id": "run_d9e050fd23f840f49fc28ba78e6295dc",
+      "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36",
+      "measurement": {
+        "name": "Maximum deflection",
+        "unit": "mm",
+        "value": 0.5273252174486032,
+        "reference_value": 0.8231418028466,
+        "limit": null
+      },
+      "applied_change": "3.47 N over 50–100% of span"
+    },
+    {
+      "candidate_id": "scenario_aaf91a7802054306b193fcdbb1c2124b",
+      "title": "Two Contacts at Midpoints",
+      "hypothesis": "The students place two localized contacts, at one-quarter and three-quarters of the span from the clamp, each carrying half the same total force. This setup will result in a concentrated load at two points, leading to a maximum deflection or surface bending stress measured by the dial gauge. The dial gauge will register the displacement at each contact point",
+      "family_key": "beam.load_placement",
+      "assumptions": [
+        "The students will ensure the beam is perfectly vertical and horizontal at both contact points."
+      ],
+      "state": "measurement_only",
+      "reason": "Measurements were recorded without an overall acceptance verdict.",
+      "reference_run_id": "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+      "variant_run_id": "run_a5c9a9b89d2946e69e8810a56e60a260",
+      "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36",
+      "measurement": {
+        "name": "Maximum deflection",
+        "unit": "mm",
+        "value": 0.2958165853979969,
+        "reference_value": 0.8231418028466,
+        "limit": null
+      },
+      "applied_change": "1.735 N at 25% of span, 1.735 N at 75% of span"
+    },
+    {
+      "candidate_id": "scenario_11b85319319541229e485e3d70efc4ea",
+      "title": "Remove Applied Loads",
+      "hypothesis": "The students remove all applied transverse loads and measure the static unloaded equilibrium after pickup. This setup will result in the beam returning to its unloaded equilibrium, allowing the students to measure the static deflection. The dial gauge will register the displacement at the midpoint of the beam, allowing a",
+      "family_key": "beam.payload_removal",
+      "assumptions": [
+        "The students will ensure the beam is perfectly vertical and horizontal during the removal process."
+      ],
+      "state": "measurement_only",
+      "reason": "Measurements were recorded without an overall acceptance verdict.",
+      "reference_run_id": "run_8f22e35f3b3d48fca09ed62a9d0c950a",
+      "variant_run_id": "run_708c8904e7d44c6a85a2057f675fa340",
+      "suite_id": "suite_8dcb4876ad5949b788c66ff24ede3d36",
+      "measurement": {
+        "name": "Maximum deflection",
+        "unit": "mm",
+        "value": 0,
+        "reference_value": 0.8231418028466,
+        "limit": null
+      },
+      "applied_change": "External applied load removed (0 N)"
+    },
+    {
+      "candidate_id": "scenario_e6bcf8c35d4847d59a4610134e8c4962",
+      "title": "Missing Effect",
+      "hypothesis": "The students will observe the transient rebound and permanent deformation of the beam after the removal of applied loads. This setup will result in the beam returning to its unloaded equilibrium, allowing the students to measure the static deflection. The dial gauge will register the displacement at the midpoint of the beam, allowing a",
+      "family_key": null,
+      "assumptions": [
+        "The students will ensure the beam is perfectly vertical and horizontal during the removal process and observe the effects of transient rebound and any"
+      ],
+      "state": "needs_capability",
+      "reason": "The proposed situation cannot be compiled in full with the registered operations for this reference.",
+      "reference_run_id": null,
+      "variant_run_id": null,
+      "suite_id": null,
+      "measurement": null,
+      "applied_change": null
+    }
+  ],
+  "counts": {
+    "proposed": 7,
+    "submitted": 6,
+    "assessed": 0,
+    "passed": 0,
+    "failed": 0,
+    "measurement_only": 6,
+    "inconclusive": 0,
+    "pending": 0,
+    "blocked": 1
+  }
+}
