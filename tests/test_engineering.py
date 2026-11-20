@@ -185,6 +185,48 @@ def test_design_limits_catch_interior_extrema_between_mesh_nodes():
     assert beam["summary"]["continuous_max_surface_stress_pa"] == pytest.approx(12.5 * BEAM["height_m"] / (2 * inertia))
 
 
+def test_off_grid_point_and_patch_match_independent_cantilever_influence_function():
+    # A transverse point at a changes the tip displacement by F a²(3L-a)/(6EI).
+    # Integrate this Green function over the patch analytically; compare both
+    # the FE nodes and the maximum from the independent piecewise equilibrium path.
+    inputs = {**BEAM, "tip_force_n": 0., "elements": 5, "span_loads": [
+        {"start_fraction": .193, "end_fraction": .193, "force_n": 1.75},
+        {"start_fraction": .419, "end_fraction": .826, "force_n": 2.25}]}
+    out = run_engineering(inputs)
+    length = inputs["length_m"]
+    inertia = inputs["width_m"]*inputs["height_m"]**3/12
+    def primitive(x):
+        return x**3 - x**4/4
+    point = 1.75*.193**2*(3-.193)
+    patch = 2.25*(primitive(.826)-primitive(.419))/(.826-.419)
+    expected = (point+patch)*length**3/(6*inputs["young_modulus_pa"]*inertia)
+    moment = (1.75*.193 + 2.25*(.419+.826)/2)*length
+    summary = out["summary"]
+    assert out["solver"] == "euler_bernoulli_span_loads_v2" and out["numerical_diagnostics"]["passed"]
+    assert summary["continuous_max_abs_displacement_m"] == pytest.approx(expected, rel=2e-12)
+    assert summary["tip_displacement_m"] == pytest.approx(expected, rel=1e-8)
+    assert summary["continuous_max_surface_stress_pa"] == pytest.approx(moment*inputs["height_m"]/(2*inertia))
+    assert summary["root_reaction_n"] == pytest.approx(-4.) and summary["root_reaction_moment_nm"] == pytest.approx(-moment)
+
+
+def test_mixed_sign_span_loads_match_legacy_continuous_extrema_and_convergence():
+    loads = {**BEAM, "tip_force_n": -45., "distributed_load_n_per_m": 100., "elements": 5}
+    legacy = run_engineering(loads)
+    result = run_engineering({**loads, "distributed_load_n_per_m": 0., "span_loads": [
+        {"start_fraction": a, "end_fraction": b, "force_n":100*loads["length_m"]*(b-a)}
+        for a, b in ((0., .23), (.23, .71), (.71, 1.))]})
+    for name in ("continuous_max_abs_displacement_m", "continuous_max_surface_stress_pa", "tip_displacement_m",
+                 "root_reaction_moment_nm", "root_reaction_n"):
+        assert result["summary"][name] == pytest.approx(legacy["summary"][name], rel=2e-8, abs=1e-10)
+    assert result["convergence"]["max_abs_change"] == pytest.approx(legacy["convergence"]["max_abs_change"], abs=1e-12)
+
+
+@pytest.mark.parametrize("start,end", [(.5,.49), (-.001,.6), (.61,1.001), (.2,.200000001)])
+def test_local_load_intervals_are_bounded(start, end):
+    with pytest.raises(ValidationError):
+        run_engineering({**BEAM, "span_loads": [{"start_fraction": start, "end_fraction": end, "force_n": 2.}]})
+
+
 @pytest.mark.parametrize("bad", [
     {**ROD, "kind": "thermal_3d"}, {**ROD, "heat_generation_w_m3": math.inf},
     {**ROD, "elements": True}, {**ROD, "right_temperature_k": -1}, {**ROD, "area_m2": 0},

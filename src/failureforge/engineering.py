@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import spsolve
 
+from . import beam_span
+
 
 Length = Annotated[float, Field(ge=1e-6, le=1e4)]
 Positive = Annotated[float, Field(gt=0)]
@@ -20,6 +22,20 @@ class StudyInput(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False, strict=True, str_strip_whitespace=True)
 
 
+class SpanLoad(StudyInput):
+    start_fraction: float = Field(ge=0, le=1, description="Distance from the clamp as a fraction of beam length.")
+    end_fraction: float = Field(ge=0, le=1, description="End of the loaded interval; equal to start for a point load.")
+    force_n: Force = Field(description="Total signed transverse force, spread uniformly over the interval.")
+
+    @model_validator(mode="after")
+    def interval(self):
+        if self.end_fraction < self.start_fraction:
+            raise ValueError("The end of a loaded interval must be at or beyond its start")
+        if 0 < self.end_fraction - self.start_fraction < 1e-7:
+            raise ValueError("Use coincident positions for a point or a patch at least 1e-7 of the span wide")
+        return self
+
+
 class BeamStudy(StudyInput):
     kind: Literal["structural_beam"]
     length_m: Length
@@ -29,6 +45,8 @@ class BeamStudy(StudyInput):
     tip_force_n: Force = 0
     distributed_load_n_per_m: Force = 0
     face_pressure_pa: Force | None = Field(default=None, description="Uniform signed pressure normal to the full span × width face. Positive pressure bends in the positive tip-force direction.")
+    span_loads: list[SpanLoad] | None = Field(default=None, min_length=1, max_length=8,
+        description="Additional centerline point and uniform patch loads. Fractions run from the clamp (0) to the tip (1).")
     elements: int = Field(default=16, ge=2, le=128)
     max_surface_stress_pa: Positive | None = None
     max_displacement_m: Positive | None = None
@@ -46,7 +64,7 @@ class BeamStudy(StudyInput):
         return self.distributed_load_n_per_m + (self.face_pressure_pa or 0.0) * self.width_m
 
     def recorded_inputs(self):
-        return self.model_dump(exclude={"face_pressure_pa"} if self.face_pressure_pa is None else set())
+        return self.model_dump(exclude={name for name in ("face_pressure_pa", "span_loads") if getattr(self, name) is None})
 
 
 class ThermalStudy(StudyInput):
@@ -156,6 +174,8 @@ def _beam_solution(model: BeamStudy, n: int):
     element_load = distributed * np.array([h/2, h*h/12, h/2, -h*h/12])
     np.add.at(force, dofs, np.broadcast_to(element_load, dofs.shape))
     force[-2] += model.tip_force_n * length**3 / rigidity
+    if model.span_loads:
+        beam_span.add_span_forces(force, model, n, rigidity)
     solution = np.zeros_like(force)
     solution[2:] = spsolve(matrix[2:, 2:], force[2:])
     v = solution[::2]
@@ -220,8 +240,11 @@ def _solve_beam(model: BeamStudy):
     stress_scale = model.young_modulus_pa * model.height_m / 2
     max_displacement = float(max(np.max(np.abs(v)), np.max(np.abs(mid))))
     max_stress = float(stress_scale * max(np.max(np.abs(k_left)), np.max(np.abs(k_right))))
-    continuous_displacement, continuous_stress = _beam_reference_peaks(model)
-    result = {"kind": model.kind, "solver": "euler_bernoulli_hermite_v1", "inputs": model.recorded_inputs(),
+    if model.span_loads:
+        continuous_displacement, continuous_stress = beam_span.continuous_peaks(model)
+    else:
+        continuous_displacement, continuous_stress = _beam_reference_peaks(model)
+    result = {"kind": model.kind, "solver": "euler_bernoulli_span_loads_v2" if model.span_loads else "euler_bernoulli_hermite_v1", "inputs": model.recorded_inputs(),
             "summary": {"tip_displacement_m": float(v[-1]), "tip_rotation_rad": float(slope[-1]),
                         "max_sampled_abs_displacement_m": max_displacement,
                         "continuous_max_abs_displacement_m": continuous_displacement,
@@ -253,8 +276,18 @@ def _solve_beam(model: BeamStudy):
     distributed = model.transverse_load_n_per_m * model.length_m
     force_residual = reactions[0] + force + distributed
     moment_residual = reactions[1] + model.length_m * (force + distributed / 2)
-    checks = [_balance_check("net_force_n", force_residual, abs(force) + abs(distributed)),
-              _balance_check("net_moment_nm", moment_residual, model.length_m * (abs(force) + abs(distributed/2))),
+    force_scale = abs(force) + abs(distributed)
+    moment_scale = model.length_m * (abs(force) + abs(distributed/2))
+    if model.span_loads:
+        result["assumptions"][1] = "Signed transverse forces act along the beam centerline in one bending plane. Each patch has constant line load across its stated span interval."
+        for patch in model.span_loads:
+            moment = patch.force_n * model.length_m * (patch.start_fraction + patch.end_fraction) / 2
+            force_residual += patch.force_n
+            moment_residual += moment
+            force_scale += abs(patch.force_n)
+            moment_scale += abs(moment)
+    checks = [_balance_check("net_force_n", force_residual, force_scale),
+              _balance_check("net_moment_nm", moment_residual, moment_scale),
               {"quantity": "mesh_displacement", "passed": result["convergence"]["passed"]},
               {"quantity": "mesh_peak_stress", "passed": result["convergence"]["peak_stress"]["passed"]}]
     return _acceptance(result, [("continuous_max_surface_stress_pa", model.max_surface_stress_pa),
@@ -335,6 +368,13 @@ def _response_terms(model, observation):
         length = model.length_m
         inertia = model.width_m * model.height_m**3 / 12
         sensitivity = (observation.tip_force_n * length**3 / 3 + model.transverse_load_n_per_m * length**4 / 8) / inertia
+        for patch in model.span_loads or ():
+            a, b = patch.start_fraction, patch.end_fraction
+            # Average the cubic tip-displacement influence function x²(3-x)
+            # over the loaded interval (point value when a == b).
+            mid, half = (a+b)/2, (b-a)/2
+            influence = mid*mid*(3-mid) + half*half*(1-mid)
+            sensitivity += patch.force_n * length**3 * influence / (6*inertia)
         return 0.0, sensitivity, observation.tip_displacement_m
     x = observation.position_m
     offset = model.left_temperature_k + (model.right_temperature_k - model.left_temperature_k) * x / model.length_m

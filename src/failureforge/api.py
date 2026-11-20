@@ -19,6 +19,7 @@ from .contracts import CampaignSpec, RerunRequest, catalog
 from .persistence import Conflict, Store
 from .projects import ASSET_LIMIT, project_router
 from .project_runs import ProjectRuns, analysis_router
+from .scenario_service import ScenarioService, scenario_router
 from .project_bundle import bundle_router
 from .project_sweeps import sweep_router
 from .environment_matrices import environment_matrix_router
@@ -45,19 +46,24 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
     artifacts = ArtifactStore(root / "artifacts")
     projects_router, projects = project_router(store, root / "project-assets")
     analyses = ProjectRuns(projects)
+    scenarios = ScenarioService(analyses)
     cameras = CameraReplays(analyses, root / "project-camera-replays")
     @asynccontextmanager
     async def lifespan(app):
         analyses.start()
+        scenarios.start()
         try:
             yield
         finally:
+            scenarios.close()
             analyses.close()
             cameras.pool.shutdown(wait=False, cancel_futures=True)
     app = FastAPI(title="FailureForge", version="0.1.0", lifespan=lifespan)
     app.state.store, app.state.artifacts, app.state.data_dir = store, artifacts, root
     app.state.projects = projects
+    app.state.scenarios = scenarios
     app.include_router(projects_router)
+    app.include_router(scenario_router(scenarios))
     app.include_router(analysis_router(analyses))
     app.include_router(bundle_router(analyses))
     app.include_router(sweep_router(analyses))

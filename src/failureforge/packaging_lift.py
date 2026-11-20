@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 
 import numpy as np
-from pydantic import Field, FiniteFloat
+from pydantic import Field, FiniteFloat, model_validator
 from scipy.integrate import solve_ivp
 
 from .contracts import Contract, config_hash
@@ -15,6 +15,24 @@ class PackagingLift(Contract):
         description="Mass secured to the carriage for the entire cycle, in kilograms.")
     head_force_n: FiniteFloat = Field(ge=0, le=5.0, strict=True,
         description="Downward force applied during the one-second hold, in newtons.")
+
+
+LIFT_ADAPTERS = ("packaging_lift", "packaging_lift_timed_v2")
+
+
+class TimedPackagingLift(PackagingLift):
+    head_force_n: FiniteFloat = Field(ge=0, le=5, strict=True,
+        description="Downward force during the prescribed packing-head pulse, in newtons.")
+    head_onset_ms: int = Field(ge=0, lt=2000, strict=True,
+        description="Time from the start of the lift cycle to head engagement, in whole milliseconds.")
+    head_duration_ms: int = Field(gt=0, le=2000, strict=True,
+        description="Duration of the head force pulse, in whole milliseconds.")
+
+    @model_validator(mode="after")
+    def pulse_fits_cycle(self):
+        if self.head_onset_ms + self.head_duration_ms > 2000:
+            raise ValueError("The entire head pulse must fit inside the 2000 ms lift cycle")
+        return self
 
 
 @dataclass(frozen=True)
@@ -66,11 +84,39 @@ def _phase(mass, head_force, start, stop, initial, method, max_step):
     return result
 
 
-def _cycle(mass, force, method, max_step):
-    f = FIXTURE
-    rise = _phase(mass, 0.0, 0, f.arrival_deadline_s, (0.0, 0.0), method, max_step)
-    hold = _phase(mass, force, f.arrival_deadline_s, f.end_time_s, rise.y[:, -1], method, max_step)
-    return rise, hold
+def _cycle(mass, intervals, method, max_step):
+    state = (0.0, 0.0)
+    phases = []
+    for start, stop, force in intervals:
+        phase = _phase(mass, force, start, stop, state, method, max_step)
+        phases.append(phase)
+        state = phase.y[:, -1]
+    return phases
+
+
+def _sample(phases, times):
+    pieces = []
+    for index, phase in enumerate(phases):
+        upper = times <= phase.t[-1] if index == len(phases) - 1 else times < phase.t[-1]
+        pieces.append(phase.sol(times[(times >= phase.t[0]) & upper]))
+    return np.column_stack(pieces)
+
+
+def _saturated_start(mass, intervals, check_time):
+    """Independent piecewise analytic trajectory through the first 20 ms."""
+    z, v = 0.0, 0.0
+    saturated = True
+    for start, end, force in intervals:
+        duration = min(end, check_time) - start
+        if duration <= 0:
+            break
+        acceleration = (FIXTURE.force_limit_n - force) / mass - FIXTURE.gravity_m_s2
+        z += v * duration + 0.5 * acceleration * duration**2
+        v += acceleration * duration
+        # For this positive acceleration and upward motion the PD demand
+        # decreases throughout the interval; its smallest value is at the end.
+        saturated &= acceleration >= 0 and FIXTURE.command(z, v) >= FIXTURE.force_limit_n
+    return z, saturated
 
 
 def _extrema(phase, component):
@@ -81,30 +127,40 @@ def _extrema(phase, component):
 def run_packaging_lift(inputs: PackagingLift) -> dict:
     f = FIXTURE
     mass = f.empty_mass_kg + inputs.payload_kg
-    rise, hold = _cycle(mass, inputs.head_force_n, "DOP853", 0.015625)
-    check_rise, check_hold = _cycle(mass, inputs.head_force_n, "RK45", 0.0078125)
-    rise_display = np.linspace(0.0, f.arrival_deadline_s, 101)
-    hold_display = np.linspace(f.arrival_deadline_s, f.end_time_s, 101)
-    times = np.r_[rise_display[:-1], hold_display]
-    states = np.column_stack((rise.sol(rise_display[:-1]), hold.sol(hold_display)))
-    other_states = np.column_stack((check_rise.sol(rise_display[:-1]), check_hold.sol(hold_display)))
+    timed = isinstance(inputs, TimedPackagingLift)
+    if timed:
+        onset = inputs.head_onset_ms / 1000
+        end = (inputs.head_onset_ms + inputs.head_duration_ms) / 1000
+        boundaries = sorted({0.0, onset, end, f.arrival_deadline_s, f.end_time_s})
+        ticks = np.union1d(np.arange(0, 2001, 10), [inputs.head_onset_ms, inputs.head_onset_ms + inputs.head_duration_ms])
+        times = ticks / 1000
+    else:
+        onset, end = f.arrival_deadline_s, f.end_time_s
+        boundaries = [0.0, onset, end]
+        # Preserve v1 display times and its inclusive final force sample.
+        times = np.r_[np.linspace(0.0, onset, 101)[:-1], np.linspace(onset, end, 101)]
+    intervals = [(a, b, inputs.head_force_n if onset <= a < end else 0.0)
+                 for a, b in zip(boundaries, boundaries[1:])]
+    phases = _cycle(mass, intervals, "DOP853", 0.015625)
+    check = _cycle(mass, intervals, "RK45", 0.0078125)
+    states = _sample(phases, times)
+    other_states = _sample(check, times)
     z, v = states
     motor = np.clip(f.command(z, v), -f.force_limit_n, f.force_limit_n)
 
-    hold_positions = _extrema(hold, 0)
-    positions = np.r_[_extrema(rise, 0), hold_positions]
-    velocities = np.r_[_extrema(rise, 1), _extrema(hold, 1)]
-    arrival_error = float(abs(f.target_m - rise.y[0, -1]))
+    hold_start = boundaries.index(f.arrival_deadline_s)
+    hold_positions = np.concatenate([_extrema(phase, 0) for phase in phases[hold_start:]])
+    check_hold = np.concatenate([_extrema(phase, 0) for phase in check[hold_start:]])
+    positions = np.concatenate([_extrema(phase, 0) for phase in phases])
+    velocities = np.concatenate([_extrema(phase, 1) for phase in phases])
+    arrival_error = float(abs(f.target_m - phases[hold_start - 1].y[0, -1]))
     max_hold_error = float(np.max(np.abs(hold_positions - f.target_m)))
-    check_max_hold_error = float(np.max(np.abs(_extrema(check_hold, 0) - f.target_m)))
+    check_max_hold_error = float(np.max(np.abs(check_hold - f.target_m)))
     position_difference, velocity_difference = np.max(np.abs(states - other_states), axis=1)
-    # The motor is positively saturated through the first 20 ms throughout the
-    # supported mass range. The rise from rest in that interval has constant acceleration.
     check_time = 0.02
-    initial_acceleration = f.force_limit_n / mass - f.gravity_m_s2
-    analytic_z = 0.5 * initial_acceleration * check_time**2
-    analytic_v = initial_acceleration * check_time
-    initial_test_error = float(abs(rise.sol(check_time)[0] - analytic_z))
+    analytic_z, saturated = _saturated_start(mass, intervals, check_time)
+    initial_phase = next(phase for phase in phases if phase.t[-1] >= check_time)
+    initial_test_error = float(abs(initial_phase.sol(check_time)[0] - analytic_z))
     convergence_error = max(float(position_difference), abs(max_hold_error - check_max_hold_error))
     diagnostics = {
         "primary_integrator": "DOP853", "comparison_integrator": "RK45",
@@ -112,7 +168,7 @@ def run_packaging_lift(inputs: PackagingLift) -> dict:
         "max_velocity_difference_m_s": float(velocity_difference),
         "hold_peak_difference_m": abs(max_hold_error - check_max_hold_error),
         "initial_constant_acceleration_error_m": initial_test_error,
-        "passed": bool(f.command(analytic_z, analytic_v) >= f.force_limit_n and
+        "passed": bool(saturated and
                        initial_test_error <= 1e-8 and convergence_error <= 1e-7 and velocity_difference <= 1e-5),
     }
     criteria = {
@@ -129,7 +185,12 @@ def run_packaging_lift(inputs: PackagingLift) -> dict:
                "controller": "Force-limited PD with fixed empty-carriage gravity compensation",
                "assumptions": "Rigidly secured payload on a frictionless vertical guide. A timed downward force "
                               "represents the head during the hold. No package deformation or head contact geometry."}
-    return {"passed": all(criteria.values()) if diagnostics["passed"] else None,
+    if timed:
+        fixture.update(name="Packaging lift timed pulse v2",
+                       assumptions="Rigidly secured payload on a frictionless vertical guide. One prescribed downward "
+                                   "head-force pulse acts from onset up to release. No package deformation or contact geometry.")
+    applied = (times >= onset) & ((times < end) if timed else (times <= end))
+    result = {"passed": all(criteria.values()) if diagnostics["passed"] else None,
             "fixture": fixture, "fixture_sha256": config_hash(fixture), "criteria": criteria,
             "summary": {"payload_kg": inputs.payload_kg, "head_force_n": inputs.head_force_n,
                         "arrival_error_m": arrival_error, "max_hold_error_m": max_hold_error,
@@ -138,5 +199,23 @@ def run_packaging_lift(inputs: PackagingLift) -> dict:
                         "peak_speed_m_s": float(np.max(np.abs(velocities)))},
             "series": {"time_s": times.tolist(), "position_m": z.tolist(), "velocity_m_s": v.tolist(),
                        "actuator_force_n": motor.tolist(),
-                       "applied_head_force_n": np.where(times >= f.arrival_deadline_s, inputs.head_force_n, 0.0).tolist()},
+                       "applied_head_force_n": np.where(applied, inputs.head_force_n, 0.0).tolist()},
             "numerical_diagnostics": diagnostics}
+    if timed:
+        result["summary"].update(head_onset_ms=inputs.head_onset_ms, head_duration_ms=inputs.head_duration_ms)
+        edges = []
+        for edge in (onset, end):
+            index = boundaries.index(edge)
+            edges.append({"time_s": edge, "force_before_n": intervals[index - 1][2] if index else 0.0,
+                          "force_after_n": intervals[index][2] if index < len(intervals) else 0.0})
+        result["force_schedule"] = {
+            "contract": "packaging_lift_timed_v2", "channel": "downward_head_force",
+            "requested": {"head_force_n": inputs.head_force_n, "head_onset_ms": inputs.head_onset_ms,
+                          "head_duration_ms": inputs.head_duration_ms},
+            "interval_semantics": "[start,end); time zero is lift start; terminal sample is after release",
+            "force_edges": edges,
+            "integrated_intervals": [{"start_s": float(phase.t[0]), "end_s": float(phase.t[-1]), "force_n": force}
+                                     for phase, (_, _, force) in zip(phases, intervals)],
+            "arrival_check_s": f.arrival_deadline_s, "hold_window_s": [f.arrival_deadline_s, f.end_time_s],
+        }
+    return result

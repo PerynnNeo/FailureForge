@@ -19,13 +19,27 @@ def flatten_controls(inputs):
     if isinstance(values.get("targets"), dict):
         targets = values.pop("targets")
         values.update({f"targets.{name}": target for name, target in targets.items()})
+    loads = values.get("span_loads")
+    if isinstance(loads, list) and all(isinstance(item, dict) for item in loads):
+        values.pop("span_loads")
+        for i, load in enumerate(loads, 1):
+            values.update({f"span_loads.{i}.{key}": value for key, value in load.items()})
     return values
 
 
 def coverage_factor_labels(adapter, flattened_inputs):
     fields = dict(FIELDS.get(adapter, {}))
+    if adapter == "structural_beam":
+        for key in sorted(flattened_inputs):
+            parts = key.split(".", 2)
+            if (len(parts) == 3 and parts[0] == "span_loads" and parts[1].isdecimal()
+                    and parts[2] in ("start_fraction", "end_fraction", "force_n")):
+                fields[key] = f"Span load {parts[1]} · {parts[2].replace('_', ' ')}"
     if adapter == "packaging_lift":
         return {key: key.replace("_", " ").rsplit(" ", 1)[0].capitalize() for key in LiftCondition.model_fields}
+    if adapter == "packaging_lift_timed_v2":
+        return {"payload_kg": "Payload", "head_force_n": "Head force", "head_onset_ms": "Head engagement time",
+                "head_duration_ms": "Head pulse duration"}
     if "targets.*" in fields:
         fields.pop("targets.*")
         fields.update({key: f"Joint target · {key.removeprefix('targets.')}"
@@ -127,6 +141,8 @@ def _group(adapter, records, declared, axes):
         values = sorted({r["point"][field] for r in observed if field in r["point"]})
         units = joint_units.get(field, set())
         unit = FIELD_UNITS.get(adapter, {}).get(field, "joint units")
+        if adapter == "structural_beam" and field.startswith("span_loads."):
+            unit = "N" if field.endswith(".force_n") else "1"
         if units:
             unit = next(iter(units)) if len(units) == 1 else "mixed joint units"
         factors[field] = {"field": field, "label": label, "unit": unit,

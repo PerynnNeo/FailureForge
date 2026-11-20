@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from failureforge.api import create_app
 from failureforge.environment_matrices import EnvironmentMatrix, _report
+from failureforge.project_bundle import inspect_project_bundle
 
 
 SPEC = {"expected_revision": 1, "label": "Lift at pack station", "adapter": "packaging_lift",
@@ -77,13 +78,40 @@ def test_fixture_specific_analysis_requires_matching_robot_template(tmp_path, so
         assert response.status_code == 201
         project = "/api/projects/" + response.json()["id"]
         catalog = client.get(project + "/analysis").json()["adapters"]
-        assert "packaging_lift" not in {a["id"] for a in catalog}
+        assert {"packaging_lift", "packaging_lift_timed_v2"}.isdisjoint(a["id"] for a in catalog)
         single = {"expected_revision": 1, "label": "Fixture", "adapter": "packaging_lift",
                   "inputs": {"payload_kg": 0, "head_force_n": 0}}
         assert client.post(project + "/analysis", json=single).status_code == 422
         assert client.post(project + "/environment-matrices", json=SPEC).status_code == 422
         assert client.get(project + "/analysis").json()["runs"] == []
         assert client.get(project + "/environment-matrices").json() == {"matrices": []}
+
+
+def test_timed_case_preserves_measured_pulse_in_portable_rerun(tmp_path):
+    with TestClient(create_app(tmp_path)) as client:
+        owner = client.post("/api/projects", json=PROJECT).json()["id"]
+        path = f"/api/projects/{owner}/analysis"
+        inputs = {"payload_kg": 0.5, "head_force_n": 2, "head_onset_ms": 751, "head_duration_ms": 1000}
+        queued = client.post(path, json={"expected_revision": 1, "label": "Early press",
+                             "adapter": "packaging_lift_timed_v2", "inputs": inputs})
+        assert queued.status_code == 202, queued.text
+        case_path = path + "/" + queued.json()["id"]
+        deadline = time.monotonic() + 35
+        while time.monotonic() < deadline:
+            record = client.get(case_path).json()
+            if record["status"] not in {"queued", "running"}:
+                break
+            time.sleep(0.1)
+        assert record["status"] == "completed" and not record["assessment_error"]
+        assert record["result"]["criteria"]["arrived_within_tolerance"] is False
+        assert record["result"]["force_schedule"]["requested"]["head_onset_ms"] == 751
+        assert client.get(case_path + "/hardware-trials").json()["metrics"] == {}
+        bundle = client.get(case_path + "/bundle")
+        assert bundle.status_code == 200
+        archive = tmp_path / "timed-lift.zip"
+        archive.write_bytes(bundle.content)
+        report = inspect_project_bundle(archive, rerun=True)
+        assert report["rerun"]["exact_result_match"] and report["rerun"]["same_runtime_identity"]
 
 
 @pytest.mark.parametrize("changes", [

@@ -388,9 +388,12 @@ class ProjectStore:
 
     def asset(self, identifier, asset_id):
         with self.store.connection() as db:
-            row = Store._required(db, "project_assets", asset_id)
-            if row["project_id"] != identifier:
-                raise KeyError(asset_id)
+            return self.asset_in_transaction(db, identifier, asset_id)
+
+    def asset_in_transaction(self, db, identifier, asset_id):
+        row = Store._required(db, "project_assets", asset_id)
+        if row["project_id"] != identifier:
+            raise KeyError(asset_id)
         path = self.asset_path(asset_id)
         if not path.is_file():
             raise HTTPException(409, "Stored asset is missing; no substitute is available")

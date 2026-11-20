@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { campaignHistory, filterCampaignHistory, projectCampaignSetup, readProjectBatches } from './campaignHistory.ts';
+import { campaignHistory, filterCampaignHistory, projectBatchHref, projectCampaignSetup, readProjectBatches } from './campaignHistory.ts';
+
+test('per-case evidence in a shared batch opens the measured variant', () => {
+  assert.equal(projectBatchHref('p 1', 'suite/1', 'variant/3'), '#/projects/p%201/analysis?batch=suite%2F1&run=variant%2F3');
+});
 
 const batch = {
   suite_id: 'suite/1', project_id: 'project 1', project_name: 'Heat exchanger', project_revision: 3,

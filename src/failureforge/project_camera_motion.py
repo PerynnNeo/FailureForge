@@ -443,7 +443,7 @@ def motion_scene(run, model_bytes=None, meshes=None):
     result = run.get("result")
     if not isinstance(result, dict):
         return None
-    if run.get("adapter") == "packaging_lift":
+    if run.get("adapter") in ("packaging_lift", "packaging_lift_timed_v2"):
         return _lift(result)
     if run.get("adapter") == "robot_motion":
         return _robot(result,model_bytes,meshes or {})

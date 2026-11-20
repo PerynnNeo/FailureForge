@@ -37,6 +37,18 @@ To inspect existing evidence without running any worker:
 
 For frontend hot reload, run `npm run dev` in `apps/web` while the API runs on port 8000. Vite proxies `/api` to the local service. The production build is served directly by FastAPI. Both bind to loopback by default.
 
+### Discover scenarios on CPU
+
+Open a saved project and choose **Discover scenarios**. Describe what the design does and choose a completed reference from its current revision. For a structural design, **Import reference JSON** accepts a requirements file containing an adapter and SI inputs. Import runs those exact inputs and preserves the file digest. The [example shelf definition](apps/web/public/examples/beam-reference.json) is editable. A brief alone can generate questions and planning suggestions.
+
+The planner calls a local Ollama service on loopback, using CPU inference. Install a local model with `ollama pull qwen2.5:3b`. On Windows, `.\scripts\start_scenario_laptop.ps1` starts the model server and workbench, including when this workspace has a portable runtime under `vendor/ollama`. To use a different installed model or local port set `FAILUREFORGE_SCENARIO_MODEL` or `FAILUREFORGE_OLLAMA_PORT` before launch. The existing CPU analyses also work when the model is offline. [Ollama for Windows](https://docs.ollama.com/windows)
+
+With a completed reference selected, **Generate and run test cases** asks the local model for at least five applicable operating cases and queues every distinct case the simulator can compile. Identical reference conditions share a single control run. The results table lists the exact applied change, the simulated verdict and measurement, and the saved evidence for each case. It keeps unsupported ideas visible and reports how many cases actually ran. Automatic runs are hypothetical operating conditions; individual review remains available.
+
+The shelf model supports localized point loads, loads spread over part of its span, split contacts and complete unloading. The packaging-lift model supports variations in press timing and measures arrival and hold errors. The available cases depend on the prototype, its modeled behavior and its stated task. Multiple placements or timings within one mechanism remain identified as variations of that mechanism.
+
+To reproduce the labelled shelf batch against the running workbench, run `.venv/Scripts/python.exe scripts/demo_scenario_discovery.py`. It imports the example, generates or reopens a batch, waits for its CPU runs and prints each outcome. Use `--fresh` for a new generation or `--review-only` to inspect suggestions before running them.
+
 ## Project preparation
 
 The three-step setup asks for your starting stage, analysis, and working brief. Each project provides **Overview**, **Files**, **Parameters**, and **Test plans** sections. Saved changes use revision checks to prevent silent overwrites; uploads also update the revision. Export the saved preparation report as JSON for review or handoff.

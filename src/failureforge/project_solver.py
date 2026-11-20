@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from .engineering import BeamStudy, CalibrationStudy, ThermalStudy, run_engineering
-from .packaging_lift import PackagingLift, run_packaging_lift
+from .packaging_lift import LIFT_ADAPTERS, PackagingLift, TimedPackagingLift, run_packaging_lift
 from .project_inputs import CadInventory, JointResponse, fit_joint_response, inspect_cad
 from .project_robot import RobotRunRequest, robot_reference, run_robot
 
@@ -24,7 +24,7 @@ ASSET_FIELDS = {"cad_asset_id": ("cad", ".stl"), "bom_asset_id": ("bom", ".csv")
                 "model_asset_id": ("robot_model", ".urdf"), "controller_asset_id": ("controller", ".json")}
 MODELS = {"structural_beam": BeamStudy, "thermal_rod": ThermalStudy, "calibration": CalibrationStudy,
           "joint_response": JointResponse, "cad_inventory": CadInventory, "robot_motion": RobotRunRequest,
-          "packaging_lift": PackagingLift}
+          "packaging_lift": PackagingLift, "packaging_lift_timed_v2": TimedPackagingLift}
 PLACEHOLDER = "asset_" + "0" * 32
 
 
@@ -39,6 +39,9 @@ def adapters(analysis):
         entries[-1]["reference"] = robot_reference()
         add("packaging_lift", "Packaging lift", "Test the fixed vertical lift under a secured parcel and a downward packing-head force.",
             {"payload_kg": 0.0, "head_force_n": 0.0})
+        add("packaging_lift_timed_v2", "Packaging lift with timed press",
+            "Place a finite downward head-force pulse during the two-second lift cycle. Measure arrival and hold separately.",
+            {"payload_kg": 0.5, "head_force_n": 2.0, "head_onset_ms": 1000, "head_duration_ms": 1000})
         add("joint_response", "Calibrate joint response", "Fit one time constant against a training log and test it on another. Supply CSV columns time_s,command_rad,position_rad.",
             {"joint_name": "left_knuckle", "hardware_revision": "enter measured revision",
              "training_asset_id": PLACEHOLDER, "validation_asset_id": "asset_" + "1"*32, "max_validation_rmse_rad": 0.02})
@@ -46,7 +49,7 @@ def adapters(analysis):
         beam = analysis == "structural"
         model = BEAM if beam else ROD
         add(model["kind"], "Cantilever bending" if beam else "Steady rod conduction",
-            "Static bending of a rectangular cantilever under transverse tip force, line load and uniform face pressure." if beam else
+            "Static bending of a rectangular cantilever under signed point loads, distributed loads over specified spans and uniform face pressure." if beam else
             "Steady heating of a uniform rod with a fixed left end and either a fixed or convective right end.", model)
         add("calibration", "Calibrate material property", "Enter measurements from distinct fit and validation runs. Values in the example are illustrative.",
             {"kind": "calibration", "model": model, "parameter_bounds": [1e9, 2e11] if beam else [0.1, 1000],
@@ -86,7 +89,7 @@ def run_job(job):
         result = fit_joint_response(model, blobs["training_asset_id"], blobs["validation_asset_id"])
     elif adapter == "robot_motion":
         result = run_robot(model, blobs.get("model_asset_id"), blobs.get("controller_asset_id"))
-    elif adapter == "packaging_lift":
+    elif adapter in LIFT_ADAPTERS:
         if job["analysis_type"] != "robot_behavior":
             raise ValueError("The packaging lift requires a robot behavior project")
         result = run_packaging_lift(model)
@@ -96,7 +99,7 @@ def run_job(job):
 
 
 def runtime_identity(adapter=None):
-    from . import engineering, packaging_lift, project_inputs, project_robot, robot_dynamics, urdf_mjcf
+    from . import beam_span, engineering, packaging_lift, project_inputs, project_robot, robot_dynamics, urdf_mjcf
     versions = {}
     for name in ("numpy", "scipy", "mujoco", "pydantic"):
         try:
@@ -105,8 +108,10 @@ def runtime_identity(adapter=None):
             versions[name] = None
     sources = [__file__, engineering.__file__, project_inputs.__file__, project_robot.__file__,
                robot_dynamics.__file__, urdf_mjcf.__file__]
-    if adapter == "packaging_lift":
+    if adapter in LIFT_ADAPTERS:
         sources.append(packaging_lift.__file__)
+    if adapter in ("structural_beam", "calibration"):
+        sources.append(beam_span.__file__)
     return {"python": platform.python_version(), "packages": versions, "source_sha256": {
         Path(file).name: hashlib.sha256(Path(file).read_bytes()).hexdigest()
         for file in sources}}

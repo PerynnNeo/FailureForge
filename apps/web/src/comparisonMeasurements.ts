@@ -46,7 +46,7 @@ export function comparisonMeasurements(run: Pick<RunDetail, 'adapter' | 'result'
       if (typeof check.quantity === 'string') named(check.quantity, check.measured, check.maximum, check.passed);
     }
   }
-  if (run.adapter === 'packaging_lift') {
+  if (run.adapter === 'packaging_lift' || run.adapter === 'packaging_lift_timed_v2') {
     const fixture = fields(result.fixture);
     const limit = summary.error_limit_m ?? fixture.error_limit_m;
     add('Maximum hold error', summary.max_hold_error_m, limit, 'mm', 1000, criteria.held_within_tolerance);

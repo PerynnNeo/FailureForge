@@ -31,6 +31,17 @@ test('beam and rod acceptance rows preserve saved numerical limits and verdicts'
   assert.equal(beam.measurements[0].unit, 'MPa');
 });
 
+test('timed lift results preserve both phase verdicts when the overall outcome matches', () => {
+  const read = (arrival, passed) => comparisonMeasurements({
+    adapter: 'packaging_lift_timed_v2', inputs: {}, result: { passed: false,
+      criteria: { held_within_tolerance: false, arrived_within_tolerance: passed },
+      summary: { arrival_error_m: arrival, max_hold_error_m: .013949, error_limit_m: .01 },
+    },
+  }).measurements.map(row => [row.name, row.unit, row.passed]);
+  assert.deepEqual(read(.00981, true), [['Maximum hold error', 'mm', false], ['Arrival error', 'mm', true]]);
+  assert.deepEqual(read(.013949, false), [['Maximum hold error', 'mm', false], ['Arrival error', 'mm', false]]);
+});
+
 test('robot intent flags never become recorded outcomes, and radians and metres stay distinct', () => {
   const run = { adapter: 'robot_motion', inputs: {}, result: {
     criteria: { qualification_required: false, check_all_joint_position_and_velocity_limits: true, joint_target_tolerance: .002 },

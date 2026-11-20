@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { materialReadings, sectionValues, spatialField } from './recordedFields.ts';
+import { beamLoadRegions, materialReadings, sectionValues, spatialField } from './recordedFields.ts';
+
+test('span loads display measured point and patch positions and skip malformed data', () => {
+  assert.deepEqual(beamLoadRegions({ tip_force_n: 5 }), []);
+  assert.deepEqual(beamLoadRegions({ span_loads: [
+    { start_fraction: .22, end_fraction: .22, force_n: 4 },
+    { start_fraction: .6, end_fraction: .9, force_n: -1 },
+    { start_fraction: .9, end_fraction: .6, force_n: 2 }, { start_fraction: 0, end_fraction: 2, force_n: 2 }, null,
+  ] }), [{ start: .22, end: .22, force: 4 }, { start: .6, end: .9, force: -1 }]);
+});
 
 test('beam sweep retains signed displacements and the correct element side at a node', () => {
   const beam = spatialField({ kind: 'structural_beam', traces: { node_position_m: [0, 0.05, 0.2],

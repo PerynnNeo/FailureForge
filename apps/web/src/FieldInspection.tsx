@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import type { Inputs } from './analysisInputs';
 import { TraceChart } from './Charts';
-import { materialReadings, measuredNumber, sectionValues, spatialField } from './recordedFields';
+import { beamLoadRegions, materialReadings, measuredNumber, sectionValues, spatialField } from './recordedFields';
 import './fieldInspection.css';
 
 type Field = NonNullable<ReturnType<typeof spatialField>>;
@@ -32,6 +32,7 @@ function FieldDrawing({ field, node, inputs }: { field: Field; node: number; inp
   const stationX = (v: number) => 44 + 552 * (v - positions[0]) / span;
   const lo = Math.min(...values), hi = Math.max(...values);
   const isBeam = field.kind === 'beam';
+  const loads = isBeam ? beamLoadRegions(inputs) : [];
   const amplitude = Math.max(Math.abs(lo), Math.abs(hi));
   const scale = amplitude > 0 ? 47 / amplitude : 552 / span;
   const mag = scale / (552 / span);
@@ -54,6 +55,12 @@ function FieldDrawing({ field, node, inputs }: { field: Field; node: number; inp
         <line x1="44" y1="112" x2="596" y2="112" stroke="#78909a" strokeDasharray="5 4"/>
         <polyline points={line} fill="none" stroke="#284c61" strokeWidth="8" strokeLinejoin="round"/>
         {typeof inputs.tip_force_n === 'number' && inputs.tip_force_n !== 0 && <text x="596" y="29" textAnchor="end">Tip force {measuredNumber(inputs.tip_force_n)} N</text>}
+        {loads.map(({ start, end, force }, i) => <g key={i} stroke="#a94b23" fill="#a94b23">
+          <title>{measuredNumber(force)} N applied {start === end ? 'at' : 'across'} {measuredNumber(100 * start)}%
+            {start !== end && '–' + measuredNumber(100 * end) + '%'} of span</title>
+          {start === end ? <circle cx={44 + 552 * start} cy="46" r="4"/> :
+            <line x1={44 + 552 * start} x2={44 + 552 * end} y1="46" y2="46" strokeWidth="5"/>}
+        </g>)}
         <text x="44" y="192">Fixed end</text><text x="596" y="192" textAnchor="end">Free end</text>
       </> : <>
         <rect x="44" y="96" width="552" height="32" rx="5" fill={'url(#' + gradient + ')'} stroke="#496575"/>
@@ -64,7 +71,10 @@ function FieldDrawing({ field, node, inputs }: { field: Field; node: number; inp
       <circle cx={sx} cy={sy} r="6" stroke="#152e39" strokeWidth="2" fill="white"/>
     </svg>
     <figcaption>{isBeam ? 'Static centerline. Deflection display scale ' + measuredNumber(mag) + '× relative to the span.' :
-      'Color shows the recorded steady-state temperature along the span.'} The marker moves through saved stations.</figcaption>
+      'Color shows the recorded steady-state temperature along the span.'} The marker moves through saved stations.
+      {loads.length > 0 && <span> The orange marks show {loads.map(({ start, end, force }) =>
+        measuredNumber(force) + ' N ' + (start === end ? 'at ' : 'across ') + measuredNumber(100 * start) + '%' +
+        (start === end ? '' : '–' + measuredNumber(100 * end) + '%')).join(', ')} of the span from the fixed end.</span>}</figcaption>
   </figure>;
 }
 

@@ -85,7 +85,7 @@ def build_scene(run, asset_root):
     assets = run["snapshot"]["assets"]
     by_id = {asset["id"]:asset for asset in assets}
     inputs = run["inputs"]
-    if run["adapter"] in ("robot_motion", "packaging_lift"):
+    if run["adapter"] in ("robot_motion", "packaging_lift", "packaging_lift_timed_v2"):
         from .project_camera_motion import motion_scene
     if run["adapter"] == "robot_motion":
         identifier = inputs.get("model_asset_id")
@@ -105,7 +105,7 @@ def build_scene(run, asset_root):
                 raise ValueError("Uploaded URDF differs from the trajectory source")
             meshes = _surfaces(model,run,assets,asset_root)
         return motion_scene(run,model,meshes)
-    if run["adapter"] == "packaging_lift":
+    if run["adapter"] in ("packaging_lift", "packaging_lift_timed_v2"):
         return motion_scene(run)
     from .project_camera_fields import field_scene
     identifier = inputs.get("cad_asset_id") if run["adapter"] == "cad_inventory" else None

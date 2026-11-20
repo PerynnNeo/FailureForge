@@ -16,7 +16,9 @@ export const activeCampaignStatus = (status: string) =>
   ['queued', 'running', 'searching', 'reducing', 'confirming', 'pending', 'cancelling'].includes(status);
 
 export const projectCampaignSetup = (projectId: string) => `#/projects/${encodeURIComponent(projectId)}/analysis?setup=campaign`;
-export const projectBatchHref = (projectId: string, suiteId: string) => `#/projects/${encodeURIComponent(projectId)}/analysis?batch=${encodeURIComponent(suiteId)}`;
+export const projectBatchHref = (projectId: string, suiteId: string, runId?: string | null) =>
+  `#/projects/${encodeURIComponent(projectId)}/analysis?batch=${encodeURIComponent(suiteId)}` +
+  (runId ? '&run=' + encodeURIComponent(runId) : '');
 
 export async function readProjectBatches(fetchPage: (offset: number, limit: number) => Promise<ProjectBatchPage>) {
   const batches = new Map<string, ProjectBatch>();

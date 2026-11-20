@@ -6,6 +6,7 @@ import { Icon, Loading, Notice, SectionHeading } from './components';
 import { analysisOptions, assetKinds, emptyProject, projectInput, stageOptions } from './projectTypes';
 import type { AssetKind, Project, ProjectCatalog, ProjectInput, ProjectParameter, ProjectTestPlan } from './projectTypes';
 import ProjectAnalysis from './ProjectAnalysis';
+import ProjectScenarios from './ProjectScenarios';
 import ReplayWorkspace from './ReplayWorkspace';
 import { ProjectReplayEntry } from './ProjectReplayEntry';
 import { HelpTutorial } from './HelpTutorial';
@@ -96,7 +97,7 @@ function ProjectCreate({ catalog, notify }: { catalog: ProjectCatalog | null; no
   </>;
 }
 
-type DetailTab = 'overview' | 'files' | 'parameters' | 'tests' | 'analysis';
+type DetailTab = 'overview' | 'files' | 'parameters' | 'tests' | 'scenarios' | 'analysis';
 const tourTab: Record<string, DetailTab> = {
   'project-journey': 'overview',
   'project-brief': 'overview',
@@ -115,7 +116,7 @@ function ProjectDetail({ id, analysisRoute, query, catalog, notify }: { id: stri
   const [draft, setDraft] = useState<ProjectInput | null>(null);
   const [chosenTab, setTab] = useState<DetailTab | null>(null);
   const requestedTab = new URLSearchParams(query).get('tab');
-  const tab = analysisRoute ? 'analysis' : requestedTab === 'files' ? 'files' : chosenTab ?? (project?.robot_template === 'packaging_lift_v1' ? 'analysis' : 'overview');
+  const tab = analysisRoute ? 'analysis' : requestedTab === 'files' || requestedTab === 'scenarios' ? requestedTab : chosenTab ?? (project?.robot_template === 'packaging_lift_v1' ? 'analysis' : 'overview');
   const [analysisOpened, setAnalysisOpened] = useState(false);
   const [tourCapabilities, setTourCapabilities] = useState<ProjectTourCapabilities | null>(null);
   const guide = useMemo(() => getProjectGuide(tourCapabilities), [tourCapabilities]);
@@ -175,6 +176,8 @@ function ProjectDetail({ id, analysisRoute, query, catalog, notify }: { id: stri
     if (tab === 'analysis' || key === 'analysis') setAnalysisOpened(true);
     if (key === 'analysis') {
       go(projectPath + '/analysis');
+    } else if (key === 'scenarios') {
+      go(projectPath + '?tab=scenarios');
     } else {
       setTab(key);
       if (analysisRoute || requestedTab) go(projectPath);
@@ -208,11 +211,12 @@ function ProjectDetail({ id, analysisRoute, query, catalog, notify }: { id: stri
     {(!isLift || !analysisRoute) && <Journey readiness={project.readiness}/>}
     <div className="project-detail-layout">
       <div className="project-detail-main">
-        <nav className="project-tabs" aria-label="Project sections">{([['overview', 'Overview'], ['files', `Files (${project.assets.length})`], ['parameters', `Parameters (${draft.parameters.length})`], ['tests', `Test plans (${draft.test_plans.length})`], ['analysis', 'Analysis & runs']] as [DetailTab, string][]).map(([key, title]) => <button key={key} type="button" className={tab === key ? 'active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => openTab(key)}>{title}</button>)}</nav>
+        <nav className="project-tabs" aria-label="Project sections">{([['overview', 'Overview'], ['scenarios', 'Discover scenarios'], ['files', `Files (${project.assets.length})`], ['parameters', `Parameters (${draft.parameters.length})`], ['tests', `Test plans (${draft.test_plans.length})`], ['analysis', 'Analysis & runs']] as [DetailTab, string][]).map(([key, title]) => <button key={key} type="button" className={tab === key ? 'active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => openTab(key)}>{title}</button>)}</nav>
         {error && <Notice tone="error">{error}{conflict && <div className="project-conflict"><p>Another change was saved while you were editing. Your draft is still here. Copy anything you need before reloading the saved version.</p><button className="button secondary" type="button" onClick={() => void load()}>Discard draft and reload saved version</button></div>}</Notice>}
         {(analysisOpened || tab === 'analysis') && <div hidden={tab !== 'analysis'}><ProjectAnalysis key={project.analysis_type} project={project} dirty={dirty} reload={load} notify={notify}
           matrixRequest={analysisRoute ? matrixRequest : 0} onTourCapabilities={setTourCapabilities}/></div>}
-        <form hidden={tab === 'analysis' && !dirty} onSubmit={event => void save(event)}><fieldset className="project-edit-fieldset" disabled={saving}>
+        {tab === 'scenarios' && <ProjectScenarios project={project} dirty={dirty} onProjectSaved={acceptSaved} reloadProject={load}/>}
+        <form hidden={(tab === 'analysis' || tab === 'scenarios') && !dirty} onSubmit={event => void save(event)}><fieldset className="project-edit-fieldset" disabled={saving}>
           {tab === 'overview' && <section className="project-panel"><PanelHeader title="The working brief" description="Keep the question specific. Update the starting stage as your design develops."/><div className="project-form-stack"><Field label="Project name" value={draft.name} onChange={name => update({ name })} required maxLength={120}/><div className="project-form-grid"><label className="project-field"><span>Current entry stage</span><select value={draft.entry_stage} onChange={event => update({ entry_stage: event.target.value as ProjectInput['entry_stage'] })}>{stageOptions.map(item => <option value={item.value} key={item.value}>{item.short}</option>)}</select></label><label className="project-field"><span>Analysis</span><select value={draft.analysis_type} onChange={event => update({ analysis_type: event.target.value as ProjectInput['analysis_type'] })}>{analysisOptions.map(item => <option value={item.value} key={item.value}>{item.title}</option>)}</select></label></div><Field tour="project-brief" label="What should the design do?" value={draft.goal} onChange={goal => update({ goal })} required multiline/><Field label="Success criteria" value={draft.success_criteria} onChange={success_criteria => update({ success_criteria })} required multiline hint="Define measurable acceptance rules. These are test requirements, not measured outcomes."/><SourceFields draft={draft} update={update} catalog={catalog}/><Field label="Design notes and open questions" maxLength={6000} value={draft.notes} onChange={notes => update({ notes })} multiline placeholder="What remains unknown? Which assumptions should be checked first?"/></div></section>}
           {(tab === 'files' || file) && <section hidden={tab !== 'files'} className="project-panel"><PanelHeader title="The files behind the design" description="Store source files and inspect their preparation notes. Uploading a file does not convert it, qualify its physics, or run its code."/><div className="project-upload" data-tour="project-files"><div className="project-form-grid"><label className="project-field"><span>File purpose</span><select value={kind} onChange={event => setKind(event.target.value as AssetKind)}>{assetKinds.map(item => <option value={item.value} key={item.value}>{item.title}</option>)}</select><small>{assetKinds.find(item => item.value === kind)?.hint}</small></label><label className="project-field"><span>Choose a file</span><input ref={inputRef} type="file" accept={catalog?.allowed_extensions[kind]?.join(',')} onChange={event => setFile(event.target.files?.[0] ?? null)}/><small>Up to {bytes(catalog?.limits.asset_bytes ?? 10485760)} per file. Files stay in this local workspace. {catalog?.allowed_extensions[kind]?.join(', ')}</small></label></div><div className="project-upload-footer"><span>{dirty ? 'Save your draft before adding a file.' : file ? `${file.name} · ${bytes(file.size)}` : 'Source files are stored as supplied.'}</span><button type="button" className="button primary" disabled={!file || dirty || project.assets.length >= (catalog?.limits.max_assets ?? 40)} onClick={() => void upload()}><Icon name="plus" size={17}/>{saving ? 'Uploading…' : 'Upload file'}</button></div></div><div className="project-assets">{project.assets.length ? project.assets.map(asset => <article className="project-asset" key={asset.id}><div className="project-asset-heading"><Icon name="file" size={22}/><div><h4>{asset.filename}</h4><span>{assetKinds.find(item => item.value === asset.kind)?.title ?? label(asset.kind)} · {bytes(asset.size_bytes)}</span></div><a href={asset.download_url} className="icon-button" download aria-label={`Download ${asset.filename}`}><Icon name="download" size={18}/></a></div><p>{asset.inspection.summary}</p>{asset.inspection.warnings.length > 0 && <ul className="project-inspection-warnings">{asset.inspection.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}<details><summary>File identity and inspection details</summary><dl><dt>SHA-256</dt><dd className="mono">{asset.sha256}</dd><dt>Stored</dt><dd>{formatTime(asset.created_at)}</dd><dt>Inspection</dt><dd>{label(asset.inspection.status)} · {asset.inspection.format}</dd></dl>{Object.keys(asset.inspection.details).length > 0 && <pre>{JSON.stringify(asset.inspection.details, null, 2)}</pre>}</details></article>) : <div className="project-inline-empty"><Icon name="file" size={26}/><h4>No source files yet</h4><p>A concept can begin without files. Add the evidence that supports your next preparation step.</p></div>}</div></section>}
           {tab === 'overview' && <RevisionHistory project={project}/>}

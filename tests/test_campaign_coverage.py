@@ -2,6 +2,24 @@ from fastapi.testclient import TestClient
 
 from failureforge.api import create_app
 from failureforge.campaign_coverage import campaign_coverage, flatten_controls
+from failureforge.hardware_trials import run_settings
+
+
+def test_localized_beam_arrangements_keep_contact_coordinates_in_coverage_and_trial_settings():
+    meta = {"kind": "suite", "project_id": "p", "suite_id": "s"}
+    records = []
+    for a in [.25, .75]:
+        inputs = {"span_loads": [{"start_fraction": a, "end_fraction": a, "force_n": 5}]}
+        expected = {"span_loads.1.start_fraction": a, "span_loads.1.end_fraction": a, "span_loads.1.force_n": 5}
+        assert run_settings({"adapter": "structural_beam", "inputs": inputs}) == expected
+        records.append({"id": str(a), "adapter": "structural_beam", "category": "passed",
+                        "controls": flatten_controls(inputs)})
+    group, = campaign_coverage(meta, records, [])["groups"]
+    fields = {f["field"]: f for f in group["factors"]}
+    assert fields["span_loads.1.start_fraction"]["observed_values"] == [.25, .75]
+    assert fields["span_loads.1.end_fraction"]["unit"] == "1"
+    assert fields["span_loads.1.force_n"]["unit"] == "N"
+    assert group["grid"]["observed_cells"] == 2
 
 
 def test_coverage_counts_requested_levels_and_only_isolated_qualified_verdict_changes():
@@ -108,7 +126,8 @@ def test_coverage_uses_frozen_declarations_and_missing_matrix_ordinal(tmp_path):
     owner = client.post("/api/projects", json=spec).json()["id"]
     path = f"/api/projects/{owner}"
     catalog = client.get(f"/api/project-campaigns/{owner}/coverage/catalog").json()
-    assert {"payload_kg", "head_force_n", "targets.*"} == {f["field"] for f in catalog["factors"]}
+    assert {"payload_kg", "head_force_n", "head_onset_ms", "head_duration_ms", "targets.*"} == {
+        f["field"] for f in catalog["factors"]}
     suite = client.post(f"{path}/environment-matrices", json={
         "expected_revision": 1, "label": "Tray", "adapter": "packaging_lift",
         "payload_kg": [0, 0.5], "head_force_n": [0, 2], "reference": {"payload_kg": 0, "head_force_n": 0}}).json()["suite_id"]

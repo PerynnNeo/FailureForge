@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 import re
+from decimal import Decimal, DecimalException, Inexact, localcontext
 
 from .project_solver import MODELS
 
@@ -20,6 +21,7 @@ UNIT_FACTORS = {
     "W/m³": {"W/m³": 1, "W/m3": 1, "W/m^3": 1, "kW/m³": 1e3, "kW/m3": 1e3, "W/cm³": 1e6},
     "1/s": {"1/s": 1, "s^-1": 1, "s⁻¹": 1},
     "s": {"s": 1, "ms": 1e-3},
+    "ms": {"ms": 1, "s": 1000},
     "rad": {"rad": 1, "mrad": 1e-3},
     "1": {"1": 1},
 }
@@ -34,6 +36,7 @@ FIELD_UNITS = {
                     "max_temperature_k": "K", "elements": "1", "convergence_tolerance_k": "K"},
     "robot_motion": {"gain_per_s": "1/s", "time_constant_s": "s", "duration_s": "s", "samples": "1"},
     "packaging_lift": {"payload_kg": "kg", "head_force_n": "N"},
+    "packaging_lift_timed_v2": {"payload_kg": "kg", "head_force_n": "N", "head_onset_ms": "ms", "head_duration_ms": "ms"},
     "joint_response": {"min_time_constant_s": "s", "max_time_constant_s": "s", "max_validation_rmse_rad": "rad"},
 }
 
@@ -78,6 +81,19 @@ def resolve_bindings(test, project):
         lower, upper = parameter["range_min"], parameter["range_max"]
         if lower is not None and not lower <= value <= upper:
             raise ValueError(f"Project parameter {name!r} lies outside its declared range")
+        if expected == "ms":
+            # Check exact decimal source ticks before converting to int. Binary
+            # floats can turn 1.001 seconds into 1000.9999999999999 ms.
+            try:
+                with localcontext() as context:
+                    context.prec = len(value_text) + 4
+                    context.traps[Inexact] = True
+                    ticks = Decimal(value_text) * Decimal(factor)
+            except DecimalException as error:
+                raise ValueError(f"{field} requires representable whole milliseconds") from error
+            if ticks != ticks.to_integral_value():
+                raise ValueError(f"{field} requires a whole-number millisecond value")
+            resolved = int(ticks)
         if expected == "1":
             if not resolved.is_integer():
                 raise ValueError(f"{field} requires a whole-number count")

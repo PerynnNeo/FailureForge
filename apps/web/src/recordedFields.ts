@@ -9,6 +9,17 @@ function numericArray(value: unknown, length?: number): number[] | undefined {
   return length === undefined || value.length === length ? value : undefined;
 }
 
+/** Positions are fractions of the span measured outward from the clamp. */
+export function beamLoadRegions(inputs: Inputs) {
+  if (!Array.isArray(inputs.span_loads)) return [];
+  return inputs.span_loads.flatMap(value => {
+    const { start_fraction: start, end_fraction: end, force_n: force } = object(value);
+    if (typeof start !== 'number' || typeof end !== 'number' || typeof force !== 'number' ||
+        ![start, end, force].every(Number.isFinite) || start < 0 || end > 1 || end < start || force === 0) return [];
+    return [{ start, end, force }];
+  });
+}
+
 type SpatialField = {
   kind: 'beam' | 'rod'; positions: number[]; values: number[];
   rotation?: number[]; stressLeft?: number[]; stressRight?: number[]; flux?: number[];

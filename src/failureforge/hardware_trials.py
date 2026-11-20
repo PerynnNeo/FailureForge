@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from .project_bindings import UNIT_FACTORS
+from .packaging_lift import LIFT_ADAPTERS
 from .campaign_coverage import coverage_factor_labels, flatten_controls
 
 
@@ -26,7 +27,7 @@ def _number(value):
 def run_settings(run):
     result = run.get("result") or {}
     inputs = flatten_controls(result.get("inputs") or run.get("inputs") or {})
-    if run["adapter"] == "packaging_lift":
+    if run["adapter"] in LIFT_ADAPTERS:
         inputs.update(result.get("summary") or {})
     return {key: inputs[key] for key in coverage_factor_labels(run["adapter"], inputs)
             if _number(inputs.get(key))}
@@ -63,6 +64,8 @@ def acceptance_metrics(run):
     for check in result.get("acceptance_checks", []):
         key = check["quantity"]
         add(key, check["measured"], check["maximum"], units.get(key))
+    # V2 needs a physical pulse trace aligned to cycle start to compare these
+    # phase measurements. The current CSV only attests scalar settings.
     if run["adapter"] == "packaging_lift":
         fixture = result.get("fixture", {})
         for key in ("max_hold_error_m", "arrival_error_m"):

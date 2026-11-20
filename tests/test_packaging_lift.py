@@ -8,6 +8,9 @@ from failureforge.packaging_lift import FIXTURE, PackagingLift
 from failureforge.project_bindings import resolve_bindings
 from failureforge.project_runs import ProjectTest
 from failureforge.project_solver import adapters, run_job, runtime_identity
+from failureforge.project_camera_motion import motion_scene
+from failureforge.hardware_trials import acceptance_metrics, run_settings
+from failureforge.packaging_lift import TimedPackagingLift
 
 
 def lift(payload, head_force):
@@ -79,3 +82,72 @@ def test_payload_binding_accepts_grams_in_project_ci_or_single_runs():
     inputs, evidence = resolve_bindings(check, project)
     assert inputs == {"payload_kg": 0.25, "head_force_n": 1}
     assert evidence["payload_kg"]["resolved_unit"] == "kg"
+
+
+def timed_lift(onset, duration, *, force=2.0):
+    return run_job({"analysis_type": "robot_behavior", "adapter": "packaging_lift_timed_v2", "assets": {},
+                    "inputs": {"payload_kg": 0.5, "head_force_n": force, "head_onset_ms": onset,
+                               "head_duration_ms": duration}})
+
+
+def test_timed_lift_changes_arrival_verdict_at_equal_impulse():
+    nominal, early = timed_lift(1000, 1000), timed_lift(750, 1000)
+    for result, arrival_error, hold_error in ((nominal, 9.810021, 13.949148), (early, 13.949086, 13.949183)):
+        assert result["numerical_diagnostics"]["passed"]
+        assert result["passed"] is False and result["criteria"]["held_within_tolerance"] is False
+        assert result["summary"]["arrival_error_m"] * 1000 == pytest.approx(arrival_error, abs=1e-5)
+        assert result["summary"]["max_hold_error_m"] * 1000 == pytest.approx(hold_error, abs=1e-5)
+        intervals = result["force_schedule"]["integrated_intervals"]
+        assert sum((p["end_s"] - p["start_s"]) * p["force_n"] for p in intervals) == pytest.approx(2.0)
+        assert result["force_schedule"]["hold_window_s"] == [1.0, 2.0]
+    assert nominal["criteria"]["arrived_within_tolerance"] is True
+    assert early["criteria"]["arrived_within_tolerance"] is False
+    assert nominal["fixture_sha256"] == early["fixture_sha256"]
+    assert nominal["fixture_sha256"] != lift(0.5, 2)["fixture_sha256"]
+    assert "packaging_lift.py" in runtime_identity("packaging_lift_timed_v2")["source_sha256"]
+
+
+@pytest.mark.parametrize("onset,duration", [(0, 1), (7, 9), (991, 9), (1000, 1000), (1999, 1)])
+def test_between_sample_pulse_edges_are_integrated_and_replayed(onset, duration):
+    result = timed_lift(onset, duration)
+    series = result["series"]
+    assert result["numerical_diagnostics"]["passed"]
+    t = np.array(series["time_s"])
+    start, end = onset / 1000, (onset + duration) / 1000
+    assert start in t and end in t
+    assert result["force_schedule"]["force_edges"] == [
+        {"time_s": start, "force_before_n": 0, "force_after_n": 2},
+        {"time_s": end, "force_before_n": 2, "force_after_n": 0}]
+    assert np.array_equal(series["applied_head_force_n"], np.where((t >= start) & (t < end), 2, 0))
+    assert result["summary"]["max_hold_error_m"] >= max(abs(np.asarray(series["position_m"])[t >= 1] - .15)) - 1e-10
+    scene = motion_scene({"adapter": "packaging_lift_timed_v2", "result": result})
+    arrow = next(i for i, obj in enumerate(scene.objects) if obj.kind == "mesh")
+    assert scene.frame(start).positions[arrow, 2] > scene.floor_z
+    assert scene.frame(end).positions[arrow, 2] < scene.floor_z
+
+
+@pytest.mark.parametrize("onset,duration", [(-1, 20), (2000, 1), (0, 0), (999, 1002), (1.0, 5), (True, 30)])
+def test_invalid_or_fractional_ticks_are_rejected(onset, duration):
+    with pytest.raises(ValidationError):
+        TimedPackagingLift(payload_kg=0, head_force_n=1, head_onset_ms=onset, head_duration_ms=duration)
+
+
+def test_timed_trial_requires_alignment_and_timing_bindings_are_whole_ms():
+    test = ProjectTest(label="Timed head", adapter="packaging_lift_timed_v2",
+                       inputs={"payload_kg": 0.5, "head_force_n": 2.0, "head_duration_ms": 1000},
+                       bindings={"head_onset_ms": "Engage at"})
+    project = {"revision": 1, "analysis_type": "robot_behavior", "parameters": [
+        {"name": "Engage at", "source": "measured", "evidence": "Timestamp", "unit": "s",
+         "value": "0.75", "range_min": None, "range_max": None}]}
+    inputs, bindings = resolve_bindings(test, project)
+    assert inputs["head_onset_ms"] == 750 and bindings["head_onset_ms"]["resolved_unit"] == "ms"
+    result = timed_lift(750, 1000)
+    run = {"adapter": "packaging_lift_timed_v2", "result": result, "inputs": inputs}
+    assert run_settings(run) == inputs
+    assert acceptance_metrics(run) == {}
+    short_pulse = test.model_copy(update={"inputs": {**test.inputs, "head_duration_ms": 10}})
+    project["parameters"][0]["value"] = "1.001"
+    assert resolve_bindings(short_pulse, project)[0]["head_onset_ms"] == 1001
+    project["parameters"][0]["value"] = "0.7501"
+    with pytest.raises(ValueError, match="whole-number millisecond"):
+        resolve_bindings(test, project)

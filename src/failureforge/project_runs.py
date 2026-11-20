@@ -17,6 +17,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import Field
 
 from .contracts import canonical_json, config_hash, utc_now
+from .packaging_lift import LIFT_ADAPTERS
 from .persistence import Conflict, new_id
 from .project_bindings import binding_catalog, resolve_bindings
 from .project_solver import adapters
@@ -62,7 +63,7 @@ def project_adapters(project):
     available = adapters(project["analysis_type"])
     if project.get("robot_source") == "supported" and project.get("robot_template") == "packaging_lift_v1":
         return available
-    return [adapter for adapter in available if adapter["id"] != "packaging_lift"]
+    return [adapter for adapter in available if adapter["id"] not in LIFT_ADAPTERS]
 
 
 def outcome(record):
@@ -274,7 +275,11 @@ class ProjectRuns:
 
     def get(self, project, run):
         with self.store.connection() as db:
-            row = db.execute("SELECT * FROM project_runs WHERE project_id=? AND id=?", (project, run)).fetchone()
+            return self.get_in_transaction(db, project, run)
+
+    @staticmethod
+    def get_in_transaction(db, project, run):
+        row = db.execute("SELECT * FROM project_runs WHERE project_id=? AND id=?", (project, run)).fetchone()
         if row is None:
             raise KeyError(run)
         result = dict(row)
