@@ -88,6 +88,25 @@ def until_completed(read):
     pytest.fail("Timed out waiting for the ordinary project worker")
 
 
+def test_shared_generation_remains_available_outside_recent_project_history(tmp_path):
+    app = create_app(tmp_path)
+    app.state.scenarios.provider = FixtureProvider()
+    with TestClient(app) as client:
+        owner = project(client)["id"]
+        other = project(client)["id"]
+        with app.state.store.connection(True) as db:
+            db.executemany("""INSERT INTO scenario_batches
+                (id,project_id,revision,task,context,model,digest,prompt_version,status,created_at)
+                VALUES(?,?,1,'Test the shelf','{}','fixture','digest','v1','completed',?)""",
+                [(f"saved-{i}", owner, f"2026-01-01T00:00:{i:02d}Z") for i in range(31)])
+        path = f"/api/projects/{owner}/scenarios"
+        recent = checked(client.get(path), 200)["batches"]
+        assert len(recent) == 30 and "saved-0" not in {row["id"] for row in recent}
+        linked = checked(client.get(path, params={"generation": "saved-0"}), 200)["batches"]
+        assert [row["id"] for row in linked] == [row["id"] for row in recent] + ["saved-0"]
+        assert not checked(client.get(f"/api/projects/{other}/scenarios", params={"generation": "saved-0"}), 200)["batches"]
+
+
 def test_thermal_discovery_runs_a_measured_boundary_and_preserves_fan_question(tmp_path):
     app = create_app(tmp_path)
     provider = FixtureProvider()

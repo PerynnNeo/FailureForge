@@ -63,9 +63,9 @@ export const projectSetupGuide: TutorialStep[] = [
 export const projectGuide: TutorialStep[] = [
   {
     target: 'project-journey',
-    title: 'Read the project journey',
-    body: 'The journey groups work into eight stages. The badges reflect what has been saved for this project. “Complete” on a preparation stage means the relevant inputs are present.',
-    action: 'Open “What happens here” on a stage for its description. Use Analysis & runs whenever you want to see evidence from an actual run.',
+    title: 'Find your next step',
+    body: 'The overview suggests an action using the design, files and simulations saved for this revision.',
+    action: 'Use the button to continue. Return to Overview after adding a model or running a test to see the next step.',
   },
   {
     target: 'project-brief',

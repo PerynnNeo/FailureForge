@@ -28,3 +28,39 @@ body:has(.landing-page){margin:0;min-width:0;background:#101513}
 @media(max-width:700px){.landing-page .ff-hero{min-height:0;padding-bottom:30px}.landing-page .ff-hero-art{position:relative;top:auto;left:-11%;right:auto;width:122%;height:450px;margin-top:23px}.landing-page .ff-hero-bottom{position:relative;left:auto;right:auto;bottom:auto;margin-top:-3px}.landing-page .ff-hero-actions{gap:16px}.landing-page .ff-workcell-label{top:12px}}
 @media(min-width:701px) and (max-width:1000px){.landing-page .ff-process-heading h2>br{display:block}}
 @media(max-width:700px){.landing-page .ff-hero{max-height:none}.landing-page .ff-concept-controls{position:relative}.landing-page .ff-scenario-buttons .ff-motion-button{position:absolute;right:0;top:-6px}}
+.landing-page .ff-process-visual.ff-shelf-visual {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0;
+}
+.landing-page .ff-shelf-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 24px 0 10px;
+}
+.landing-page .ff-shelf-diagram text {
+  fill: #b7c6af;
+  font: 10px ui-monospace, Consolas, monospace;
+  letter-spacing: .06em;
+}
+.landing-page .ff-shelf-visual figcaption {
+  padding: 0 5%;
+  font-size: clamp(16px, 1.5vw, 23px);
+  line-height: 1.5;
+}
+.landing-page .ff-shelf-visual .ff-text-link {
+  align-self: flex-start;
+  margin: 14px 5% 24px;
+  color: #f0f3eb;
+}
+.landing-page .ff-final-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+}
+.landing-page .ff-final-actions .ff-text-button {
+  border-color: currentColor;
+}

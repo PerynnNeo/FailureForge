@@ -460,6 +460,22 @@
               "type": "string",
               "title": "Project Id"
             }
+          },
+          {
+            "name": "generation",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Generation"
+            }
           }
         ],
         "responses": {

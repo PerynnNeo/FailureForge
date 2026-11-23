@@ -13,9 +13,12 @@ def test_api_runs_without_gpu_and_rejects_unqualified_robot_execution(tmp_path):
         health = client.get("/api/health").json()
         assert health["runtime_mode"] == "offline"
         assert not health["readiness"]["qualified"]
+        assert "RTX 5090" not in health["readiness"]["reason"]
         response = client.post("/api/campaigns", json={"backend": "libero"}, headers={"Idempotency-Key": "test-live-key"})
         assert response.status_code == 409
-        assert client.get("/api/catalog").json()["policy"]["revision"]
+        catalog = client.get("/api/catalog").json()
+        assert catalog["policy"]["revision"]
+        assert catalog["qualification"] == health["readiness"]
 
 
 def test_api_synthetic_journey_and_export(tmp_path):

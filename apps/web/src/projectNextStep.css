@@ -1,0 +1,20 @@
+.project-next-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 22px;
+  padding: 24px 28px;
+  border: 1px solid #cbdce2;
+  border-radius: 10px;
+  background: #eef5f5;
+}
+.project-next-step .eyebrow { color: #41616a; text-transform: uppercase; }
+.project-next-step h3 { margin: 6px 0; color: #20394b; font-size: clamp(1.2rem, 2vw, 1.65rem); line-height: 1.25; }
+.project-next-step p { margin: 4px 0 0; max-width: 66ch; color: #455f6c; overflow-wrap: anywhere; }
+.project-next-buttons { display: grid; gap: 10px; justify-items: center; flex-shrink: 0; }
+.project-next-buttons .text-link { font-size: .88rem; }
+@media(max-width: 800px) {
+  .project-next-step { align-items: flex-start; flex-direction: column; gap: 16px; padding: 20px; }
+  .project-next-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+}

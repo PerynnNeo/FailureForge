@@ -7,7 +7,7 @@ const readRoute = () => window.location.hash.slice(1) || '/';
 
 function SiteRouter() {
   const [route, setRoute] = useState(readRoute);
-  const inWorkspace = /^\/(?:workspace|projects(?:\/[^/]+(?:\/analysis)?)?|campaigns(?:\/[^/]+)?|cases(?:\/[^/]+)?|runtime)\/?$/.test(route.split('?')[0]);
+  const inWorkspace = /^\/(?:workspace|projects(?:\/[^/]+(?:\/analysis)?)?|campaigns(?:\/[^/]+)?|cases(?:\/[^/]+)?|runtime|settings)\/?$/.test(route.split('?')[0]);
 
   useEffect(() => {
     let acceptedRoute = readRoute();
@@ -26,10 +26,15 @@ function SiteRouter() {
   }, []);
 
   useEffect(() => {
+    const path = route.split('?')[0].replace(/\/$/, '');
+    if (path === '/settings' || path === '/runtime') {
+      document.title = 'Settings · FailureForge';
+      return;
+    }
     document.title = inWorkspace
       ? 'FailureForge · Investigation workspace'
       : 'FailureForge — Find where robots fail.';
-  }, [inWorkspace]);
+  }, [inWorkspace, route]);
 
   return inWorkspace
     ? <Suspense fallback={<div role="status" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f3f5f7', color: '#253746', fontFamily: 'system-ui, sans-serif' }}>Opening your workspace…</div>}><App route={route}/></Suspense>

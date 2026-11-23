@@ -152,12 +152,18 @@ class ScenarioService:
                 "review": review, "family_key": family, "execution": json.loads(c["execution"]) if c["execution"] else None})
         return result
 
-    def history(self, project_id):
+    def history(self, project_id, generation=None):
         with self.store.connection() as db:
             self.store._required(db, "projects", project_id)
             ids = db.execute("SELECT id FROM scenario_batches WHERE project_id=? ORDER BY created_at DESC,rowid DESC LIMIT 30",
                              (project_id,)).fetchall()
             batches = [self._batch(db, project_id, r["id"]) for r in ids]
+            if generation and not any(batch["id"] == generation for batch in batches):
+                # Keep a shared result accessible after it falls outside recent history.
+                try:
+                    batches.append(self._batch(db, project_id, generation))
+                except KeyError:
+                    pass
         return {"provider": self.provider.status(), "batches": batches}
 
     def generate(self, project_id, body, key):
@@ -479,8 +485,8 @@ def scenario_router(service):
     router = APIRouter(prefix="/api/projects/{project_id}/scenarios", tags=["scenario discovery"])
 
     @router.get("")
-    def history(project_id: str):
-        return service.history(project_id)
+    def history(project_id: str, generation: str | None = None):
+        return service.history(project_id, generation)
 
     @router.post("/import-reference", status_code=202)
     def import_reference(project_id: str, body: ReferenceImport, idempotency_key: str | None = Header(None)):

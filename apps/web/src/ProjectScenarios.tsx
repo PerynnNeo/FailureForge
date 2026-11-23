@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { formatTime, label, post, request } from './api';
+import { ApiError, formatTime, label, post, request } from './api';
 import type { RunSummary } from './analysisInputs';
 import { Icon, Notice, Status } from './components';
 import type { Project } from './projectTypes';
@@ -7,6 +7,7 @@ import { ScenarioReferenceImport } from './ScenarioReferenceImport';
 import type { Candidate } from './ScenarioReview';
 import { ScenarioBatchResults } from './ScenarioBatchResults';
 import { ThermalScenarioFields, type ThermalChange } from './ThermalScenarioFields';
+import { scenarioGenerationHash, selectedScenarioBatch } from './scenarioNavigation';
 import './scenarioDiscovery.css';
 
 type ScenarioBatch = {
@@ -31,19 +32,25 @@ function downloadBatch(batch: ScenarioBatch) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function ProjectScenarios({ project, dirty, onProjectSaved, reloadProject }: {
-  project: Project; dirty: boolean; onProjectSaved: (project: Project) => void; reloadProject: () => Promise<void>;
+export default function ProjectScenarios({ project, query, dirty, onProjectSaved, reloadProject }: {
+  project: Project; query: string; dirty: boolean; onProjectSaved: (project: Project) => void; reloadProject: () => Promise<void>;
 }) {
   const base = `/projects/${encodeURIComponent(project.id)}`;
-  const [task, setTask] = useState(project.goal.slice(0, 2000));
+  const params = new URLSearchParams(query);
+  const generation = params.get('generation') || '';
+  const requestedReference = generation ? '' : params.get('reference') || '';
+  const initialTask = params.get('example') === 'shelf' && project.analysis_type === 'structural'
+    ? 'Where might someone place or spread the same load during normal shelf use, and would the shelf stay within its deflection limit?'
+    : project.goal.slice(0, 2000);
+  const [task, setTask] = useState(initialTask);
   const taskInput = useRef<HTMLTextAreaElement>(null);
-  const [baseline, setBaseline] = useState('');
+  const referenceSelect = useRef<HTMLSelectElement>(null);
+  const [baseline, setBaseline] = useState(requestedReference);
   const [thermalChange, setThermalChange] = useState<ThermalChange>({});
-  const [runs, setRuns] = useState<RunSummary[]>([]);
+  const [runs, setRuns] = useState<RunSummary[] | null>(null);
   const [imported, setImported] = useState<string | null>(null);
   const [data, setData] = useState<DiscoveryPage | null>(null);
-  const [selected, setSelected] = useState(() =>
-    new URLSearchParams(window.location.hash.split('?')[1]).get('generation') ?? '');
+  const [loadedGeneration, setLoadedGeneration] = useState('');
   const [editingSetup, setEditingSetup] = useState(false);
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -53,33 +60,55 @@ export default function ProjectScenarios({ project, dirty, onProjectSaved, reloa
   const submissionKey = useRef<{ body: string; key: string } | null>(null);
   const reload = () => setRefresh(value => value + 1);
 
+  function showGeneration(id: string) {
+    setEditingSetup(false);
+    window.location.hash = scenarioGenerationHash(project.id, query, id);
+  }
+  useEffect(() => {
+    setEditingSetup(false);
+    setBaseline(requestedReference);
+    setThermalChange({});
+    setImported(null);
+    setError('');
+  }, [requestedReference, generation]);
   useEffect(() => {
     let current = true;
-    void request<DiscoveryPage>(base + '/scenarios').then(result => {
-      if (current) { setData(result); setReadError(''); }
+    const search = generation ? '?generation=' + encodeURIComponent(generation) : '';
+    void request<DiscoveryPage>(base + '/scenarios' + search).then(result => {
+      if (current) { setData(result); setLoadedGeneration(generation); setReadError(''); }
     }).catch(failure => { if (current) setReadError(describe(failure)); });
     return () => { current = false; };
-  }, [base, project.revision, refresh]);
+  }, [base, project.revision, generation, refresh]);
   useEffect(() => {
     let current = true;
-    void request<{ runs: RunSummary[] }>(base + '/analysis').then(result => {
-      if (current) { setRuns(result.runs); setRunError(''); }
+    void request<{ runs: RunSummary[] }>(base + '/analysis').then(async result => {
+      const items = result.runs;
+      if (requestedReference && !items.some(run => run.id === requestedReference)) {
+        try {
+          items.push(await request<RunSummary>(base + '/analysis/' + encodeURIComponent(requestedReference)));
+        } catch (failure) {
+          if (!(failure instanceof ApiError && failure.status === 404)) throw failure;
+        }
+      }
+      if (current) { setRuns(items); setRunError(''); }
     }).catch(failure => { if (current) setRunError(describe(failure)); });
     return () => { current = false; };
-  }, [base, project.revision, refresh]);
-  const currentRuns = runs.filter(run => run.project_revision === project.revision);
+  }, [base, project.revision, requestedReference, refresh]);
+  const currentRuns = (runs ?? []).filter(run => run.project_revision === project.revision);
   const selectedRun = currentRuns.find(run => run.id === baseline);
   const thermal = selectedRun?.adapter === 'thermal_rod';
   const importedRun = currentRuns.find(run => run.id === imported);
   const importing = Boolean(imported && (!importedRun || active(importedRun.status)));
+  const referencePending = Boolean(selectedRun && active(selectedRun.status));
   const generating = data?.batches.some(batch => active(batch.status)) ?? false;
   useEffect(() => {
-    if (!generating && !importing) return;
+    if (!generating && !importing && !referencePending) return;
     const timer = window.setInterval(() => { if (!document.hidden) setRefresh(value => value + 1); }, 3500);
     return () => window.clearInterval(timer);
-  }, [generating, importing]);
-  const batch = data?.batches.find(item => item.id === selected) ?? data?.batches[0];
-  const batchReference = runs.find(run => run.id === batch?.baseline_run_id);
+  }, [generating, importing, referencePending]);
+  const batch = selectedScenarioBatch(data?.batches, params);
+  const latest = data?.batches[0];
+  const batchReference = runs?.find(run => run.id === batch?.baseline_run_id);
   const stale = Boolean(batch && batch.revision !== project.revision);
   const canGenerate = Boolean(task.trim() && data && (thermal || data.provider.available) && !dirty && !busy && !generating
     && !importing && (!baseline || selectedRun?.status === 'completed'));
@@ -92,12 +121,12 @@ export default function ProjectScenarios({ project, dirty, onProjectSaved, reloa
     const body = { expected_revision: project.revision, task: task.trim(), baseline_run_id: baseline || null,
       run_supported: runSupported, ...(thermal && (hasBoundaryInput || !data?.provider.available) && { thermal_change: thermalChange }) };
     const serialized = JSON.stringify(body);
+    const submittedFrom = window.location.hash;
     if (submissionKey.current?.body !== serialized) submissionKey.current = { body: serialized, key: crypto.randomUUID() };
     try {
       const result = await post<ScenarioBatch>(base + '/scenarios/generate', body, submissionKey.current.key);
       setData(previous => previous && ({ ...previous, batches: [result, ...previous.batches.filter(item => item.id !== result.id)] }));
-      setSelected(result.id);
-      setEditingSetup(false);
+      if (window.location.hash === submittedFrom) showGeneration(result.id);
       submissionKey.current = null;
       reload();
     } catch (failure) { setError(describe(failure)); } finally { setBusy(false); }
@@ -116,33 +145,44 @@ export default function ProjectScenarios({ project, dirty, onProjectSaved, reloa
     setTask(`${prefix}\n\n${question}\n`.trimStart());
     requestAnimationFrame(() => { taskInput.current?.focus(); taskInput.current?.setSelectionRange(2000, 2000); });
   }
-  function newBatch() {
+  function newBatch(chooseReference = false) {
     if (batch && !stale) {
       setBaseline(batch.baseline_run_id ?? '');
       setThermalChange(batch.thermal_change ?? {});
       setTask(batch.task);
     }
     setEditingSetup(true);
-    requestAnimationFrame(() => taskInput.current?.focus());
+    requestAnimationFrame(() => (chooseReference ? referenceSelect.current : taskInput.current)?.focus());
   }
+  const showSetup = editingSetup || Boolean(!generation && !batch && data);
+  const missingGeneration = generation && !batch && data && loadedGeneration === generation;
+  const returnBatch = batch ?? latest;
   return <div className="scenario-workspace">
-    {(!batch || editingSetup) && <section className="project-panel">
-      <header className="project-panel-header"><div><h3>Discover scenarios</h3>
-        <p>Describe the operating change and choose the reference you want to compare.</p></div></header>
+    {readError && <Notice tone="error">{readError} <button type="button" className="project-inline-button" onClick={reload}>Retry</button></Notice>}
+    {!showSetup && !batch && !missingGeneration && !readError && <p role="status">Opening your scenario workspace…</p>}
+    {missingGeneration && <Notice tone="warning">This saved batch could not be found in this project.{' '}
+      <button type="button" className="project-inline-button" onClick={() => showGeneration(latest?.id ?? '')}>
+        {latest ? 'Open the latest batch' : 'Start a new batch'}</button></Notice>}
+    {showSetup && <section className="project-panel">
+      <header className="project-panel-header"><div><h3>Set up your what-if tests</h3>
+        <p>Start with an ordinary run of your prototype. Each simulation compares one proposed change with that starting point.</p></div></header>
       <div className="project-form-stack">
         {dirty && <Notice tone="warning">Save your project changes before generating or running a scenario.</Notice>}
-        <label className="project-field"><span>What operating situation should we investigate?</span>
-          <textarea ref={taskInput} maxLength={2000} rows={3} value={task} onChange={event => setTask(event.target.value)}
-            placeholder="What should happen, and what else is acting on the prototype at that moment?"/></label>
-        <div className="scenario-reference"><label className="project-field"><span>Reference run</span>
-          <select value={baseline} onChange={event => { setBaseline(event.target.value); setImported(null); setThermalChange({}); }}>
-            <option value="">Plan from the project brief</option>
-            {baseline && !selectedRun && <option value={baseline} disabled>{importing ? 'Preparing imported reference…' : 'Reference unavailable for this revision'}</option>}
+        <div className="scenario-reference"><label className="project-field"><span>Starting point</span>
+          <select ref={referenceSelect} value={baseline} onChange={event => { setBaseline(event.target.value); setImported(null); setThermalChange({}); }}>
+            <option value="">Ideas only · use my project brief</option>
+            {baseline && !selectedRun && <option value={baseline} disabled>{importing || !runs ? 'Loading reference…' : 'Reference unavailable for this revision'}</option>}
             {currentRuns.filter(run => run.status === 'completed' || run.id === baseline).map(run =>
               <option key={run.id} value={run.id}>{run.label} · {label(run.adapter)} · {formatTime(run.created_at)}{run.status === 'completed' ? '' : ' · ' + label(run.status)}</option>)}
           </select>
-          <small>A completed run fixes the model, its inputs, and its pass rules for comparison.</small></label>
-          <a className="text-link" href={'#' + base + '/analysis'}>Set up a reference in Analysis &amp; runs</a>
+          <small>{baseline ? 'The reference supplies the original model, settings, and any pass limits.' :
+            'A brief produces ideas and follow-up questions. Choose a completed reference run to test changes in simulation.'}</small></label>
+          {baseline && runs && !selectedRun && !importing && <Notice tone="warning">Choose a reference from this project revision or run a new one.</Notice>}
+          {referencePending && !importing && <p className="small" role="status">Waiting for the selected reference to finish…</p>}
+          {selectedRun && !imported && !referencePending && selectedRun.status !== 'completed' && <Notice tone="warning">
+            This reference is {label(selectedRun.status)}. Choose a completed run or create a new reference in Analysis &amp; runs.</Notice>}
+          {(!baseline || runs && !importing && !referencePending && selectedRun?.status !== 'completed') &&
+            <a className="text-link" href={'#' + base + '/analysis'}>Run a reference in Analysis &amp; runs</a>}
           <ScenarioReferenceImport project={project} disabled={dirty || busy} onSaved={onProjectSaved}
             onRun={id => { setBaseline(id); setThermalChange({}); setImported(id); setError(''); reload(); }}/>
           {importing && <p className="small" role="status">Running the imported reference on the CPU…</p>}
@@ -151,31 +191,34 @@ export default function ProjectScenarios({ project, dirty, onProjectSaved, reloa
             The reference run is {label(importedRun.status)}. {importedRun.error}</Notice>}
           {runError && <Notice tone="error">{runError} <button type="button" className="project-inline-button" onClick={reload}>Retry references</button></Notice>}
         </div>
+        <label className="project-field"><span>What operating situation should we investigate?</span>
+          <textarea ref={taskInput} maxLength={2000} rows={3} value={task} onChange={event => setTask(event.target.value)}
+            placeholder="Describe how someone uses the prototype and what they need it to do."/></label>
         {thermal && <ThermalScenarioFields value={thermalChange} onChange={setThermalChange}/>}
-        {!thermal && <div className="scenario-generator"><div>
-          <strong>{data?.provider.model ?? 'Local scenario generator'}</strong>
-          <span>{data?.provider.available ? 'Available on the local model server' : data?.provider.detail || 'Checking the local model server…'}</span></div>
+        {!thermal && data && !data.provider.available && <div className="scenario-generator"><div>
+          <strong>Local scenario planner unavailable</strong>
+          <span>{data.provider.detail}</span>
+          {selectedRun?.status === 'completed' && <a className="text-link" href={'#' + base + '/analysis?run=' + encodeURIComponent(selectedRun.id)}>View your completed reference</a>}</div>
           <button type="button" className="button secondary" onClick={() => { if (!dirty) void reloadProject(); reload(); }}
-            aria-label="Refresh generator and reference availability"><Icon name="refresh" size={15}/>Refresh</button>
+            aria-label="Refresh generator and reference availability"><Icon name="refresh" size={15}/>Check again</button>
         </div>}
-        {readError && <Notice tone="error">{readError}</Notice>}
         {error && <Notice tone="error">{error}</Notice>}
-        {baseline && !thermal && <p className="scenario-run-scope">This batch targets at least five distinct test cases. Supported cases run on the CPU with the selected reference. Ideas that need more inputs or physics stay in the results for review.</p>}
+        {baseline && !thermal && <p className="scenario-run-scope">The planner aims for five what-if cases. Supported cases run on the CPU. The results explain which ideas need more data or a different model.</p>}
         <div className="scenario-actions"><button type="button" className="button primary" disabled={!canGenerate}
-          onClick={() => void generate(Boolean(baseline))}><Icon name="search" size={16}/>{busy || generating ? 'Generating scenarios…' :
-            baseline ? 'Generate and run test cases' : 'Generate ideas from brief'}</button>
+          onClick={() => void generate(Boolean(baseline))}><Icon name="search" size={16}/>{busy || generating ? 'Preparing cases…' :
+            baseline ? 'Run what-if tests' : 'Generate ideas from brief'}</button>
           {baseline && <button type="button" className="button secondary" disabled={!canGenerate}
-            onClick={() => void generate(false)}>Generate for review</button>}
-          {batch && <button type="button" className="project-inline-button" onClick={() => setEditingSetup(false)}>Back to results</button>}
+            onClick={() => void generate(false)}>Preview cases first</button>}
+          {returnBatch && <button type="button" className="project-inline-button" onClick={() => showGeneration(returnBatch.id)}>Back to saved results</button>}
         </div>
       </div></section>}
-    {batch && <section className="project-panel" aria-label="Scenario review">
+    {batch && !showSetup && <section className="project-panel" aria-label="Scenario review">
       <header className="project-panel-header"><div><h3>Scenario batch</h3>
-        <p>{batch.task}</p></div>{!editingSetup && <button type="button" className="button secondary"
-          onClick={newBatch}><Icon name="plus" size={15}/>New scenario batch</button>}</header>
+        <p>{batch.task}</p></div><button type="button" className="button secondary"
+          onClick={() => newBatch()}><Icon name="plus" size={15}/>New scenario batch</button></header>
       <div className="project-form-stack">
         {(data?.batches.length ?? 0) > 1 && <label className="project-field"><span>Saved generations</span>
-          <select value={batch.id} onChange={event => setSelected(event.target.value)}>{data?.batches.map(item =>
+          <select value={batch.id} onChange={event => showGeneration(event.target.value)}>{data?.batches.map(item =>
             <option key={item.id} value={item.id}>{formatTime(item.created_at)} · Rev {item.revision} · {item.task.slice(0, 50)}</option>)}</select></label>}
         <p className="scenario-source">Revision {batch.revision} · {batchReference?.label ?? (batch.baseline_run_id ? 'Reference ' + batch.baseline_run_id : 'Project brief')}{batch.model && ' · ' + batch.model}</p>
         {stale && <Notice tone="warning">The project is now at revision {project.revision}. Generate a new set to test the current inputs.</Notice>}
@@ -184,13 +227,13 @@ export default function ProjectScenarios({ project, dirty, onProjectSaved, reloa
         {batch.error && <Notice tone="error">{batch.error}</Notice>}
         <ScenarioBatchResults key={batch.id} projectId={project.id} batchId={batch.id} generationStatus={batch.status}
           candidates={batch.candidates} revision={project.revision} dirty={dirty} stale={stale} refresh={refresh}
-          onChange={reload} clarify={clarify}/>
-        {!active(batch.status) && <div className="scenario-actions" role="group" aria-label="Download this scenario batch">
+          hasReference={Boolean(batch.baseline_run_id)} onChange={reload} clarify={clarify} onSetUpTests={() => newBatch(true)}/>
+        {!active(batch.status) && <details className="scenario-detail"><summary>Export this batch</summary><div className="scenario-actions" role="group" aria-label="Download this scenario batch">
           <button type="button" className="button secondary" onClick={() => downloadBatch(batch)}>
             <Icon name="download" size={15}/>Download proposals (JSON)</button>
           <a className="button secondary" href={'/api' + base + '/scenarios/batches/' + encodeURIComponent(batch.id) + '/results'}
             download="results.json"><Icon name="download" size={15}/>Download results (JSON)</a>
-        </div>}
+        </div></details>}
         {batch.clarifications.length > 0 && <div><h4>Information to clarify</h4><ul className="scenario-questions">
           {batch.clarifications.map((item, i) => <li key={i}>{item} <button type="button" className="project-inline-button" onClick={() => clarify(item)}>{batch.thermal_change ? 'Review boundary inputs' : 'Answer in task description'}</button></li>)}</ul></div>}
       </div></section>}

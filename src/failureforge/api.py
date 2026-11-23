@@ -139,7 +139,7 @@ def create_app(data_dir: str | Path | None = None, web_dir: str | Path | None = 
     def readiness():
         report = qualification_report(root / "qualification")
         if report is None:
-            return {"qualified": False, "reason": "Run qualification and review the policy camera frames on the RTX 5090 execution host."}
+            return {"qualified": False, "reason": "Run qualification and review the policy camera frames on the host that runs the robot benchmark."}
         ready = report.get("qualified") is True and report.get("scene_review_approved") is True
         return {"qualified": ready, "reason": "Qualification recorded; worker rechecks runtime identity before execution." if ready else "Qualification or manual scene review is pending."}
 

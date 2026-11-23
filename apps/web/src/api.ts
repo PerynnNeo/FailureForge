@@ -38,7 +38,7 @@ export function artifactUrl(value?: string): string | undefined {
   return undefined;
 }
 
-export const formatTime = (value?: string | number) => value ? new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(typeof value === 'number' ? value * 1000 : value)) : '—';
+export { formatWorkspaceTime as formatTime } from './workspacePreferences.ts';
 export const label = (value?: string) => (value ?? 'unknown').replaceAll('_', ' ');
 export const shortId = (value: string) => value.length > 16 ? `${value.slice(0, 8)}…${value.slice(-4)}` : value;
 export const methodName = (value?: string) => ({ random: 'Uniform random', sobol: 'Sobol', sobol_local_mix: 'Sobol + local search' })[value ?? ''] ?? label(value);

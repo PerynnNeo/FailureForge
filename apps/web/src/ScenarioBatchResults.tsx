@@ -20,9 +20,10 @@ function Measurement({ value }: { value: ScenarioResult['measurement'] }) {
 }
 
 export function ScenarioBatchResults({ projectId, batchId, generationStatus, candidates, revision, dirty, stale,
-  refresh, onChange, clarify }: {
+  hasReference, refresh, onChange, clarify, onSetUpTests }: {
   projectId: string; batchId: string; generationStatus: string; candidates: Candidate[]; revision: number;
-  dirty: boolean; stale: boolean; refresh: number; onChange: () => void; clarify: (question: string) => void;
+  dirty: boolean; stale: boolean; hasReference: boolean; refresh: number; onChange: () => void;
+  clarify: (question: string) => void; onSetUpTests: () => void;
 }) {
   const endpoint = `/projects/${encodeURIComponent(projectId)}/scenarios/batches/${encodeURIComponent(batchId)}`;
   const [report, setReport] = useState<BatchReport | null>(null);
@@ -72,6 +73,9 @@ export function ScenarioBatchResults({ projectId, batchId, generationStatus, can
   const currentRow = rowById.get(selected);
   const ready = report?.rows.filter(item => item.state === 'ready').length ?? 0;
   const counts = report?.counts;
+  const firstFailure = report?.rows.find(row => row.state === 'failed');
+  const firstMeasurement = report?.rows.find(row => row.state === 'passed' || row.state === 'measurement_only');
+  const firstResult = firstFailure ?? firstMeasurement;
   const isGenerating = ['queued', 'running'].includes(generationStatus);
   return <section className="scenario-results" aria-label="Batch results">
     {error && <Notice tone="error">{error} <button type="button" className="project-inline-button"
@@ -79,24 +83,28 @@ export function ScenarioBatchResults({ projectId, batchId, generationStatus, can
     {!report && !error && !isGenerating && <p role="status">Reading the batch results…</p>}
     {report?.execution_error && <Notice tone="warning">{report.execution_error}</Notice>}
     {report && counts && !isGenerating && <>
-      <div className="scenario-results-heading"><div><h4>Test results</h4><p>{coverageText(report)}</p></div>
+      <div className="scenario-results-heading"><div><h4>{hasReference ? 'Test results' : 'Ideas from your brief'}</h4>
+        <p>{hasReference ? coverageText(report) : 'Choose a reference run to turn a supported idea into a measured comparison.'}</p></div>
+        {!hasReference && !stale && <button type="button" className="button secondary" onClick={onSetUpTests}>Set up a reference</button>}
         {ready > 0 && !stale && <button type="button" className="button primary" disabled={dirty || submitting}
           onClick={() => void executeAll()}>{submitting ? 'Submitting tests…' : `Run all ${ready} supported ${ready === 1 ? 'case' : 'cases'}`}</button>}
       </div>
       {report.rows.length > 0 ? <>
-        <div className="scenario-scoreboard" aria-label="Case totals" aria-live="polite">
+        {hasReference && <div className="scenario-scoreboard" aria-label="Case totals" aria-live="polite">
           {[[counts.passed, 'Passed', 'passed'], [counts.failed, 'Failed', 'failed'],
             [counts.pending, 'In progress', 'running'], [counts.measurement_only, 'Measurement only', 'measurement_only'],
             [counts.blocked, 'Blocked', 'blocked'], [counts.inconclusive, 'Inconclusive', 'inconclusive']].map(([count, name, state]) =>
               (count !== 0 || state === 'passed' || state === 'failed') && <span key={state} className={'scenario-total total-' + state}>
                 <strong>{count}</strong> {name}</span>)}
-        </div>
+          {firstResult && <button type="button" className="project-inline-button scenario-open-result"
+            onClick={() => open(firstResult.candidate_id)}>{firstFailure ? 'Inspect a failed case' : 'Inspect a measured case'}</button>}
+        </div>}
         <div className="analysis-table-scroll"><table className="data-table scenario-table scenario-results-table">
-          <thead><tr><th scope="col">Use case</th><th scope="col">Result</th><th scope="col">Measured what-if</th>
+          <thead><tr><th scope="col">Use case</th><th scope="col">{hasReference ? 'Result' : 'What it needs'}</th>{hasReference && <th scope="col">Measurement</th>}
             <th scope="col"><span className="sr-only">Case details</span></th></tr></thead>
           {grouped.map(group => <tbody key={group.candidates[0].id}>
             {group.candidates.length > 1 && <tr className="scenario-family-heading">
-              <th colSpan={4} scope="rowgroup">{group.title} · {group.candidates.length} variations</th></tr>}
+              <th colSpan={hasReference ? 4 : 3} scope="rowgroup">{group.title} · {group.candidates.length} variations</th></tr>}
             {group.candidates.map(candidate => {
               const row = rowById.get(candidate.id);
               if (!row) return null;
@@ -104,7 +112,7 @@ export function ScenarioBatchResults({ projectId, batchId, generationStatus, can
                 <th scope="row">{row.title}{row.applied_change && <small>{row.applied_change}</small>}</th>
                 <td><span className={'scenario-state state-' + row.state}>{verdictLabel(row.state)}</span>
                   {row.reason && ['needs_information', 'needs_capability', 'invalid', 'stale', 'inconclusive'].includes(row.state) && <small>{row.reason}</small>}</td>
-                <td><Measurement value={row.measurement}/></td>
+                {hasReference && <td><Measurement value={row.measurement}/></td>}
                 <td><button type="button" className="project-inline-button" aria-label={'Inspect ' + row.title}
                   onClick={() => open(row.candidate_id)}>Inspect</button>
                   {row.suite_id && row.reference_run_id && row.variant_run_id && <a className="text-link"

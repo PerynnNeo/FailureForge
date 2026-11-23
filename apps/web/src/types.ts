@@ -8,6 +8,7 @@ export type Domain = components['schemas']['Domain'];
 export type WorkerStatus = { online: boolean; backend: string | null; last_seen: string | number | null };
 export type Health = {
   status: string;
+  version?: string;
   runtime_mode: 'offline' | Backend;
   worker: WorkerStatus;
   workers?: Partial<Record<Backend, WorkerStatus>>;

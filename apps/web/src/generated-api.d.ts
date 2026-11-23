@@ -1977,7 +1977,9 @@ export interface operations {
     };
     history_api_projects__project_id__scenarios_get: {
         parameters: {
-            query?: never;
+            query?: {
+                generation?: string | null;
+            };
             header?: never;
             path: {
                 project_id: string;

@@ -1,7 +1,7 @@
 import type { Backend, Health } from './types';
 
 export function workerFor(health: Health | null, backend: Backend) {
-  return health?.workers?.[backend] ?? (health?.worker.backend === backend ? health.worker : undefined);
+  return health?.workers?.[backend] ?? (health?.worker?.backend === backend ? health.worker : undefined);
 }
 
 export function workerLabel(health: Health | null) {

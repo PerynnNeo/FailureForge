@@ -4,6 +4,7 @@ import '@fontsource-variable/space-grotesk';
 import './landing.css';
 
 const ForgeScene = lazy(() => import('./ForgeScene'));
+const shelfExampleHref = '#/projects/new?example=shelf';
 type Scenario = 'placement' | 'obstacles' | 'grip';
 const concepts: { id: Scenario; label: string; question: string }[] = [
   { id: 'placement', label: 'Object placement', question: 'What if the target moves?' },
@@ -11,9 +12,9 @@ const concepts: { id: Scenario; label: string; question: string }[] = [
   { id: 'grip', label: 'Grip & contact', question: 'What if the grasp changes?' },
 ];
 const steps = [
-  { name: 'Define the experiment', title: 'Give the robot a task.', text: 'Start with a supported robot and its controller. Set the task, the conditions to explore, and what counts as success.', detail: 'Robot · Controller · Task · Test bounds' },
-  { name: 'Explore the conditions', title: 'Look beyond the ideal run.', text: 'Run controlled variations in simulation. Compare outcomes against reference conditions and find the attempts that deserve attention.', detail: 'Bounded search · Matched comparisons' },
-  { name: 'Investigate the failure', title: 'Turn an outcome into evidence.', text: 'Inspect what happened, try a smaller change, and run the case again. Keep the full context, including reruns that disagree.', detail: 'Recordings · Traces · Reproduction bundle' },
+  { name: 'Choose a reference', title: 'Describe normal operation.', text: 'Decide what the prototype should do and what you will measure. For the shelf example, the starting condition is a load spread along the shelf.', detail: 'Model inputs · Starting load · Bending limit' },
+  { name: 'Run a comparison', title: 'Change one condition.', text: 'Move the same load to the free edge of the shelf. Run both conditions with the same material and dimensions so you can isolate the effect of load position.', detail: 'Reference condition · Changed condition' },
+  { name: 'Read the result', title: 'Did it stay within the limit?', text: 'Compare the measured bend in each run with the allowed bend. Use the result to decide which condition to check on a physical prototype.', detail: 'Measurement · Limit · Verdict' },
 ];
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 
@@ -25,21 +26,20 @@ function Crosshair() {
 }
 function Plus() { return <span className="ff-plus" aria-hidden="true">+</span>; }
 
-function MiniWorld({ variant = 0, paths = false }: { variant?: number; paths?: boolean }) {
-  const shifted = variant % 3;
-  return <svg viewBox="0 0 300 210" aria-hidden="true">
-    <path d="m24 146 116-67 137 77-115 66Z" fill="#262e2a" stroke="#4d5b51"/>
-    <path d="m51 145 113 65m-85-82 113 65m-86-82 113 65M54 162l112-64m-84 81 112-65m-84 82 112-66" stroke="#3d4841"/>
-    <ellipse cx="104" cy="147" rx="25" ry="14" fill="#111815"/>
-    <path d="M84 145v-21h39v21q-19 12-39 0" fill="#758078"/>
-    <path d="m104 123-17-49 43-37 43 24 8 36" fill="none" stroke="#bac2b9" strokeWidth="15" strokeLinejoin="round"/>
-    <path d="m104 123-17-49 43-37 43 24 8 36" fill="none" stroke="#d7ddd2" strokeWidth="8" strokeLinejoin="round"/>
-    <circle cx="87" cy="74" r="12" fill="#17221b" stroke="#8d9b8c" strokeWidth="4"/>
-    <circle cx="130" cy="37" r="10" fill="#17221b" stroke="#8d9b8c" strokeWidth="3"/>
-    <path d="m174 97 2 15m12-18 3 15" stroke="#b3bdb0" strokeWidth="5"/>
-    <g transform={`translate(${shifted * 17} ${shifted * 4})`}><path d="m166 142 18-10 18 10-18 11Z" fill="#ff9a73"/><path d="m166 142 18 11v20l-18-11Z" fill="#e56841"/><path d="m184 153 18-11v20l-18 11Z" fill="#a7492d"/></g>
-    {variant > 2 && <g><path d="m205 112 15-8 22 13-15 9Z" fill="#98a58f"/><path d="m205 112 22 14v31l-22-13Z" fill="#65725f"/><path d="m227 126 15-9v31l-15 9Z" fill="#45523e"/></g>}
-    {paths && <path d={shifted ? 'M181 113 Q227 103 226 162' : 'M181 113 Q185 125 184 142'} fill="none" stroke="#ff845a" strokeWidth="2" strokeDasharray="4 5"/>}
+function ShelfDiagram({ edge, measure }: { edge: boolean; measure: boolean }) {
+  const arrows = edge ? [395] : [104, 162, 220, 278, 336, 394];
+  return <svg className="ff-shelf-diagram" viewBox="0 0 460 205" aria-hidden="true">
+    <g stroke="#4e6153" strokeWidth="1">
+      {[65, 102, 139, 176].map(y => <path key={y} d={`M25 ${y}H435`}/>)}
+    </g>
+    <g fill="none" stroke="#ed956f" strokeWidth="3">
+      {arrows.map(x => <path key={x} d={`M${x} 34v38m-5-6 5 6 5-6`}/>)}
+    </g>
+    <path d="M64 97H398" stroke="#b7c6af" strokeWidth="2" strokeDasharray="5 6"/>
+    <path d={measure ? 'M64 97q202 0 334 42' : 'M64 97H398'} fill="none" stroke="#d5dfce" strokeWidth="9"/>
+    <path d="M61 77v86m-9-73 9-9m-9 26 9-9m-9 26 9-9m-9 26 9-9m-9 26 9-9" fill="none" stroke="#9cab94" strokeWidth="3"/>
+    {measure && <path d="M408 98h10m-5 0v40m-5 0h10" fill="none" stroke="#ed956f" strokeWidth="2"/>}
+    <text x="43" y="188">FIXED END</text><text x="407" y="188" textAnchor="end">FREE EDGE</text>
   </svg>;
 }
 
@@ -67,23 +67,17 @@ function ScenarioGraphic({ kind }: { kind: 'arrangement' | 'contact' | 'percepti
 }
 
 function WorkflowVisual({ step }: { step: number }) {
-  return <div className={`ff-process-visual ff-process-state-${step}`}>
-    <div className="ff-process-window"><span><ForgeMark/>EXPERIMENT WORKSPACE</span><span>CONCEPT WALKTHROUGH</span></div>
-    {step === 0 ? <div className="ff-define-visual">
-      <div className="ff-blueprint"><MiniWorld paths/><div className="ff-blueprint-target"><Crosshair/><span>Task + environment</span></div></div>
-      <div className="ff-contract"><div><span>ROBOT</span><strong>Simulated embodiment</strong></div><div><span>CONTROLLER</span><strong>The behavior being tested</strong></div><div><span>EXPERIMENT</span><strong>Task, bounds & outcome rules</strong></div></div>
-    </div> : step === 1 ? <div className="ff-trials-visual">
-      <div className="ff-trial-heading"><span>One experiment. Controlled variations.</span><Crosshair/></div>
-      <div className="ff-trial-grid">{Array.from({ length: 6 }, (_, i) => <div key={i} className={i === 4 ? 'ff-trial-selected' : ''}><MiniWorld variant={i} paths/>{i === 4 && <span>Inspect this case</span>}</div>)}</div>
-      <div className="ff-trial-caption">Outcomes come from execution. Every attempt stays in the record.</div>
-    </div> : <div className="ff-case-visual">
-      <div className="ff-case-pair"><div><span>REFERENCE CONDITIONS</span><MiniWorld paths/></div><div><span>CHANGED CONDITIONS</span><MiniWorld variant={4} paths/></div></div>
-      <div className="ff-trace-label"><span>ACTIONS + STATE</span><span>Compare the evidence</span></div>
-      <svg className="ff-case-trace" viewBox="0 0 600 90" aria-hidden="true"><path d="M0 20H600M0 45H600M0 70H600" stroke="#344137"/><path d="m0 60 40-8 40 5 40-30 40 10 40-20 40 8 40-3 40 23 40-6 40 14 40-21 40 7 40-18 40 5 40-4" stroke="#b7c7aa" fill="none" strokeWidth="2"/><path d="m0 60 40-8 40 5 40-30 40 10 40-20 40 8 40 12 40-7 40 11 40-2 40 31 40-6 40 9 40-2 40 4" stroke="#fa8054" fill="none" strokeWidth="2"/></svg>
-      <div className="ff-case-manifest"><span>Scene configuration</span><span>Recorded behavior</span><span>Rerun history</span></div>
-    </div>}
-    <div className="ff-process-caption"><span>Illustrative workflow · not experiment results</span><span>{steps[step].name}</span></div>
-  </div>;
+  const captions = [
+    'In the reference run, the load is spread along the shelf.',
+    'In the comparison run, the same load rests at the free edge.',
+    'Read the maximum bend for each run and compare it with the design limit.',
+  ];
+  return <figure className="ff-process-visual ff-shelf-visual">
+    <div className="ff-process-window"><span><ForgeMark/>SHELF EXAMPLE</span><span>SETUP DIAGRAM</span></div>
+    <ShelfDiagram edge={step > 0} measure={step === 2}/>
+    <figcaption>{captions[step]}</figcaption>
+    <a className="ff-text-link" href={shelfExampleHref}>Try the shelf example<Plus/></a>
+  </figure>;
 }
 
 export default function LandingPage() {
@@ -138,26 +132,42 @@ export default function LandingPage() {
     <a className="ff-skip" href="#ff-main" onClick={e => { e.preventDefault(); document.getElementById('ff-main')?.focus(); }}>Skip to content</a>
     <header className="ff-nav">
       <a className="ff-brand" href="#/" aria-label="FailureForge home" onClick={e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' }); }}><ForgeMark/><span>FailureForge</span></a>
-      <nav id="ff-navigation" className={menu ? 'ff-nav-links ff-menu-open' : 'ff-nav-links'} aria-label="Website navigation"><button onClick={() => goTo('ff-purpose')}>The idea</button><button onClick={() => goTo('ff-scenarios')}>The scenarios</button><button onClick={() => goTo('ff-process')}>How it works</button><a className="ff-mobile-workbench" href="#/projects">Open workbench</a></nav>
-      <a className="ff-nav-cta" href="#/projects">Open workbench<Plus/></a>
+      <nav id="ff-navigation" className={menu ? 'ff-nav-links ff-menu-open' : 'ff-nav-links'} aria-label="Website navigation"><button onClick={() => goTo('ff-process')}>How it works</button><button onClick={() => goTo('ff-scenarios')}>Robot scenarios</button><a className="ff-mobile-workbench" href="#/projects">My projects</a></nav>
+      <a className="ff-nav-cta" href="#/projects">My projects<Plus/></a>
       <button ref={navToggle} className="ff-menu-toggle" aria-controls="ff-navigation" aria-expanded={menu} aria-label={menu ? 'Close navigation' : 'Open navigation'} onClick={() => setMenu(v => !v)}>{menu ? 'Close' : 'Menu'}<span aria-hidden="true">{menu ? '−' : '+'}</span></button>
     </header>
     <main id="ff-main" tabIndex={-1}>
       <section className="ff-hero" aria-labelledby="ff-hero-title">
         <div className="ff-hero-grid" aria-hidden="true"/>
-        <div className="ff-hero-copy"><div className="ff-eyebrow"><i/>ROBOT FAILURE DISCOVERY / IN SIMULATION</div><h1 id="ff-hero-title">Find where<br/>robots <em>fail.</em></h1><p>Explore the situations that challenge a robot. Find failing cases, inspect what happened, and test whether the failure repeats.</p><div className="ff-hero-actions"><a className="ff-button ff-button-orange" href="#/projects/new">Start a project<Plus/></a><button className="ff-text-button" onClick={() => goTo('ff-purpose')}>Explore the idea<span className="ff-small-square"/></button></div></div>
-        <div className="ff-hero-art"><div className="ff-scene" role="img" aria-label={`Concept illustration of a robot in a simulated workcell. ${activeConcept.question} This is artwork, not a recorded robot experiment.`}><Suspense fallback={<div className="ff-scene-loading"><ForgeMark/><span>ASSEMBLING THE WORKCELL</span></div>}><ForgeScene scenario={scenario} progress={progress} paused={paused}/></Suspense></div><div className="ff-workcell-label"><Crosshair/><span>VIRTUAL TEST ENVIRONMENT</span></div><div className="ff-world-question" aria-live="polite"><span>THE QUESTION</span><p>{activeConcept.question}</p></div></div>
+        <div className="ff-hero-copy">
+          <div className="ff-eyebrow"><i/>PROTOTYPE TESTING / IN SIMULATION</div>
+          <h1 id="ff-hero-title">What would<br/>make it <em>fail?</em></h1>
+          <p>Start with a shelf. See how far it bends when the same load moves to its edge. The model, material and bending limit are already supplied.</p>
+          <div className="ff-hero-actions">
+            <a className="ff-button ff-button-orange" href={shelfExampleHref}>Try the shelf example<Plus/></a>
+            <a className="ff-text-button" href="#/projects/new">Start my own project<span className="ff-small-square"/></a>
+          </div>
+        </div>
+        <div className="ff-hero-art"><div className="ff-scene" role="img" aria-label={`Illustrated robot workcell. ${activeConcept.question}`}><Suspense fallback={<div className="ff-scene-loading"><ForgeMark/><span>ASSEMBLING THE WORKCELL</span></div>}><ForgeScene scenario={scenario} progress={progress} paused={paused}/></Suspense></div><div className="ff-workcell-label"><Crosshair/><span>ROBOT WORKCELL ILLUSTRATION</span></div><div className="ff-world-question" aria-live="polite"><span>ROBOT SCENARIO</span><p>{activeConcept.question}</p></div></div>
         <div className="ff-hero-bottom"><div className="ff-concept-controls"><span>EXPLORE THE CONCEPT</span><div className="ff-scenario-buttons" role="group" aria-label="Illustrative scenarios, planned capabilities">{concepts.map(item => <button key={item.id} aria-pressed={scenario === item.id} onClick={() => setScenario(item.id)}>{item.label}</button>)}{!reduced && <button className="ff-motion-button" onClick={() => setPaused(v => !v)} aria-label={paused ? 'Play illustration motion' : 'Pause illustration motion'}><span aria-hidden="true">{paused ? '▷' : 'Ⅱ'}</span></button>}</div><p>Concept illustration · Scenario capabilities shown are planned.</p></div><button className="ff-scroll-cue" onClick={() => goTo('ff-purpose')}><span>SCROLL TO EXPLORE</span><i/></button></div>
       </section>
 
       <section id="ff-purpose" className="ff-purpose ff-section">
         <div className="ff-section-label ff-reveal"><span>THE IDEA</span><Crosshair/></div>
-        <div className="ff-purpose-body ff-reveal"><h2>A successful demo<br/>is a <em>starting point.</em></h2><div className="ff-purpose-columns"><p className="ff-large-copy">What happens when the world changes?</p><p>FailureForge is a workbench for investigating robot behavior in simulation. Put an existing controller through a task, explore controlled changes, and keep the evidence behind the outcome.</p></div></div>
-        <div className="ff-purpose-equation ff-reveal"><div><span>THE SYSTEM</span><strong>Robot + controller</strong></div><Plus/><div><span>THE CHALLENGE</span><strong>A task. A changing world.</strong></div><Plus/><div><span>THE FINDING</span><strong>A case you can investigate.</strong></div></div>
+        <div className="ff-purpose-body ff-reveal"><h2>Start with one<br/><em>testable question.</em></h2><div className="ff-purpose-columns"><p className="ff-large-copy">Which operating condition could push your design past its limit?</p><p>FailureForge runs simulations of supported designs, from a shelf under load to a moving robot joint. Compare a normal condition with a change you expect in use, then inspect the measurements behind each result.</p></div></div>
+        <div className="ff-purpose-equation ff-reveal"><div><span>REFERENCE</span><strong>How the design normally works</strong></div><Plus/><div><span>COMPARISON</span><strong>One changed condition</strong></div><Plus/><div><span>RESULT</span><strong>The measured difference</strong></div></div>
+      </section>
+
+      <section id="ff-process" className="ff-process" ref={process} aria-labelledby="ff-process-title">
+        <div className="ff-process-sticky">
+          <div className="ff-process-heading"><div className="ff-section-label"><span>HOW IT WORKS</span><Crosshair/></div><h2 id="ff-process-title">Your first<br/><em>simulation.</em></h2></div>
+          <div className="ff-process-art"><WorkflowVisual step={step}/><div className="ff-process-progress" aria-hidden="true" style={{ '--ff-progress': `${(step + 1) / 3 * 100}%` } as CSSProperties}/></div>
+          <div className="ff-process-steps" role="group" aria-label="Investigation workflow">{steps.map((item, index) => <button className={step === index ? 'ff-process-step ff-active' : 'ff-process-step'} key={item.name} aria-pressed={step === index} onClick={() => chooseStep(index)}><span className="ff-step-name">{item.name}<span aria-hidden="true">{step === index ? '−' : '+'}</span></span><strong>{item.title}</strong><span className="ff-step-text">{item.text}</span><small>{item.detail}</small></button>)}</div>
+        </div>
       </section>
 
       <section className="ff-scenarios ff-section" id="ff-scenarios">
-        <div className="ff-scenarios-heading ff-reveal"><div className="ff-section-label"><span>THE SCENARIOS</span><Crosshair/></div><h2>Change the situation.<br/><em>Ask a harder question.</em></h2><p>The ambition is broader scenario testing. Each family asks a different question about the robot’s behavior.</p></div>
+        <div className="ff-scenarios-heading ff-reveal"><div className="ff-section-label"><span>ROBOT SCENARIOS</span><Crosshair/></div><h2>Change the situation.<br/><em>Ask a harder question.</em></h2><p>The robotics work explores how a change in the environment affects the robot’s task. These examples show current and planned capabilities.</p></div>
         <div className="ff-scenario-families">
           <article className="ff-family ff-reveal"><div className="ff-family-top"><span>ARRANGEMENT</span><span className="ff-tag">Planned</span></div><ScenarioGraphic kind="arrangement"/><h3>Can it still reach<br/>what matters?</h3><p>Move the object. Add clutter. Constrain the approach. Explore how the layout changes the task.</p><div className="ff-family-foot">Object positions · Obstacles · Clutter</div></article>
           <article className="ff-family ff-reveal"><div className="ff-family-top"><span>INTERACTION</span><span className="ff-tag">Planned</span></div><ScenarioGraphic kind="contact"/><h3>Will the grasp<br/>still hold?</h3><p>Change the object and its physical properties. Investigate the effects of contact, weight, and friction.</p><div className="ff-family-foot">Object properties · Grip · Contact</div></article>
@@ -166,34 +176,26 @@ export default function LandingPage() {
         <p className="ff-scenario-note">Arrangement and interaction are product directions. The current robot integration explores perception changes in one supported task.</p>
       </section>
 
-      <section id="ff-process" className="ff-process" ref={process} aria-labelledby="ff-process-title">
-        <div className="ff-process-sticky">
-          <div className="ff-process-heading"><div className="ff-section-label"><span>HOW IT WORKS</span><Crosshair/></div><h2 id="ff-process-title">Simulate.<br/>Investigate.<br/><em>Understand.</em></h2></div>
-          <div className="ff-process-art"><WorkflowVisual step={step}/><div className="ff-process-progress" aria-hidden="true" style={{ '--ff-progress': `${(step + 1) / 3 * 100}%` } as CSSProperties}/></div>
-          <div className="ff-process-steps" role="group" aria-label="Investigation workflow">{steps.map((item, index) => <button className={step === index ? 'ff-process-step ff-active' : 'ff-process-step'} key={item.name} aria-pressed={step === index} onClick={() => chooseStep(index)}><span className="ff-step-name">{item.name}<span aria-hidden="true">{step === index ? '−' : '+'}</span></span><strong>{item.title}</strong><span className="ff-step-text">{item.text}</span><small>{item.detail}</small></button>)}</div>
-        </div>
-      </section>
-
       <section className="ff-evidence ff-section" id="ff-evidence">
         <div className="ff-evidence-title ff-reveal"><div className="ff-section-label"><span>THE OUTPUT</span><Crosshair/></div><h2>A failure is useful<br/>when you can<br/><em>look closer.</em></h2><p>Keep the experiment with the result. Follow a case from its conditions to its outcome, then return to it with a better question.</p></div>
-        <div className="ff-evidence-list ff-reveal"><article><span className="ff-evidence-icon"><Crosshair/></span><div><h3>See what happened.</h3><p>Inspect paired recordings from reference and changed conditions, together with the robot’s actions and state.</p></div></article><article><span className="ff-evidence-icon"><span aria-hidden="true">±</span></span><div><h3>Isolate what changed.</h3><p>Attempt a smaller variation that still exposes the failure. Preserve the original case and the search history.</p></div></article><article><span className="ff-evidence-icon"><span aria-hidden="true">↻</span></span><div><h3>Return to the same question.</h3><p>Request fresh execution and export the configuration, provenance, traces, and outcomes in one portable bundle.</p></div></article><a href="#/workspace" className="ff-text-link">Explore the investigation workspace<Plus/></a></div>
+        <div className="ff-evidence-list ff-reveal"><article><span className="ff-evidence-icon"><Crosshair/></span><div><h3>See what happened.</h3><p>Inspect the recorded measurements for your reference and changed conditions. Open the replay to see where a shelf bent or how a joint moved.</p></div></article><article><span className="ff-evidence-icon"><span aria-hidden="true">±</span></span><div><h3>Isolate what changed.</h3><p>Check the load, model and other inputs used in each run. Try a smaller change to see when the limit is crossed.</p></div></article><article><span className="ff-evidence-icon"><span aria-hidden="true">↻</span></span><div><h3>Keep the evidence.</h3><p>Return to a saved run or export its inputs, measurements and outcome for a design review.</p></div></article><a href="#/projects" className="ff-text-link">Open my projects<Plus/></a></div>
       </section>
 
       <section className="ff-release ff-section" id="ff-release">
-        <div className="ff-release-heading ff-reveal"><div className="ff-section-label"><span>WHERE WE ARE TODAY</span><Crosshair/></div><h2>One controlled benchmark.<br/><em>A foundation to build on.</em></h2><p>The first integration uses a simulated Panda arm, a pretrained SmolVLA controller, and a LIBERO task: move a black bowl onto a plate. Camera position and lighting are the first conditions it explores.</p></div>
-        <div className="ff-release-details ff-reveal"><div className="ff-release-status"><span>AVAILABLE NOW</span><h3>Project analyses and diagnostics.</h3><p>Run supported project models, compare revisions, and export the results. Explore the campaign workflow with labeled synthetic diagnostics.</p><a href="#/workspace">Open workbench<Plus/></a></div><div className="ff-release-status"><span>LIBERO BENCHMARK</span><h3>Robot-policy execution.</h3><p>Robot policy campaigns run when the execution host passes qualification and its worker is online.</p><a href="#/runtime">View runtime setup<Plus/></a></div></div>
+        <div className="ff-release-heading ff-reveal"><div className="ff-section-label"><span>AVAILABLE TODAY</span><Crosshair/></div><h2>Bring your<br/><em>own prototype.</em></h2><p>Start with what you have, whether it is an idea, a model file or measurements from the bench. In your project, choose the behavior you want to study and supply the inputs that model needs.</p></div>
+        <div className="ff-release-details ff-reveal"><div className="ff-release-status"><span>YOUR PROJECT</span><h3>Test a supported design.</h3><p>Study joint motion, beam bending or heat flow. You can also begin with a brief and prepare the measurements your first test will need.</p><a href="#/projects/new">Start my own project<Plus/></a></div><div className="ff-release-status"><span>ROBOT BENCHMARK</span><h3>Run the bowl-placement task.</h3><p>A separate benchmark tests a Panda arm and pretrained controller. Robot-policy campaigns use a qualified execution host.</p><a href="#/settings">View runtime settings<Plus/></a></div></div>
       </section>
 
       <section className="ff-faq ff-section"><div className="ff-section-label ff-reveal"><span>A FEW GOOD QUESTIONS</span><Crosshair/></div><div className="ff-faq-list ff-reveal">
-        <details><summary>Do I need a physical robot?<Plus/></summary><p>No. The workflow runs a robot and its controller in a physics simulator. The initial integration supplies a supported robot, task, and pretrained controller. A physical robot is not required to run those simulated experiments.</p></details>
+        <details><summary>What do I need for the shelf example?<Plus/></summary><p>The example includes the shelf dimensions, material, loads and bending limit. Open it, review the two conditions and run the simulation on your CPU. You can try it before uploading any files.</p></details>
         <details><summary>Can I test my own robot or task?<Plus/></summary><p>You can create a project for a concept, CAD design, robot model, existing simulation, or physical prototype. Attach supporting files, define model inputs, and run supported motion, calibration, beam, and heat-transfer studies in a project. The separate policy benchmark uses one supported robot, task, and controller.</p></details>
         <details><summary>Is FailureForge training the robot?<Plus/></summary><p>FailureForge evaluates an existing controller—the software that decides how the robot acts. It searches for failures and packages evidence for investigation. It does not currently train or repair the controller.</p></details>
         <details><summary>Where can I replay a test?<Plus/></summary><p>This page uses illustrations. In Projects, choose View replays to play saved motion, inspect a beam or temperature field, or explore measured samples. In Campaigns, select a tested condition to see its recorded result. Bowl-placement benchmark episodes with saved footage also have main- and wrist-camera video.</p></details>
         <details><summary>Does a simulation prove a robot is safe?<Plus/></summary><p>Simulation helps discover and investigate failures inside a defined test domain. Its results depend on the model, controller, environment, and conditions tested. They do not certify real-world robot safety.</p></details>
       </div></section>
 
-      <section className="ff-final"><div className="ff-final-grid" aria-hidden="true"/><div className="ff-section-label"><span>BUILT FOR THE NEXT QUESTION</span><Crosshair/></div><h2 className="ff-reveal">Find the failure.<br/><em>Keep the insight.</em></h2><div className="ff-final-bottom"><p>Start with an experiment.<br/>Leave with a case you can investigate.</p><a className="ff-button ff-button-dark" href="#/projects">Open FailureForge<Plus/></a></div></section>
+      <section className="ff-final"><div className="ff-final-grid" aria-hidden="true"/><h2 className="ff-reveal">Run your first<br/><em>comparison.</em></h2><div className="ff-final-bottom"><p>See how a shelf responds when its load moves to the edge.</p><div className="ff-final-actions"><a className="ff-button ff-button-dark" href={shelfExampleHref}>Try the shelf example<Plus/></a><a className="ff-text-button" href="#/projects/new">Start my own project<span className="ff-small-square"/></a></div></div></section>
     </main>
-    <footer className="ff-footer"><a className="ff-brand" href="#/" aria-label="FailureForge home" onClick={e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' }); }}><ForgeMark/><span>FailureForge</span></a><p>Robot behavior. Under investigation.</p><div><a href="#/runtime">Runtime & setup</a><button onClick={() => window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })}>Back to top</button></div><span className="ff-footer-bottom">SIMULATED WORLDS. BETTER QUESTIONS.</span></footer>
+    <footer className="ff-footer"><a className="ff-brand" href="#/" aria-label="FailureForge home" onClick={e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' }); }}><ForgeMark/><span>FailureForge</span></a><p>Robot behavior. Under investigation.</p><div><a href="#/settings">Settings</a><button onClick={() => window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })}>Back to top</button></div><span className="ff-footer-bottom">SIMULATED WORLDS. BETTER QUESTIONS.</span></footer>
   </div>;
 }

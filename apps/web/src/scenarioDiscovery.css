@@ -41,6 +41,7 @@
 .scenario-results-heading { justify-content: space-between; }
 .scenario-results-heading p, .scenario-run-scope { margin: 4px 0; color: var(--project-muted); font-size: .93rem; }
 .scenario-scoreboard { font-variant-numeric: tabular-nums; padding-block: 9px; border-block: 1px solid #dce5eb; }
+.scenario-open-result { margin-inline-start: auto; }
 .scenario-total { font-size: .88rem; color: #435a67; }
 .scenario-total strong { font-size: 1.03rem; margin-right: 3px; }
 .scenario-state.state-passed { color: #27533e; background: #e6f2eb; }

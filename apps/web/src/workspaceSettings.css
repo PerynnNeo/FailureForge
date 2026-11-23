@@ -1,0 +1,35 @@
+.workspace-settings { max-width: 900px; margin-inline: auto; color: #223746; }
+.settings-panel, .settings-disclosure { background: white; border: 1px solid #d7e0e6; border-radius: 10px; margin-bottom: 18px; }
+.settings-heading { display: flex; align-items: center; gap: 10px; padding: 19px 24px; border-bottom: 1px solid #e3e8ec; }
+.settings-heading > svg { color: #577181; flex-shrink: 0; }
+.settings-heading h3 { margin: 0; font-size: 18px; line-height: 1.4; letter-spacing: -.025em; }
+.settings-heading button { margin-left: auto; }
+.settings-field, .settings-service { display: flex; justify-content: space-between; gap: 24px; align-items: center; margin-inline: 24px; padding-block: 17px; }
+.settings-field + .settings-field, .settings-service + .settings-service { border-top: 1px solid #e7ecef; }
+.settings-field label, .settings-service strong, .settings-guidance h4 { font-size: 15px; font-weight: 650; }
+.settings-field p, .settings-service p, .settings-guidance p { font-size: 14px; color: #536776; line-height: 1.55; margin: 4px 0 0; }
+.settings-field select { width: 172px; max-width: 100%; flex: 0 0 auto; background-color: white; border: 1px solid #b7c6ce; color: #213b4c; border-radius: 5px; padding: 9px; font: inherit; font-size: 14px; }
+.settings-feedback, .settings-footnote { margin: 0; padding: 11px 24px; background: #f7f9fa; border-radius: 0 0 10px 10px; color: #516573; font-size: 13px; }
+.settings-services { padding: 0; margin: 0; list-style: none; }
+.settings-status { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.settings-status small { color: #536776; font-size: 12px; }
+.settings-pill { font-size: 13px; font-weight: 600; padding: 4px 9px; border-radius: 5px; background: #edf1f3; color: #455b68; }
+.settings-pill.available { background: #e3f1ea; color: #255d46; }
+.settings-pill.attention { background: #fbefdc; color: #784f20; }
+.settings-disclosure > summary { padding: 16px 24px; cursor: pointer; font-weight: 600; }
+.settings-guidance { border-top: 1px solid #e3e8ec; padding: 18px 24px; }
+.settings-guidance h4 { margin: 0; }
+.settings-guidance h4:not(:first-child) { margin-top: 20px; }
+.settings-guidance .text-link { margin-top: 6px; }
+.settings-config { margin: 16px 0 0; display: grid; gap: 7px; }
+.settings-config > div { display: grid; grid-template-columns: minmax(100px,.34fr) 1fr; gap: 12px; }
+.settings-config dt { color: #536776; }
+.settings-config dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .settings-heading, .settings-guidance, .settings-disclosure > summary { padding: 15px 16px; }
+  .settings-feedback, .settings-footnote { padding-inline: 16px; }
+  .settings-field, .settings-service { margin-inline: 16px; gap: 10px; flex-wrap: wrap; }
+  .settings-field select { width: 100%; }
+  .settings-service > div:first-child { flex: 1 1 185px; }
+  .settings-status { align-items: flex-start; }
+}

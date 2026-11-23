@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { formatTime, label, methodName, post, request, shortId } from './api';
 import { BackendBadge, Empty, Icon, Loading, Notice, SectionHeading, Status } from './components';
 import { ScatterPlot } from './Charts';
@@ -13,7 +13,9 @@ import { HelpTutorial } from './HelpTutorial';
 import { campaignDetailGuide } from './campaignTutorial';
 import Projects from './Projects';
 import type { Campaign, Catalog, Health } from './types';
-import { workerFor, workerLabel } from './workerStatus';
+import { workerLabel } from './workerStatus';
+import WorkspaceSettings from './WorkspaceSettings';
+import { getWorkspacePreferences, subscribeWorkspacePreferences } from './workspacePreferences';
 import './styles.css';
 
 const defaultDomain = { main_camera_dx_m: [-.04, .04] as [number, number], light_scale: [.7, 1.3] as [number, number] };
@@ -31,23 +33,50 @@ export default function App({ route }: { route: string }) {
   const [benchmarksLoaded, setBenchmarksLoaded] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [toast, setToast] = useState('');
-  const refresh = useCallback(async () => {
-    const [h, c, list] = await Promise.allSettled([request<Health>('/health'), request<Catalog>('/catalog'), request<{ items: Campaign[] }>('/campaigns')]);
-    setConnected(h.status === 'fulfilled');
-    if (h.status === 'fulfilled') setHealth(h.value);
-    if (c.status === 'fulfilled') setCatalog(c.value);
-    if (list.status === 'fulfilled') { setCampaigns(list.value.items); setBenchmarksLoaded(true); setBenchmarkError(''); }
-    else setBenchmarkError(`Bowl benchmarks could not load. ${list.reason instanceof Error ? list.reason.message : ''}`);
+  const preferences = useSyncExternalStore(subscribeWorkspacePreferences, getWorkspacePreferences);
+  const [checking, setChecking] = useState(false);
+  const [lastChecked, setLastChecked] = useState<string | null>(null);
+  const statusRequest = useRef<Promise<void> | null>(null);
+  const refreshStatus = useCallback(() => {
+    if (statusRequest.current) return statusRequest.current;
+    setChecking(true);
+    statusRequest.current = Promise.all([
+      request<Health>('/health').then(value => { setHealth(value); setConnected(true); },
+        () => { setHealth(null); setConnected(false); }).finally(() => setLastChecked(new Date().toISOString())),
+      request<Catalog>('/catalog').then(setCatalog, () => setCatalog(null)),
+    ]).then(() => {}).finally(() => { statusRequest.current = null; setChecking(false); });
+    return statusRequest.current;
   }, []);
-  useEffect(() => { void refresh(); const timer = window.setInterval(() => { if (!document.hidden) void refresh(); }, 4000); return () => clearInterval(timer); }, [refresh]);
+  const refreshCampaigns = useCallback(async () => {
+    try {
+      const list = await request<{ items: Campaign[] }>('/campaigns');
+      setCampaigns(list.items); setBenchmarksLoaded(true); setBenchmarkError('');
+    } catch (error) { setBenchmarkError(`Bowl benchmarks could not load. ${error instanceof Error ? error.message : ''}`); }
+  }, []);
+  const refresh = () => Promise.all([refreshStatus(), refreshCampaigns()]);
+  useEffect(() => { void refreshStatus(); }, [refreshStatus]);
+  useEffect(() => {
+    if (!preferences.refreshIntervalMs) return;
+    const timer = window.setInterval(() => { if (!document.hidden) void refreshStatus(); }, preferences.refreshIntervalMs);
+    return () => window.clearInterval(timer);
+  }, [preferences.refreshIntervalMs, refreshStatus]);
+  const path = route.split('?')[0].replace(/\/$/, '');
+  const settings = path === '/settings' || path === '/runtime';
+  useEffect(() => {
+    if (settings) return;
+    void refreshCampaigns();
+    const timer = window.setInterval(() => { if (!document.hidden) void refreshCampaigns(); }, 4000);
+    return () => window.clearInterval(timer);
+  }, [settings, refreshCampaigns]);
   useEffect(() => { setMobileMenu(false); }, [route]);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(''), 6500); return () => clearTimeout(timer); }, [toast]);
-  const section = route.startsWith('/projects') ? 'projects' : route.startsWith('/campaign') || route.startsWith('/case') ? 'campaigns' : route === '/runtime' ? 'runtime' : 'overview';
+  const section = route.startsWith('/projects') ? 'projects' : route.startsWith('/campaign') || route.startsWith('/case') ? 'campaigns' : settings ? 'settings' : 'overview';
   const campaignId = route.startsWith('/campaigns/') ? decodeSegment(route.split('/')[2]) : null;
   const caseId = route.startsWith('/cases/') ? decodeSegment(route.split('/')[2]) : null;
   const projectQuery = section === 'projects' ? new URLSearchParams(route.split('?')[1]) : null;
   const setupBatch = projectQuery?.get('setup') === 'campaign';
-  const savedBatch = Boolean(projectQuery?.get('batch'));
+  const shelfRoute = projectQuery?.get('tab') === 'shelf' || (route.split('?')[0] === '/projects/new' && projectQuery?.get('example') === 'shelf');
+  const savedBatch = !shelfRoute && Boolean(projectQuery?.get('batch'));
   const navSection = setupBatch || savedBatch ? 'campaigns' : section;
   const batches = useProjectBatches(section === 'overview' || (section === 'campaigns' && !campaignId && !caseId));
   const history = campaignHistory(batches.items ?? [], campaigns);
@@ -58,21 +87,20 @@ export default function App({ route }: { route: string }) {
     {mobileMenu && <button className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setMobileMenu(false)}/>}
     <aside className={`sidebar ${mobileMenu ? 'open' : ''}`}>
       <a className="brand" href="#/" aria-label="FailureForge home"><span className="brand-mark"><span/><span/><span/></span><span>Failure<span className="brand-light">Forge</span><small>ROBOTICS INVESTIGATION</small></span></a>
-      <div className="workspace-label">WORKSPACE <span>LOCAL</span></div>
+      <div className="workspace-label">WORKSPACE {!settings && <span>LOCAL</span>}</div>
       <nav aria-label="Main navigation">
         <a className={navSection === 'overview' ? 'active' : ''} href="#/workspace" aria-current={navSection === 'overview' ? 'page' : undefined}><Icon name="overview"/>Overview</a>
         <a className={navSection === 'projects' ? 'active' : ''} href="#/projects" aria-current={navSection === 'projects' ? 'page' : undefined}><Icon name="layers"/>Projects</a>
         <a className={navSection === 'campaigns' ? 'active' : ''} href="#/campaigns" aria-current={navSection === 'campaigns' ? 'page' : undefined}><Icon name="campaign"/>Campaigns{batches.items && benchmarksLoaded && !historyError && <span className="nav-count">{history.length}</span>}</a>
-        <a className={navSection === 'runtime' ? 'active' : ''} href="#/runtime" aria-current={navSection === 'runtime' ? 'page' : undefined}><Icon name="runtime"/>Runtime & setup</a>
+        <a className={navSection === 'settings' ? 'active' : ''} href="#/settings" aria-current={navSection === 'settings' ? 'page' : undefined}><Icon name="sliders"/>Settings</a>
       </nav>
-      <div className="sidebar-context"><span className="eyebrow">FROM DESIGN TO EVIDENCE</span><strong>Start at your stage.<br/>Prepare a meaningful test.</strong><p>Projects hold your prototype and models.<br/>Campaigns test them across conditions.</p><div className="sidebar-coordinate"><span>PLAN</span><i/><span>TEST</span></div></div>
-      <div className="sidebar-bottom"><div className={`connection-dot ${connected && health?.worker.online ? 'online' : ''}`}/><div><strong>{connected === null ? 'Connecting to service' : !connected ? 'API disconnected' : workerLabel(health)}</strong><span>{connected ? 'Local execution workspace' : 'Start your local API to connect'}</span></div></div>
+      <div className="sidebar-bottom"><div className={`connection-dot ${connected && (section === 'projects' || settings || health?.worker?.online) ? 'online' : ''}`}/><div><strong>{connected === null ? 'Connecting to service' : !connected ? 'API disconnected' : (section === 'projects' || settings) ? 'Workspace connected' : workerLabel(health)}</strong><span>{settings ? 'Workspace service connection' : connected ? 'Local execution workspace' : 'Start your local API to connect'}</span></div></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileMenu(true)}><Icon name="menu"/></button><span>Workspace</span><Icon name="chevron" size={13}/><strong>{setupBatch ? 'Campaign setup' : savedBatch ? 'Campaign results' : section === 'projects' ? route === '/projects/new' ? 'New project' : route.startsWith('/projects/') ? 'Project detail' : 'Projects' : section === 'overview' ? 'Overview' : section === 'runtime' ? 'Runtime & setup' : caseId ? 'Case investigation' : campaignId === 'new' ? 'New campaign' : campaignId ? 'Bowl benchmark' : 'Campaigns'}</strong></div><div className="topbar-right"><span className="development-label">DEVELOPMENT WORKSPACE</span><div className="avatar" aria-label="Local workspace">FF</div></div></header>
+      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileMenu(true)}><Icon name="menu"/></button><span>Workspace</span><Icon name="chevron" size={13}/><strong>{shelfRoute ? 'Shelf example' : setupBatch ? 'Campaign setup' : savedBatch ? 'Campaign results' : section === 'projects' ? route === '/projects/new' ? 'New project' : route.startsWith('/projects/') ? 'Project detail' : 'Projects' : section === 'overview' ? 'Overview' : settings ? 'Settings' : caseId ? 'Case investigation' : campaignId === 'new' ? 'New campaign' : campaignId ? 'Bowl benchmark' : 'Campaigns'}</strong></div><div className="topbar-right">{!settings && <span className="development-label">DEVELOPMENT WORKSPACE</span>}<div className="avatar" aria-label="FailureForge workspace">FF</div></div></header>
       <main id="main-content">
-        {connected === false && <div className="connection-banner" role="status"><Icon name="info" size={18}/><span>API disconnected. Saved investigations will appear when the local service is running.</span><button onClick={() => void refresh()}>Retry connection</button></div>}
-        {section === 'projects' ? <Projects route={route} notify={setToast}/> : caseId ? <CaseInspector key={caseId} id={caseId} notify={setToast}/> : campaignId === 'new' ? <NewProjectCampaign/> : campaignId ? <CampaignDetail key={campaignId} id={campaignId} notify={setToast}/> : section === 'runtime' ? <Runtime health={connected ? health : null} catalog={catalog} connected={connected} refresh={refresh}/> : section === 'campaigns' ? <CampaignList rows={history} loading={historyLoading} error={historyError} retry={retryHistory} benchmarkOpen={benchmarkOpen} onBenchmark={() => setBenchmarkOpen(true)}/> : <Overview rows={history} batches={batches.items} benchmarks={campaigns} benchmarksLoaded={benchmarksLoaded} loading={historyLoading} error={historyError} retry={retryHistory}/>}
+        {connected === false && !settings && <div className="connection-banner" role="status"><Icon name="info" size={18}/><span>API disconnected. Saved investigations will appear when the local service is running.</span><button onClick={() => void refresh()}>Retry connection</button></div>}
+        {section === 'projects' ? <Projects route={route} notify={setToast}/> : caseId ? <CaseInspector key={caseId} id={caseId} notify={setToast}/> : campaignId === 'new' ? <NewProjectCampaign/> : campaignId ? <CampaignDetail key={campaignId} id={campaignId} notify={setToast}/> : settings ? <WorkspaceSettings preferences={preferences} health={health} catalog={catalog} connected={connected} checking={checking} lastChecked={lastChecked} refresh={refreshStatus}/> : section === 'campaigns' ? <CampaignList rows={history} loading={historyLoading} error={historyError} retry={retryHistory} benchmarkOpen={benchmarkOpen} onBenchmark={() => setBenchmarkOpen(true)}/> : <Overview rows={history} batches={batches.items} benchmarks={campaigns} benchmarksLoaded={benchmarksLoaded} loading={historyLoading} error={historyError} retry={retryHistory}/>}
       </main>
       <footer className="page-footer"><span>FailureForge <b>·</b> Controlled changes. Reproducible evidence.</span><span>Local-first research workspace</span></footer>
     </div>
@@ -87,7 +115,7 @@ function Overview({ rows, batches, benchmarks, benchmarksLoaded, loading, error,
 }) {
   return <>
     <SectionHeading title="Investigation workspace" description="Manage your prototype, run tests and inspect the results." action={<a className="button primary" href="#/projects/new"><Icon name="plus" size={18}/>New project</a>}/>
-    <section className="project-entry-banner"><div><h3>Projects</h3><p>Keep each prototype’s models, inputs, success criteria and individual run evidence together.</p></div><a className="button secondary" href="#/projects">Open projects<Icon name="chevron" size={16}/></a></section>
+    <section className="project-entry-banner"><div><h3>Run your first comparison</h3><p>Move a load to the edge of a shelf and see how the measured bend changes.</p></div><div className="project-heading-actions"><a className="button primary" href="#/projects/new?example=shelf">Try the shelf example</a><a className="text-link" href="#/projects">My projects</a></div></section>
     <div className="metrics-grid">
       <Metric icon="campaign" title="Project campaigns" value={batches?.length ?? '—'} detail="Suites, sweeps and environment matrices"/>
       <Metric icon="layers" title="Project runs completed" value={batches?.reduce((sum, item) => sum + item.completed, 0) ?? '—'} detail="Across saved project campaigns"/>
@@ -130,10 +158,3 @@ function CampaignDetail({ id, notify }: { id: string; notify: (message: string) 
     {campaign.jobs?.length ? <section className="card jobs-card"><div className="card-heading" data-tour="campaign-jobs"><h3>Execution jobs</h3></div>{campaign.jobs.map(job => <div className="job-row" key={job.id}><Icon name="terminal" size={18}/><div><strong>{label(job.kind ?? job.phase ?? 'campaign')}</strong><span className="mono">{shortId(job.id)}</span>{job.error && <p className="text-red">{job.error}</p>}</div><Status value={job.status}/>{job.status === 'interrupted' && <button className="button secondary" disabled={cancelling || Boolean(activeJob)} onClick={() => void resume(job.id)}><Icon name="refresh" size={15}/>Resume job</button>}</div>)}</section> : null}
   </>;
 }
-
-function Runtime({ health, catalog, connected, refresh }: { health: Health | null; catalog: Catalog | null; connected: boolean | null; refresh: () => Promise<void> }) {
-  return <><SectionHeading eyebrow="EXECUTION ENVIRONMENT" title="Runtime & setup" description="Check campaign worker connections and robot qualification on the execution host." action={<button className="button secondary" onClick={() => void refresh()}><Icon name="refresh" size={17}/>Refresh status</button>}/><div className="runtime-grid"><section className="card"><div className="card-heading"><h3>Service connection</h3><Status value={connected ? 'ready' : 'offline'}/></div><dl className="definition-list runtime-definitions"><div><dt>API</dt><dd>{connected === null ? 'Connecting' : connected ? 'Connected' : 'Disconnected'}</dd></div>{(['libero', 'synthetic'] as const).map(backend => { const worker = workerFor(health, backend); return <div key={backend}><dt>{backend === 'libero' ? 'Robot worker' : 'Synthetic worker'}</dt><dd>{worker?.online ? 'Online' : 'Offline'}{worker?.last_seen ? ` · ${formatTime(worker.last_seen)}` : ''}</dd></div>; })}<div><dt>Robot qualification</dt><dd>{health?.readiness.qualified ? 'Qualified' : 'Not verified'}</dd></div></dl><div className="card-pad"><Notice tone={health?.readiness.qualified ? 'info' : 'warning'}>{health?.readiness.reason ?? 'Connect the API to inspect worker readiness. Robot execution stays unavailable until target-host checks pass.'}</Notice></div></section><section className="card"><div className="card-heading"><h3>Pinned experiment</h3><Icon name="file" size={19}/></div><dl className="definition-list runtime-definitions"><div><dt>Policy</dt><dd>{catalog?.policy.repo_id ?? 'Available when API connects'}</dd></div><div><dt>Snapshot</dt><dd className="mono wrap-anywhere">{catalog?.policy.revision ?? '—'}</dd></div><div><dt>Task suite</dt><dd>{catalog?.task.suite ?? 'LIBERO'}</dd></div><div><dt>Task</dt><dd>{catalog?.task.name ? label(catalog.task.name) : 'Available when API connects'}</dd></div><div><dt>Camera domain</dt><dd>−4 to +4 cm</dd></div><div><dt>Lighting domain</dt><dd>0.70 to 1.30×</dd></div></dl></section></div><section className="card setup-card"><div className="card-heading"><div><h3>Workspace and execution host</h3><p>The browser reads evidence through the API. The simulator lives on the execution host.</p></div></div><div className="setup-columns"><div><div className="setup-icon"><Icon name="terminal" size={24}/></div><h3>In the workspace</h3><p>Run the API and frontend, validate the application with synthetic episodes, and inspect saved investigations.</p><ul><li>Search proposals and deterministic validation</li><li>Budgeting, job recovery, and artifact validation</li><li>Case comparison, reduction, and exports</li></ul><span className="setup-tag">No robotics GPU required</span></div><div><div className="setup-icon orange"><Icon name="runtime" size={24}/></div><h3>On your RTX 5090 PC</h3><p>Install the pinned robotics environment and establish the reference before collecting scientific evidence.</p><ul><li>Validate CUDA and both camera render paths</li><li>Qualify policy behavior and initial-state resets</li><li>Verify scene changes and run real campaigns</li></ul><span className="setup-tag">Linux runtime · GPU inference</span></div></div></section><Notice>Setup commands and qualification steps are in the repository README. Synthetic campaign results are always labeled and cannot establish robot readiness.</Notice></>;
-}
-
-
-
